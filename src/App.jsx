@@ -98,9 +98,9 @@ export default function Dashboard(){
 
   // Save helpers
   var savePipe=useCallback(function(data){sSaving(true);sb.from('pipe_data').update({data:data,updated_at:new Date().toISOString()}).eq('id',1).then(function(){sSaving(false)}).catch(function(){sSaving(false)})},[]);
-  var saveReg=useCallback(function(data){sb.from('tag_registry').update({data:data,updated_at:new Date().toISOString()}).eq('id',1)},[]);
-  var saveSubs=useCallback(function(data){sb.from('subscriptions').update({data:data,updated_at:new Date().toISOString()}).eq('id',1)},[]);
-  var savePw=useCallback(function(hash){sb.from('admin_password').update({hash:hash,updated_at:new Date().toISOString()}).eq('id',1)},[]);
+  var saveReg=useCallback(function(data){sb.from('tag_registry').update({data:data,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
+  var saveSubs=useCallback(function(data){sb.from('subscriptions').update({data:data,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
+  var savePw=useCallback(function(hash){sb.from('admin_password').update({hash:hash,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
 
   var doImport=useCallback(function(){if(!csv.trim())return;var r=csvToPipe(csv);sIR(r);if(r.pipe&&r.count>0){sPd(r.pipe);savePipe(r.pipe);if(!r.e.length){sSI(false);sYr('All')}}},[csv,savePipe]);
   var doClear=useCallback(function(){if(confirm('Clear all data?')){sPd('');sReg({});sSubs(DSUBS);savePipe('');saveReg({});saveSubs(DSUBS);sSI(false)}},[savePipe,saveReg,saveSubs]);
