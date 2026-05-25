@@ -40,9 +40,75 @@ var THEMES=[
   {id:'drive',name:'Drive',dark:true,paper:'#0E0A1A',surface:'#161028',surfaceAlt:'#1A1428',border:'#231838',borderStrong:'#332048',ink:'#F0E5D5',inkSoft:'#C8B8B0',muted:'#5F5070',mutedSoft:'#3F3050',primary:'#FF5DA0',secondary:'#00D5E5'},
   {id:'clockwork',name:'A Clockwork Orange',dark:false,paper:'#F8F6F0',surface:'#EDEAE0',surfaceAlt:'#E0DDD2',border:'#1A1410',borderStrong:'#1A1410',ink:'#1A1410',inkSoft:'#3A2C20',muted:'#5A4838',mutedSoft:'#7A6850',primary:'#FF6F1A',secondary:'#1A1410'},
   {id:'lighthouse',name:'The Lighthouse',dark:false,paper:'#D9D6CE',surface:'#CCC9C1',surfaceAlt:'#B8B5AD',border:'#1A1410',borderStrong:'#1A1410',ink:'#1A1410',inkSoft:'#3A3530',muted:'#5A554F',mutedSoft:'#7A7570',primary:'#E8A82A',secondary:'#1A1410'},
-  {id:'whiplash',name:'Whiplash',dark:true,paper:'#0A0A0A',surface:'#151210',surfaceAlt:'#1F1A14',border:'#2A2218',borderStrong:'#3F3520',ink:'#F0DCA8',inkSoft:'#D8C088',muted:'#A87528',mutedSoft:'#785020',primary:'#E8A02A',secondary:'#C81818'}
+  {id:'whiplash',name:'Whiplash',dark:true,paper:'#0A0A0A',surface:'#151210',surfaceAlt:'#1F1A14',border:'#2A2218',borderStrong:'#3F3520',ink:'#F0DCA8',inkSoft:'#D8C088',muted:'#A87528',mutedSoft:'#785020',primary:'#E8A02A',secondary:'#C81818'},
+  {id:'mrfox',name:'Fantastic Mr. Fox',dark:false,paper:'#E66A1A',surface:'#D45A14',surfaceAlt:'#C04A10',border:'#8B3818',borderStrong:'#5A2010',ink:'#3A1F0A',inkSoft:'#5A2A10',muted:'#7A4520',mutedSoft:'#A05828',primary:'#3A1F0A',secondary:'#E8B838'},
+  {id:'challengers',name:'Challengers',dark:false,paper:'#E8F03C',surface:'#D8E028',surfaceAlt:'#C8D020',border:'#B8C028',borderStrong:'#8B9018',ink:'#1A4A85',inkSoft:'#2D5598',muted:'#3F60A8',mutedSoft:'#5A70B0',primary:'#1A4A85',secondary:'#D8281A'},
+  {id:'substance',name:'The Substance',dark:false,paper:'#FFFFFF',surface:'#F5F5F0',surfaceAlt:'#EAEAE0',border:'#000000',borderStrong:'#000000',ink:'#000000',inkSoft:'#1A1A1A',muted:'#3A3A3A',mutedSoft:'#5A5A5A',primary:'#9CDE2A',secondary:'#FFE026'},
+  {id:'barbie',name:'Barbie',dark:false,paper:'#F5C0D5',surface:'#F0AECA',surfaceAlt:'#EA9CC0',border:'#C8225A',borderStrong:'#8B1A4A',ink:'#8B1A4A',inkSoft:'#A82058',muted:'#B0386A',mutedSoft:'#C8588A',primary:'#E62F7A',secondary:'#8FCEEB'},
+  {id:'batman',name:'The Batman',dark:true,paper:'#0A0F18',surface:'#101520',surfaceAlt:'#161D2A',border:'#1A2030',borderStrong:'#2A3548',ink:'#A8B0BC',inkSoft:'#8B95A5',muted:'#5A6878',mutedSoft:'#3F4A58',primary:'#D8230A',secondary:'#A8B0BC'},
+  {id:'dtrt',name:'Do the Right Thing',dark:true,paper:'#1A2D58',surface:'#223568',surfaceAlt:'#2A3D78',border:'#0A1838',borderStrong:'#152448',ink:'#FFD428',inkSoft:'#E8C020',muted:'#A8B8E0',mutedSoft:'#7090C0',primary:'#FFD428',secondary:'#D8281A'},
+  {id:'oppenheimer',name:'Oppenheimer',dark:true,paper:'#1A1A1A',surface:'#222222',surfaceAlt:'#2A2A2A',border:'#2A2A2A',borderStrong:'#3F3F3F',ink:'#E5E2DA',inkSoft:'#C8C5BC',muted:'#8B8580',mutedSoft:'#5A5650',primary:'#FF8C28',secondary:'#E5E2DA'},
+  {id:'dollars',name:'Dollars Trilogy',dark:false,paper:'#D8B878',surface:'#C8A868',surfaceAlt:'#B89858',border:'#8B6028',borderStrong:'#5A3818',ink:'#3A1A0A',inkSoft:'#5A2810',muted:'#7A4020',mutedSoft:'#A05828',primary:'#A82010',secondary:'#3A1A0A'},
+  {id:'moonlight',name:'Moonlight',dark:true,paper:'#1A3A6B',surface:'#234578',surfaceAlt:'#2A4A85',border:'#2D5598',borderStrong:'#3F65A8',ink:'#F0E5D5',inkSoft:'#D8C8B0',muted:'#A8C8E0',mutedSoft:'#7090B0',primary:'#F5C8B0',secondary:'#F0B0A0'}
 ];
 var THEME_BY_ID={};THEMES.forEach(function(t){THEME_BY_ID[t.id]=t});
+
+// ============================================================
+// THEME COPY — masthead/title/heroLabel/heroSuffix per theme
+// {n} = YoY signed integer (e.g. "+18"), {year} = current year, {total} = films count
+// fonts: 'sans' (default), 'serif', 'mono', 'impact'
+// ============================================================
+var FONT_MAP={
+  sans:'ui-sans-serif, system-ui, -apple-system, sans-serif',
+  serif:'Georgia, "Times New Roman", "Bodoni Moda", serif',
+  mono:'ui-monospace, "SF Mono", "Courier New", monospace',
+  impact:'"Impact", "Arial Black", "Helvetica Neue", sans-serif',
+  typewriter:'"American Typewriter", "Courier New", ui-monospace, monospace'
+};
+function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
+
+var THEME_COPY={
+  matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'films.count',heroSuffix:'[Δ {n} from prev cycle]',fonts:{hero:'mono',label:'mono',title:'mono'}},
+  br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Films seen',heroSuffix:'{n} since last scan',fonts:{hero:'sans',label:'sans',title:'sans'}},
+  amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Films vus',heroSuffix:'soit {n} de plus !',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  lalaland:{masthead:'— City of stars —',title:'a year in pictures',heroLabel:'Films watched',heroSuffix:'{n} more than before',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  budapest:{masthead:'— ★ —',title:'The Grand Cinema Archive',heroLabel:'Films',heroSuffix:'— a most extraordinary year, {n} more —',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  mood:{masthead:'— 花樣年華 —',title:'Those vanished years',heroLabel:'Films watched',heroSuffix:'{n} since',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  interstellar:{masthead:'LOG · CYCLE {year}',title:'Do not go gentle',heroLabel:'Films watched',heroSuffix:'{n} // Δt = 1y',fonts:{hero:'serif',label:'mono',title:'serif'}},
+  killbill:{masthead:'VOL. IV · {year}',title:"The Bride's catalog",heroLabel:'Marked films',heroSuffix:'{n} names crossed off',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  akira:{masthead:'// NEO-TOKYO · {year}',title:'アーカイブ ARCHIVE',heroLabel:'films.consumed',heroSuffix:'[Δ {n} ↗]',fonts:{hero:'mono',label:'mono',title:'mono'}},
+  tenenbaums:{masthead:'— Chapter four · MMXXV —',title:'A family of cinephiles',heroLabel:'Films, complete record of',heroSuffix:'{n} further than the previous',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  pirates:{masthead:"— Ye Olde Captain's Log —",title:'Babylonian, of the Black Pearl',heroLabel:'Films plundered',heroSuffix:'{n} since last voyage',fonts:{hero:'serif',label:'serif',title:'serif'}},
+  incredibles:{masthead:'— Issue No. {total} · {year} —',title:'THE CINEMA FILES',heroLabel:'Films watched',heroSuffix:'{n} SINCE LAST ISSUE!',fonts:{hero:'impact',label:'impact',title:'impact'}},
+  space2001:{masthead:'DISCOVERY ONE / {year}',title:'The Annual Mission Log',heroLabel:'FILMS · OBSERVED',heroSuffix:'> DELTA {n} // STAR GATE OPEN',fonts:{hero:'sans',label:'mono',title:'serif'}},
+  madmax:{masthead:'▲ WITNESS · MMXXV ▲',title:'SHINY AND CHROME',heroLabel:'War rigs counted',heroSuffix:'{n} · INTO VALHALLA',fonts:{hero:'impact',label:'sans',title:'impact'}},
+  her:{masthead:'a beautiful handwritten letter',title:'Dear Theodore,',heroLabel:'Memories shared',heroSuffix:'{n} more than the last time we spoke',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  shining_hotel:{masthead:'— ROOM 237 · MMXXV —',title:'all work and no play',heroLabel:'Films witnessed',heroSuffix:'{n} . . . . . come play with us',fonts:{hero:'serif',label:'mono',title:'mono'}},
+  shining_poster:{masthead:'— THE SHINING · {year} —',title:'A masterpiece of modern horror',heroLabel:'Films seen',heroSuffix:'{n} · HERE\'S JOHNNY',fonts:{hero:'sans',label:'sans',title:'serif'}},
+  midsommar:{masthead:'❀ MIDSOMMAR · MMXXV ❀',title:"The May Queen's spring diary",heroLabel:'Days in the meadow',heroSuffix:'{n} more flowers in the crown',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  spirited:{masthead:'— 千と千尋 · MMXXV —',title:'The bathhouse of films',heroLabel:'Bath tokens earned',heroSuffix:'{n} more spirits, served',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  moonrise:{masthead:'— KHAKI SCOUTS · TROOP 142 —',title:'Field Manual, MMXXV edition',heroLabel:'Films documented',heroSuffix:'{n} since last summer camp',fonts:{hero:'typewriter',label:'typewriter',title:'typewriter'}},
+  lost:{masthead:'— PARK HYATT · 52F —',title:'For relaxing times, watch films',heroLabel:'Films · 映画',heroSuffix:'{n}, lost & found',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  mononoke:{masthead:'— もののけ姫 · MMXXV —',title:"The forest spirit's chronicle",heroLabel:'Films seen',heroSuffix:'{n} since the wolves last spoke',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  apocalypse:{masthead:'— SAIGON · {year} —',title:'"I love the smell of cinema..."',heroLabel:'Targets confirmed',heroSuffix:'{n} // THE HORROR. THE HORROR.',fonts:{hero:'serif',label:'mono',title:'serif'}},
+  drive:{masthead:'— L.A. · {year} —',title:'A Real Human Being',heroLabel:'Drives completed',heroSuffix:'▲ {n} // five-minute window',fonts:{hero:'serif',label:'mono',title:'serif'}},
+  clockwork:{masthead:'— KOROVA MILK BAR · {year} —',title:'Viddy well, little brother',heroLabel:'Films viddied',heroSuffix:'{n} // O my brothers',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  lighthouse:{masthead:'— LOG · MMXXV —',title:"Why'd ye spill yer beans?",heroLabel:'Watches kept',heroSuffix:'{n} // damn ye to the brine',fonts:{hero:'serif',label:'mono',title:'serif'}},
+  whiplash:{masthead:'— STUDIO BAND · {year} —',title:'Not quite my tempo',heroLabel:'Bars rushed · {total} BPM',heroSuffix:'{n} // FASTER. AGAIN.',fonts:{hero:'sans',label:'sans',title:'serif'}},
+  mrfox:{masthead:'— Mr. Fox & Son · MMXXV —',title:'A most delightful annual report',heroLabel:'Films, all {total} of them',heroSuffix:'cuss yes · {n} more',fonts:{hero:'serif',label:'serif',title:'serif'}},
+  challengers:{masthead:'— 6 · 4 · 7-6 · MMXXV —',title:'Game, set, match · the annual',heroLabel:'Points won',heroSuffix:'▲ {n} // BREAK POINT',fonts:{hero:'mono',label:'mono',title:'serif'}},
+  substance:{masthead:'— THE SUBSTANCE® —',title:'A better version of yourself',heroLabel:'Doses · activated',heroSuffix:'{n} · remember, you are one',fonts:{hero:'serif',label:'serif',title:'serif'}},
+  barbie:{masthead:'— BARBIELAND · {year} —',title:'Hi Barbie! Hi Babylonian!',heroLabel:'Movies seen',heroSuffix:'{n} · Kenough',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  batman:{masthead:'— GOTHAM · YEAR TWO —',title:'I am the shadows · the journal',heroLabel:'Case files',heroSuffix:'{n} · vengeance recorded',fonts:{hero:'serif',label:'mono',title:'serif'}},
+  dtrt:{masthead:'— BED-STUY · DO OR DIE · MMXXV —',title:'FIGHT THE POWER!',heroLabel:'Films watched',heroSuffix:'{n} · WAKE UP, MISTER SEÑOR LOVE DADDY',fonts:{hero:'impact',label:'impact',title:'impact'}},
+  oppenheimer:{masthead:'— TRINITY · 16 JULY · MMXXV —',title:'Now I am become Babylonian',heroLabel:'Frames witnessed',heroSuffix:'{n} // CHAIN REACTION',fonts:{hero:'serif',label:'mono',title:'serif'}},
+  dollars:{masthead:'— EL PASO · MDCCCLXVII —',title:'Per un pugno di film',heroLabel:'Bounties collected',heroSuffix:'{n} dollari · the bad & the ugly',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  moonlight:{masthead:'— LITTLE / CHIRON / BLACK —',title:'In moonlight, films look blue',heroLabel:'Three chapters',heroSuffix:'{n} more since the ocean',fonts:{hero:'serif',label:'sans',title:'serif'}}
+};
+
+// Build the final theme: palette + copy/fonts merged
+function fullTheme(id){var t=THEME_BY_ID[id]||THEMES[0];var c=THEME_COPY[id]||{};return Object.assign({},t,{copy:c,fonts:c.fonts||{}})}
+function applyCopy(s,ctx){if(!s)return'';return s.replace(/\{n\}/g,ctx.n||'').replace(/\{year\}/g,ctx.year||'').replace(/\{total\}/g,ctx.total||'')}
 
 // hexToRgb / rgbToHex helpers for color manipulation
 function hexToRgb(h){var x=h.replace('#','');return{r:parseInt(x.slice(0,2),16),g:parseInt(x.slice(2,4),16),b:parseInt(x.slice(4,6),16)}}
@@ -160,7 +226,7 @@ export default function Dashboard(){
   // Theme system: randomly pick at mount, persist in localStorage, avoid immediate repeat
   var[themeId,sThemeId]=useState(function(){try{var prev=localStorage.getItem('dashboard_theme_current')||'';var pool=THEMES.filter(function(t){return t.id!==prev});if(!pool.length)pool=THEMES;var pick=pool[Math.floor(Math.random()*pool.length)].id;localStorage.setItem('dashboard_theme_previous',prev);localStorage.setItem('dashboard_theme_current',pick);return pick}catch(e){return THEMES[0].id}});
   var[showPicker,sShowPicker]=useState(false);
-  var T=THEME_BY_ID[themeId]||THEMES[0];
+  var T=fullTheme(themeId);
   var pickTheme=useCallback(function(id){try{localStorage.setItem('dashboard_theme_previous',themeId);localStorage.setItem('dashboard_theme_current',id)}catch(e){}sThemeId(id);sShowPicker(false)},[themeId]);
   var ts=function(k){sSorts(function(p){var u={};u[k]=p[k]==='avg'?'vol':'avg';return Object.assign({},p,u)})};
   var cls=function(){sSR(null);sSP(null);sSVe(null);sSCo(null);sSDe(null);sSTg(null);sSelHM(null);sSDir(null);sSGenre(null);sSCountry(null);sSCast(null)};
@@ -304,14 +370,22 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
   // HEADER + YEAR SELECTOR (used by all tabs)
   // ============================================================
   var heroYearLabel=yr==='All'?'All time':yr;
+  var copyCtx={year:yr==='All'?String(new Date().getFullYear()):yr,total:stats.total,n:yoy&&yoy.films!=null?fY(yoy.films,'abs')||'':''};
+  var fontHero=fontOf((T.fonts&&T.fonts.hero)||'sans');
+  var fontLabel=fontOf((T.fonts&&T.fonts.label)||'sans');
+  var fontTitle=fontOf((T.fonts&&T.fonts.title)||'sans');
+  var copyMasthead=applyCopy((T.copy&&T.copy.masthead)||"Babylonian's Letterboxd",copyCtx);
+  var copyTitle=applyCopy((T.copy&&T.copy.title)||'A year at the movies',copyCtx);
+  var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films watched',copyCtx);
+  var copyHeroSuffix=applyCopy((T.copy&&T.copy.heroSuffix)||'{n} vs '+(yr==='All'?'':String(parseInt(yr)-1)),copyCtx);
 
-  return(<div style={{background:T.paper,color:T.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"'}} className="px-4 md:px-10 py-6 md:py-10">{pwModal}{themePickerModal}<div className="max-w-6xl mx-auto">
+  return(<div style={{background:T.paper,color:T.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10">{pwModal}{themePickerModal}<div className="max-w-6xl mx-auto">
 
     {/* MASTHEAD */}
     <div className="flex justify-between items-baseline mb-8 pb-4" style={{borderBottom:'0.5px solid '+T.border}}>
       <div>
-        <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase'}}>Babylonian's Letterboxd</div>
-        <div style={{fontSize:24,fontWeight:500,marginTop:4,color:T.ink,letterSpacing:'-0.01em'}}>A year at the movies</div>
+        <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase',fontFamily:fontLabel}}>{copyMasthead}</div>
+        <div style={{fontSize:24,fontWeight:500,marginTop:4,color:T.ink,letterSpacing:'-0.01em',fontFamily:fontTitle}}>{copyTitle}</div>
         <button onClick={function(){sShowPicker(true)}} className="mt-2 text-xs" style={{background:'transparent',border:'none',color:T.muted,cursor:'pointer',padding:0,letterSpacing:'0.05em',fontStyle:'italic'}}>{'\u25BE '}{T.name}</button>
       </div>
       <div className="flex gap-2 items-center">
@@ -348,9 +422,9 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
       {/* HERO */}
       <div className="grid md:grid-cols-3 gap-8 items-end">
         <div className="md:col-span-2">
-          <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase',marginBottom:14}}>Films watched · {heroYearLabel}</div>
-          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:500,color:T.primary,letterSpacing:'-0.04em'}}>{stats.total}</div>
-          {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:T.muted}}>{fY(yoy.films,'abs')||'0'} vs {String(parseInt(yr)-1)}</div>}
+          <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase',marginBottom:14,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
+          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:500,color:T.primary,letterSpacing:'-0.04em',fontFamily:fontHero}}>{stats.total}</div>
+          {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:T.muted,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
         </div>
         <div className="flex flex-col gap-5 md:pl-8" style={{borderLeft:'0.5px solid '+T.border}}>
           <div>
@@ -517,6 +591,6 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
       {CATS.map(function(cat){var tags=tagGroupedDash[cat];if(!tags||!tags.length)return null;return <div key={cat} className="p-4 mb-3" style={{background:T.surface,border:'0.5px solid '+T.border,borderRadius:8}}><div style={{fontSize:13,fontWeight:500,color:T.inkSoft,marginBottom:8}}>{CI[cat].l} ({tags.length})</div><div className="space-y-0 max-h-64 overflow-y-auto">{tags.map(function(t){return renderTagRow(t,false)})}</div></div>})}
     </div>}
 
-    <div className="mt-12 pt-4 text-center" style={{borderTop:'0.5px solid '+T.border}}><div style={{fontSize:10,letterSpacing:'0.2em',color:T.mutedSoft,textTransform:'uppercase'}}>Babylonian's Letterboxd Stats</div></div>
+    <div className="mt-12 pt-4 text-center" style={{borderTop:'0.5px solid '+T.border}}><div style={{fontSize:10,letterSpacing:'0.2em',color:T.mutedSoft,textTransform:'uppercase',fontFamily:fontLabel}}>Babylonian's Letterboxd · {T.name}</div></div>
   </div></div>);
 }
