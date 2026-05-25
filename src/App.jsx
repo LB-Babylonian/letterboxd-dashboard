@@ -164,6 +164,12 @@ var ThemeOrnament=function(p){var T=p.T;var id=T.id;
     <div style={{position:'absolute',top:'20%',right:'-10%',width:'70%',height:'80%',background:'radial-gradient(circle at 30% 50%, '+T.primary+'66 0%, '+T.primary+'22 25%, transparent 60%)',animation:'trinitybreathe 6s ease-in-out infinite'}}/>
   </div>;
 
+  // DTRT — top zigzag stripe (poster yellow/red) + faint diagonal pattern on background
+  if(id==='dtrt')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,overflow:'hidden'})}>
+    <div style={{position:'absolute',inset:0,opacity:0.08,backgroundImage:'repeating-linear-gradient(45deg, '+T.dots[0]+' 0px, '+T.dots[0]+' 6px, transparent 6px, transparent 14px)'}}/>
+    <div style={{position:'absolute',top:0,left:0,right:0,height:10,background:'repeating-linear-gradient(45deg, '+T.dots[0]+' 0px, '+T.dots[0]+' 12px, '+T.dots[1]+' 12px, '+T.dots[1]+' 24px)',opacity:0.9}}/>
+  </div>;
+
   return null;
 };
 
@@ -481,7 +487,9 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
     {tab==='overview'&&<div className="space-y-10">
 
       {/* HERO */}
-      <div className="grid md:grid-cols-3 gap-8 items-start relative" style={{minHeight:180,background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:12,padding:'24px 22px',border:T.gradient?'0.5px solid '+T.border:'none'}}>
+      <div className="grid md:grid-cols-3 gap-8 items-start relative" style={{minHeight:180,background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:12,padding:'24px 22px',border:T.gradient?'0.5px solid '+T.border:'none',overflow:'hidden'}}>
+        {T.bgImage&&<div style={{position:'absolute',inset:0,backgroundImage:'url('+T.bgImage+')',backgroundSize:T.bgImageSize||'cover',backgroundPosition:T.bgImagePosition||'center',backgroundRepeat:T.bgImageRepeat||'no-repeat',opacity:T.bgImageOpacity||0.18,mixBlendMode:T.bgImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
+        {T.heroImage&&<div style={{position:'absolute',top:'10%',left:'10%',width:'60%',height:'80%',backgroundImage:'url('+T.heroImage+')',backgroundSize:'contain',backgroundPosition:T.heroImagePosition||'left center',backgroundRepeat:'no-repeat',opacity:T.heroImageOpacity||0.35,mixBlendMode:T.heroImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
         <ThemeOrnament T={T}/>
         {T.dots&&T.dots.length>=3&&<div style={{position:'absolute',top:14,right:18,display:'flex',gap:6,alignItems:'center',zIndex:2}}>
           <div style={{width:10,height:10,background:T.dots[0],borderRadius:'50%',boxShadow:T.glow?'0 0 8px '+T.dots[0]+'aa':'none'}}/>
