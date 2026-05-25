@@ -78,33 +78,33 @@ function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
 
 var THEME_COPY={
   matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'films.count',heroSuffix:'[\u0394 {n} from prev cycle]',fonts:{hero:'monoX',label:'mono',title:'mono'}},
-  br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Films seen',heroSuffix:'{n} since last scan',fonts:{hero:'serif',label:'mono',title:'cinzel'}},
-  amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Films vus',heroSuffix:'soit {n} de plus !',fonts:{hero:'serif',label:'handwrite',title:'handwrite'}},
-  lalaland:{masthead:'— City of stars —',title:'a year in pictures',heroLabel:'Films watched',heroSuffix:'{n} more than before',fonts:{hero:'serif',label:'serif',title:'serif'}},
-  budapest:{masthead:'— ★ —',title:'The Grand Cinema Archive',heroLabel:'Films',heroSuffix:'— a most extraordinary year, {n} more —',fonts:{hero:'serif',label:'sans',title:'script'}},
+  br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Films seen',heroSuffix:'{n} since last scan',fonts:{hero:'monoX',label:'mono',title:'cinzel'}},
+  amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Films vus',heroSuffix:'soit {n} de plus !',fonts:{hero:'handwrite',label:'handwrite',title:'handwrite'}},
+  lalaland:{masthead:'— City of stars —',title:'a year in pictures',heroLabel:'Films watched',heroSuffix:'{n} more than before',fonts:{hero:'script',label:'serif',title:'serif'}},
+  budapest:{masthead:'— ★ —',title:'The Grand Cinema Archive',heroLabel:'Films',heroSuffix:'— a most extraordinary year, {n} more —',fonts:{hero:'script',label:'sans',title:'script'}},
   mood:{masthead:'— 花樣年華 —',title:'Those vanished years',heroLabel:'Films watched',heroSuffix:'{n} since',fonts:{hero:'serif',label:'sans',title:'serif'}},
-  interstellar:{masthead:'LOG · CYCLE {year}',title:'Do not go gentle',heroLabel:'Films watched',heroSuffix:'{n} // Δt = 1y',fonts:{hero:'serif',label:'mono',title:'cinzel'}},
+  interstellar:{masthead:'LOG · CYCLE {year}',title:'Do not go gentle',heroLabel:'Films watched',heroSuffix:'{n} // Δt = 1y',fonts:{hero:'cinzel',label:'mono',title:'cinzel'}},
   killbill:{masthead:'VOL. IV · {year}',title:"The Bride's catalog",heroLabel:'Marked films',heroSuffix:'{n} names crossed off',fonts:{hero:'japdisplay',label:'sans',title:'japdisplay'}},
   akira:{masthead:'// NEO-TOKYO · {year}',title:'アーカイブ ARCHIVE',heroLabel:'films.consumed',heroSuffix:'[Δ {n} ↗]',fonts:{hero:'monoX',label:'mono',title:'japdisplay'}},
   tenenbaums:{masthead:'— Chapter four · MMXXV —',title:'A family of cinephiles',heroLabel:'Films, complete record of',heroSuffix:'{n} further than the previous',fonts:{hero:'serif',label:'sans',title:'serif'}},
   pirates:{masthead:"— Ye Olde Captain's Log —",title:'Babylonian, of the Black Pearl',heroLabel:'Films plundered',heroSuffix:'{n} since last voyage',fonts:{hero:'oldserif',label:'typewriter',title:'oldserif'}},
-  incredibles:{masthead:'— Issue No. {total} · {year} —',title:'THE CINEMA FILES',heroLabel:'Films watched',heroSuffix:'{n} SINCE LAST ISSUE!',fonts:{hero:'impact',label:'marker',title:'block'}},
-  space2001:{masthead:'DISCOVERY ONE / {year}',title:'The Annual Mission Log',heroLabel:'FILMS · OBSERVED',heroSuffix:'> DELTA {n} // STAR GATE OPEN',fonts:{hero:'sans',label:'mono',title:'cinzel'}},
+  incredibles:{masthead:'— Issue No. {total} · {year} —',title:'THE CINEMA FILES',heroLabel:'Films watched',heroSuffix:'{n} SINCE LAST ISSUE!',fonts:{hero:'block',label:'marker',title:'block'}},
+  space2001:{masthead:'DISCOVERY ONE / {year}',title:'The Annual Mission Log',heroLabel:'FILMS · OBSERVED',heroSuffix:'> DELTA {n} // STAR GATE OPEN',fonts:{hero:'cinzel',label:'mono',title:'cinzel'}},
   madmax:{masthead:'▲ WITNESS · MMXXV ▲',title:'SHINY AND CHROME',heroLabel:'War rigs counted',heroSuffix:'{n} · INTO VALHALLA',fonts:{hero:'impact',label:'sans',title:'impact'}},
   her:{masthead:'a beautiful handwritten letter',title:'Dear Theodore,',heroLabel:'Memories shared',heroSuffix:'{n} more than the last time we spoke',fonts:{hero:'handwrite',label:'sans',title:'handwrite'}},
   shining_hotel:{masthead:'— ROOM 237 · MMXXV —',title:'all work and no play',heroLabel:'Films witnessed',heroSuffix:'{n} . . . . . come play with us',fonts:{hero:'typewriter',label:'typewriter',title:'typewriter'}},
   shining_poster:{masthead:'— THE SHINING · {year} —',title:'A masterpiece of modern horror',heroLabel:'Films seen',heroSuffix:"{n} · HERE'S JOHNNY",fonts:{hero:'impact',label:'sans',title:'impact'}},
-  midsommar:{masthead:'❀ MIDSOMMAR · MMXXV ❀',title:"The May Queen's spring diary",heroLabel:'Days in the meadow',heroSuffix:'{n} more flowers in the crown',fonts:{hero:'serif',label:'handwrite',title:'serif'}},
+  midsommar:{masthead:'❀ MIDSOMMAR · MMXXV ❀',title:"The May Queen's spring diary",heroLabel:'Days in the meadow',heroSuffix:'{n} more flowers in the crown',fonts:{hero:'script',label:'handwrite',title:'serif'}},
   spirited:{masthead:'— 千と千尋 · MMXXV —',title:'The bathhouse of films',heroLabel:'Bath tokens earned',heroSuffix:'{n} more spirits, served',fonts:{hero:'japdisplay',label:'sans',title:'serif'}},
   moonrise:{masthead:'— KHAKI SCOUTS · TROOP 142 —',title:'Field Manual, MMXXV edition',heroLabel:'Films documented',heroSuffix:'{n} since last summer camp',fonts:{hero:'typewriter',label:'typewriter',title:'typewriter'}},
   lost:{masthead:'— PARK HYATT · 52F —',title:'For relaxing times, watch films',heroLabel:'Films · 映画',heroSuffix:'{n}, lost & found',fonts:{hero:'serif',label:'sans',title:'serif'}},
   mononoke:{masthead:'— もののけ姫 · MMXXV —',title:"The forest spirit's chronicle",heroLabel:'Films seen',heroSuffix:'{n} since the wolves last spoke',fonts:{hero:'japdisplay',label:'sans',title:'serif'}},
   apocalypse:{masthead:'— SAIGON · {year} —',title:'"I love the smell of cinema..."',heroLabel:'Targets confirmed',heroSuffix:'{n} // THE HORROR. THE HORROR.',fonts:{hero:'impact',label:'mono',title:'cinzel'}},
-  drive:{masthead:'— L.A. · {year} —',title:'A Real Human Being',heroLabel:'Drives completed',heroSuffix:'▲ {n} // five-minute window',fonts:{hero:'serif',label:'mono',title:'serif'}},
+  drive:{masthead:'— L.A. · {year} —',title:'A Real Human Being',heroLabel:'Drives completed',heroSuffix:'▲ {n} // five-minute window',fonts:{hero:'mono',label:'mono',title:'serif'}},
   clockwork:{masthead:'— KOROVA MILK BAR · {year} —',title:'Viddy well, little brother',heroLabel:'Films viddied',heroSuffix:'{n} // O my brothers',fonts:{hero:'serif',label:'sans',title:'serif'}},
   lighthouse:{masthead:'— LOG · MMXXV —',title:"Why'd ye spill yer beans?",heroLabel:'Watches kept',heroSuffix:'{n} // damn ye to the brine',fonts:{hero:'blackletter',label:'oldserif',title:'oldserif'}},
   whiplash:{masthead:'— STUDIO BAND · {year} —',title:'Not quite my tempo',heroLabel:'Bars rushed · {total} BPM',heroSuffix:'{n} // FASTER. AGAIN.',fonts:{hero:'impact',label:'sans',title:'impact'}},
-  mrfox:{masthead:'— Mr. Fox & Son · MMXXV —',title:'A most delightful annual report',heroLabel:'Films, all {total} of them',heroSuffix:'cuss yes · {n} more',fonts:{hero:'serif',label:'handwrite',title:'serif'}},
+  mrfox:{masthead:'— Mr. Fox & Son · MMXXV —',title:'A most delightful annual report',heroLabel:'Films, all {total} of them',heroSuffix:'cuss yes · {n} more',fonts:{hero:'oldserif',label:'handwrite',title:'serif'}},
   challengers:{masthead:'— 6 · 4 · 7-6 · MMXXV —',title:'Game, set, match · the annual',heroLabel:'Points won',heroSuffix:'▲ {n} // BREAK POINT',fonts:{hero:'mono',label:'mono',title:'serif'}},
   substance:{masthead:'— THE SUBSTANCE® —',title:'A better version of yourself',heroLabel:'Doses · activated',heroSuffix:'{n} · remember, you are one',fonts:{hero:'monoX',label:'serif',title:'serif'}},
   barbie:{masthead:'— BARBIELAND · {year} —',title:'Hi Barbie! Hi Babylonian!',heroLabel:'Movies seen',heroSuffix:'{n} · Kenough',fonts:{hero:'script',label:'sans',title:'script'}},
@@ -507,7 +507,7 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
         <ThemeOrnament T={T}/>
         <div className="md:col-span-2" style={{position:'relative',zIndex:1}}>
           <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase',marginBottom:14,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
-          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:400,color:T.primary,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:T.primary,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
           {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:T.muted,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
         </div>
         <div className="flex flex-col gap-5 md:pl-8" style={{borderLeft:'0.5px solid '+T.border,position:'relative',zIndex:1}}>
