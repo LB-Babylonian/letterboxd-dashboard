@@ -124,117 +124,66 @@ function applyCopy(s,ctx){if(!s)return'';return s.replace(/\{n\}/g,ctx.n||'').re
 // Positioned absolutely within the hero container
 // ============================================================
 var ThemeOrnament=function(p){var T=p.T;var id=T.id;
-  // Common style for ornaments — absolute, non-interactive, pointer-events:none
   var orn={position:'absolute',pointerEvents:'none',zIndex:0};
 
-  if(id==='matrix')return <div style={Object.assign({},orn,{top:0,right:0,bottom:0,width:'40%',opacity:0.18,overflow:'hidden'})}>
-    {[0,1,2,3,4,5].map(function(i){return <div key={i} style={{position:'absolute',top:-20,left:(i*16)+'%',width:'1ch',color:T.primary,fontFamily:FONT_MAP.mono,fontSize:11,letterSpacing:'0.05em',lineHeight:1.2,animation:'matrixfall '+(6+i*0.8)+'s linear infinite',animationDelay:(-i*1.3)+'s',whiteSpace:'pre'}}>{'01\n10\n11\n00\n01\n10\n01\n11\n00\n10\n01\n11'}</div>})}
+  // MATRIX — Japanese kana digit rain (vertical strands of katakana + numbers)
+  // Matches the iconic green katakana rain from the films
+  if(id==='matrix'){
+    var matrixChars='アシオエユカキストナヤラモノ01279';
+    var strands=[];
+    for(var i=0;i<12;i++){
+      var col=[];
+      for(var j=0;j<18;j++)col.push(matrixChars.charAt((i*7+j*3)%matrixChars.length));
+      strands.push({chars:col.join('\n'),left:(i*8.5)+'%',dur:(5+(i%4)*1.3),delay:-i*0.7});
+    }
+    return <div style={Object.assign({},orn,{top:0,right:0,bottom:0,width:'55%',opacity:0.42,overflow:'hidden'})}>
+      {strands.map(function(s,i){return <div key={i} style={{position:'absolute',top:-50,left:s.left,color:T.primary,fontFamily:FONT_MAP.mono,fontSize:13,letterSpacing:'0.08em',lineHeight:1.15,animation:'matrixfall '+s.dur+'s linear infinite',animationDelay:s.delay+'s',whiteSpace:'pre',textShadow:'0 0 6px '+T.primary+'aa'}}>{s.chars}</div>})}
+    </div>;
+  }
+
+  // BLADE RUNNER 2049 — denser rain (16 strands instead of 8, more visible)
+  if(id==='br2049'){
+    var rs=[];for(var k=0;k<16;k++)rs.push({left:(k*6.2)+'%',dur:(2+(k%4)*0.5),delay:-k*0.25});
+    return <div style={Object.assign({},orn,{top:0,right:0,bottom:0,width:'55%',opacity:0.32,overflow:'hidden'})}>
+      {rs.map(function(s,i){return <div key={i} style={{position:'absolute',top:-50,left:s.left,width:1.2,height:'140%',background:'linear-gradient(180deg, transparent 0%, '+T.primary+'ee 50%, transparent 100%)',animation:'brrain '+s.dur+'s linear infinite',animationDelay:s.delay+'s'}}/>})}
+    </div>;
+  }
+
+  // DRIVE — neon strip top, raised to clear "In theaters" text below
+  if(id==='drive')return <div style={Object.assign({},orn,{top:-6,left:0,right:0,height:3,background:'linear-gradient(90deg, transparent 0%, '+T.primary+' 30%, '+T.primary+' 70%, transparent 100%)',boxShadow:'0 0 12px '+T.primary+'aa, 0 0 24px '+T.primary+'55'})}/>;
+
+  // INTERSTELLAR — visible grid lines (boosted opacity)
+  if(id==='interstellar')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,opacity:0.22,backgroundImage:'linear-gradient('+T.muted+' 1px, transparent 1px), linear-gradient(90deg, '+T.muted+' 1px, transparent 1px)',backgroundSize:'40px 40px'})}/>;
+
+  // SHINING (Hotel) — old wallpaper geometric pattern (chevrons), not the carpet
+  if(id==='shining_hotel')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,opacity:0.08,backgroundImage:'repeating-linear-gradient(90deg, '+T.ink+' 0px, '+T.ink+' 1px, transparent 1px, transparent 18px), repeating-linear-gradient(0deg, '+T.ink+' 0px, '+T.ink+' 1px, transparent 1px, transparent 36px)'})}/>;
+
+  // SPIRITED AWAY — lantern inside hero square (like matrix rain), with the 油 kanji and gentle glow
+  if(id==='spirited')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,overflow:'hidden'})}>
+    <div style={{position:'absolute',top:18,right:'8%',width:64,height:96,opacity:0.75}}>
+      <svg viewBox="0 0 64 96" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="8" width="28" height="44" rx="4" fill={T.primary} stroke={T.borderStrong} strokeWidth="1.5"/><line x1="32" y1="0" x2="32" y2="8" stroke={T.borderStrong} strokeWidth="1.5"/><line x1="32" y1="52" x2="32" y2="58" stroke={T.borderStrong} strokeWidth="1.5"/><text x="32" y="36" textAnchor="middle" fontSize="22" fontFamily={FONT_MAP.japdisplay} fill={T.paper} fontWeight="700">油</text></svg>
+    </div>
+    <div style={{position:'absolute',top:20,right:'8%',width:64,height:64,background:'radial-gradient(circle, '+T.primary+'33 0%, transparent 60%)',animation:'trinitybreathe 5s ease-in-out infinite'}}/>
   </div>;
 
-  if(id==='br2049')return <div style={Object.assign({},orn,{top:0,right:0,bottom:0,width:'45%',opacity:0.16,overflow:'hidden'})}>
-    {[0,1,2,3,4,5,6,7].map(function(i){return <div key={i} style={{position:'absolute',top:-40,left:(i*12)+'%',width:1,height:'130%',background:'linear-gradient(180deg, transparent 0%, '+T.primary+'cc 50%, transparent 100%)',animation:'brrain '+(2.5+(i%3)*0.7)+'s linear infinite',animationDelay:(-i*0.4)+'s'}}/>})}
+  // LIGHTHOUSE — beam aimed at the hero number (centered lower-left, towards where the 142 is)
+  if(id==='lighthouse')return <div style={Object.assign({},orn,{top:0,left:0,bottom:0,right:0,overflow:'hidden'})}>
+    <svg viewBox="0 0 400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><defs><radialGradient id="beamgrad" cx="0%" cy="65%" r="80%"><stop offset="0%" stopColor={T.primary} stopOpacity="0.55"/><stop offset="40%" stopColor={T.primary} stopOpacity="0.18"/><stop offset="100%" stopColor={T.primary} stopOpacity="0"/></radialGradient></defs><polygon points="0,130 220,160 220,100" fill="url(#beamgrad)"/></svg>
   </div>;
 
-  if(id==='akira')return <div style={Object.assign({},orn,{top:16,right:20,width:80,height:80})}>
-    <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="32" fill="none" stroke={T.primary} strokeWidth="2" opacity="0.85"/><circle cx="40" cy="40" r="6" fill={T.primary}/><text x="40" y="46" textAnchor="middle" fontSize="9" fontFamily={FONT_MAP.mono} fill={T.primary} fontWeight="700">AKIRA</text><line x1="40" y1="8" x2="40" y2="14" stroke={T.primary} strokeWidth="1.5"/><line x1="40" y1="66" x2="40" y2="72" stroke={T.primary} strokeWidth="1.5"/></svg>
+  // BARBIE — moved inside hero square (subtle hearts/dots)
+  if(id==='barbie')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,overflow:'hidden'})}>
+    <div style={{position:'absolute',top:24,right:'7%',width:80,height:60,opacity:0.65}}>
+      <svg viewBox="0 0 80 60" xmlns="http://www.w3.org/2000/svg"><path d="M40,52 C20,38 10,22 22,14 C30,9 36,14 40,20 C44,14 50,9 58,14 C70,22 60,38 40,52 Z" fill={T.primary}/></svg>
+    </div>
+    <div style={{position:'absolute',top:14,right:'24%',width:8,height:8,borderRadius:'50%',background:T.secondary,opacity:0.7}}/>
+    <div style={{position:'absolute',top:40,right:'4%',width:6,height:6,borderRadius:'50%',background:T.primary,opacity:0.5}}/>
+    <div style={{position:'absolute',top:80,right:'18%',width:5,height:5,borderRadius:'50%',background:T.secondary,opacity:0.6}}/>
   </div>;
 
-  if(id==='drive')return <div style={Object.assign({},orn,{top:0,left:0,right:0,height:3,background:'linear-gradient(90deg, transparent 0%, '+T.primary+' 30%, '+T.primary+' 70%, transparent 100%)',boxShadow:'0 0 12px '+T.primary+'88',zIndex:0})}/>;
-
-  if(id==='interstellar')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,opacity:0.12,backgroundImage:'linear-gradient('+T.muted+' 1px, transparent 1px), linear-gradient(90deg, '+T.muted+' 1px, transparent 1px)',backgroundSize:'40px 40px'})}/>;
-
-  if(id==='space2001')return <div style={Object.assign({},orn,{top:18,right:20,width:64,height:64,animation:'halpulse 4s ease-in-out infinite'})}>
-    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="halgrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor={T.primary} stopOpacity="1"/><stop offset="60%" stopColor={T.primary} stopOpacity="0.9"/><stop offset="100%" stopColor={T.primary} stopOpacity="0.2"/></radialGradient></defs><circle cx="32" cy="32" r="30" fill="url(#halgrad)"/><circle cx="32" cy="32" r="14" fill="#1a1a1a"/><circle cx="26" cy="28" r="3" fill="#ffffff" opacity="0.9"/></svg>
-  </div>;
-
-  if(id==='spirited')return <div style={Object.assign({},orn,{top:16,right:24,width:60,height:90,opacity:0.85})}>
-    <svg viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="6" width="20" height="32" rx="3" fill={T.secondary||T.primary} stroke={T.borderStrong} strokeWidth="1.5"/><line x1="30" y1="0" x2="30" y2="6" stroke={T.borderStrong} strokeWidth="1.5"/><text x="30" y="26" textAnchor="middle" fontSize="14" fontFamily={FONT_MAP.japdisplay} fill={T.paper} fontWeight="700">油</text><line x1="30" y1="38" x2="30" y2="44" stroke={T.borderStrong} strokeWidth="1.5"/></svg>
-  </div>;
-
-  if(id==='apocalypse')return <div style={Object.assign({},orn,{top:14,right:18,width:90,height:70})}>
-    <svg viewBox="0 0 90 70" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="apoglow" cx="80%" cy="30%" r="70%"><stop offset="0%" stopColor={T.primary} stopOpacity="0.4"/><stop offset="100%" stopColor={T.primary} stopOpacity="0"/></radialGradient></defs><rect x="0" y="0" width="90" height="70" fill="url(#apoglow)"/><g transform="translate(70,18)" opacity="0.55"><circle cx="0" cy="0" r="3" fill={T.ink}/><line x1="0" y1="0" x2="0" y2="-12" stroke={T.ink} strokeWidth="2"/><ellipse cx="0" cy="-2" rx="14" ry="1.5" fill={T.ink}/><ellipse cx="0" cy="-2" rx="1.5" ry="14" fill={T.ink}/></g></svg>
-  </div>;
-
-  if(id==='oppenheimer')return <div style={Object.assign({},orn,{top:0,right:0,width:240,height:120,animation:'trinitybreathe 6s ease-in-out infinite',background:'radial-gradient(ellipse at 80% 20%, '+T.primary+'66 0%, '+T.primary+'22 30%, transparent 70%)'})}/>;
-
-  if(id==='lighthouse')return <div style={Object.assign({},orn,{top:0,left:0,bottom:0,width:'45%',overflow:'hidden'})}>
-    <svg viewBox="0 0 200 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><defs><radialGradient id="beamgrad" cx="100%" cy="50%" r="100%"><stop offset="0%" stopColor={T.primary} stopOpacity="0.35"/><stop offset="60%" stopColor={T.primary} stopOpacity="0.08"/><stop offset="100%" stopColor={T.primary} stopOpacity="0"/></radialGradient></defs><polygon points="200,100 0,30 0,170" fill="url(#beamgrad)"/></svg>
-  </div>;
-
-  if(id==='whiplash')return <div style={Object.assign({},orn,{top:16,right:20,width:64,height:64})}>
-    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="34" rx="28" ry="6" fill={T.primary} opacity="0.85"/><ellipse cx="32" cy="32" rx="28" ry="6" fill="none" stroke={T.primary} strokeWidth="1.5"/><circle cx="32" cy="32" r="3" fill={T.paper}/><circle cx="48" cy="10" r="3" fill={T.secondary||'#C81818'}/><path d="M48,13 Q47,18 49,22" stroke={T.secondary||'#C81818'} strokeWidth="2" fill="none"/></svg>
-  </div>;
-
-  if(id==='mood')return <div style={Object.assign({},orn,{top:0,right:0,bottom:0,width:'30%',opacity:0.22,overflow:'hidden'})}>
-    <svg viewBox="0 0 100 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><path d="M70,200 Q60,160 75,130 Q90,100 70,70 Q50,40 75,10" stroke={T.ink} strokeWidth="1.2" fill="none" opacity="0.6"/><path d="M65,200 Q55,170 70,140 Q85,110 65,80" stroke={T.ink} strokeWidth="1" fill="none" opacity="0.4"/></svg>
-  </div>;
-
-  if(id==='lost')return <div style={Object.assign({},orn,{top:16,right:20,width:72,height:48,opacity:0.7})}>
-    <svg viewBox="0 0 72 48" xmlns="http://www.w3.org/2000/svg"><path d="M2,46 L26,18 L34,28 L46,12 L58,28 L70,46 Z" fill="none" stroke={T.inkSoft} strokeWidth="1.5"/><circle cx="36" cy="10" r="6" fill={T.primary} opacity="0.5"/></svg>
-  </div>;
-
-  if(id==='killbill')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,opacity:0.85})}>
-    <svg viewBox="0 0 400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><g fill={T.ink}><path d="M380,12 Q372,18 376,28 Q382,22 386,30 Q390,18 380,12 Z" opacity="0.7"/><path d="M10,180 Q5,188 12,196 Q18,190 22,194 Q20,182 10,180 Z" opacity="0.55"/><path d="M360,170 Q350,178 355,188 Q365,182 370,190 Q375,175 360,170 Z" opacity="0.5"/></g></svg>
-  </div>;
-
-  if(id==='madmax')return <div style={Object.assign({},orn,{top:14,right:18,width:80,height:60,opacity:0.4})}>
-    <svg viewBox="0 0 80 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke={T.ink} strokeWidth="2"><circle cx="40" cy="30" r="22"/><circle cx="40" cy="30" r="8"/><line x1="40" y1="8" x2="40" y2="22"/><line x1="40" y1="38" x2="40" y2="52"/><line x1="18" y1="30" x2="32" y2="30"/><line x1="48" y1="30" x2="62" y2="30"/></g></svg>
-  </div>;
-
-  if(id==='batman')return <div style={Object.assign({},orn,{top:14,right:18,width:90,height:90,opacity:0.85})}>
-    <svg viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="batglow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor={T.primary} stopOpacity="0.5"/><stop offset="100%" stopColor={T.primary} stopOpacity="0"/></radialGradient></defs><circle cx="45" cy="45" r="42" fill="url(#batglow)"/><circle cx="45" cy="45" r="28" fill="none" stroke={T.primary} strokeWidth="1.5" opacity="0.7"/><path d="M28,42 L36,38 L40,42 L45,38 L50,42 L54,38 L62,42 L58,48 L52,50 L48,46 L45,50 L42,46 L38,50 L32,48 Z" fill={T.primary}/></svg>
-  </div>;
-
-  if(id==='dtrt')return <div style={Object.assign({},orn,{top:0,left:0,right:0,height:10,background:'repeating-linear-gradient(45deg, '+T.ink+' 0px, '+T.ink+' 10px, '+T.secondary+' 10px, '+T.secondary+' 20px)',opacity:0.9})}/>;
-
-  if(id==='substance')return <div style={Object.assign({},orn,{top:14,right:18,width:60,height:24})}>
-    <svg viewBox="0 0 60 24" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="12" r="10" fill={T.secondary} stroke={T.ink} strokeWidth="2"/><circle cx="44" cy="12" r="10" fill={T.primary} stroke={T.ink} strokeWidth="2"/></svg>
-  </div>;
-
-  if(id==='barbie')return <div style={Object.assign({},orn,{top:14,right:18,width:60,height:50,opacity:0.85})}>
-    <svg viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg"><path d="M30,42 C15,30 8,18 18,12 C24,9 28,12 30,16 C32,12 36,9 42,12 C52,18 45,30 30,42 Z" fill={T.primary}/><circle cx="14" cy="8" r="2" fill={T.secondary}/><circle cx="46" cy="6" r="1.5" fill={T.secondary}/><circle cx="52" cy="20" r="1.8" fill={T.primary}/></svg>
-  </div>;
-
-  if(id==='incredibles')return <div style={Object.assign({},orn,{top:8,right:14,width:64,height:36,transform:'rotate(8deg)'})}>
-    <svg viewBox="0 0 64 36" xmlns="http://www.w3.org/2000/svg"><polygon points="32,0 38,10 50,8 44,18 50,28 38,26 32,36 26,26 14,28 20,18 14,8 26,10" fill={T.primary} stroke={T.ink} strokeWidth="2"/><text x="32" y="22" textAnchor="middle" fontSize="11" fontFamily={FONT_MAP.impact} fill={T.ink} fontWeight="900">POW!</text></svg>
-  </div>;
-
-  if(id==='challengers')return <div style={Object.assign({},orn,{top:14,right:18,width:44,height:44,opacity:0.9})}>
-    <svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><circle cx="22" cy="22" r="20" fill={T.paper} stroke={T.ink} strokeWidth="1.5"/><path d="M3,18 Q22,12 41,18" stroke={T.ink} strokeWidth="1.5" fill="none"/><path d="M3,28 Q22,34 41,28" stroke={T.ink} strokeWidth="1.5" fill="none"/></svg>
-  </div>;
-
-  if(id==='moonrise')return <div style={Object.assign({},orn,{top:14,right:18,width:60,height:48,opacity:0.7})}>
-    <svg viewBox="0 0 60 48" xmlns="http://www.w3.org/2000/svg"><polygon points="30,4 4,44 56,44" fill="none" stroke={T.ink} strokeWidth="2"/><line x1="30" y1="4" x2="30" y2="44" stroke={T.ink} strokeWidth="1.5"/><circle cx="30" cy="30" r="3" fill={T.primary}/></svg>
-  </div>;
-
-  if(id==='budapest')return <div style={Object.assign({},orn,{top:14,right:18,width:48,height:48,opacity:0.75})}>
-    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><polygon points="24,4 42,14 42,34 24,44 6,34 6,14" fill="none" stroke={T.ink} strokeWidth="1.5"/><polygon points="24,12 36,18 36,30 24,36 12,30 12,18" fill={T.secondary||T.primary} opacity="0.6"/><text x="24" y="28" textAnchor="middle" fontSize="9" fontFamily={FONT_MAP.script} fill={T.ink}>M</text></svg>
-  </div>;
-
-  if(id==='dollars')return <div style={Object.assign({},orn,{top:14,right:18,width:50,height:50,opacity:0.7})}>
-    <svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><polygon points="25,4 31,18 46,18 34,28 38,42 25,34 12,42 16,28 4,18 19,18" fill="none" stroke={T.primary} strokeWidth="1.8"/><circle cx="25" cy="24" r="3" fill={T.primary}/></svg>
-  </div>;
-
-  if(id==='pirates')return <div style={Object.assign({},orn,{top:14,right:18,width:36,height:36,opacity:0.55})}>
-    <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="9" fill={T.ink}/><rect x="13" y="22" width="10" height="4" fill={T.ink}/><circle cx="14" cy="13" r="1.5" fill={T.paper}/><circle cx="22" cy="13" r="1.5" fill={T.paper}/><line x1="8" y1="30" x2="28" y2="30" stroke={T.ink} strokeWidth="2"/><line x1="8" y1="30" x2="14" y2="34" stroke={T.ink} strokeWidth="2"/><line x1="28" y1="30" x2="22" y2="34" stroke={T.ink} strokeWidth="2"/></svg>
-  </div>;
-
-  if(id==='shining_hotel')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,opacity:0.12,backgroundImage:'repeating-linear-gradient(45deg, '+T.ink+' 0px, '+T.ink+' 8px, transparent 8px, transparent 16px), repeating-linear-gradient(-45deg, '+T.ink+' 0px, '+T.ink+' 8px, transparent 8px, transparent 16px)',backgroundSize:'22px 22px'})}/>;
-
-  if(id==='shining_poster')return <div style={Object.assign({},orn,{top:14,right:18,width:50,height:60,opacity:0.85})}>
-    <svg viewBox="0 0 50 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="25" cy="22" rx="14" ry="18" fill={T.primary}/><rect x="20" y="38" width="10" height="20" fill={T.primary}/><path d="M16,16 Q18,12 22,14 M28,14 Q32,12 34,16" stroke={T.paper} strokeWidth="1.5" fill="none"/><path d="M19,28 Q25,38 31,28" stroke={T.paper} strokeWidth="2" fill="none"/></svg>
-  </div>;
-
-  if(id==='midsommar')return <div style={Object.assign({},orn,{top:6,left:'30%',right:'30%',height:30,opacity:0.75})}>
-    <svg viewBox="0 0 200 30" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><g>{[20,50,80,110,140,170].map(function(x,i){return <g key={i}><circle cx={x} cy="14" r="6" fill={T.primary} opacity="0.7"/><circle cx={x} cy="14" r="2" fill={T.secondary}/></g>})}</g></svg>
-  </div>;
-
-  if(id==='mrfox')return <div style={Object.assign({},orn,{top:16,right:20,width:60,height:36,opacity:0.85})}>
-    <svg viewBox="0 0 60 36" xmlns="http://www.w3.org/2000/svg"><path d="M8,28 Q16,18 26,18 L34,18 Q42,18 50,28 L46,30 L42,26 L38,30 L32,26 L28,30 L22,26 L18,30 L14,26 Z" fill={T.ink}/><circle cx="18" cy="20" r="2" fill={T.paper}/><circle cx="34" cy="20" r="2" fill={T.paper}/><path d="M50,28 Q56,24 58,16" stroke={T.ink} strokeWidth="3" fill="none"/></svg>
-  </div>;
-
-  if(id==='clockwork')return <div style={Object.assign({},orn,{top:14,right:18,width:40,height:40,opacity:0.7})}>
-    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="16" fill="none" stroke={T.ink} strokeWidth="2"/><circle cx="20" cy="20" r="2" fill={T.primary}/><line x1="20" y1="20" x2="20" y2="8" stroke={T.ink} strokeWidth="2"/><line x1="20" y1="20" x2="28" y2="20" stroke={T.primary} strokeWidth="2"/></svg>
+  // OPPENHEIMER — Trinity glow moved inside hero (was outside-top before), positioned around the 142
+  if(id==='oppenheimer')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,overflow:'hidden'})}>
+    <div style={{position:'absolute',top:'20%',right:'-10%',width:'70%',height:'80%',background:'radial-gradient(circle at 30% 50%, '+T.primary+'66 0%, '+T.primary+'22 25%, transparent 60%)',animation:'trinitybreathe 6s ease-in-out infinite'}}/>
   </div>;
 
   return null;
@@ -558,7 +507,7 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
         <ThemeOrnament T={T}/>
         <div className="md:col-span-2" style={{position:'relative',zIndex:1}}>
           <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase',marginBottom:14,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
-          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:500,color:T.primary,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:400,color:T.primary,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
           {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:T.muted,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
         </div>
         <div className="flex flex-col gap-5 md:pl-8" style={{borderLeft:'0.5px solid '+T.border,position:'relative',zIndex:1}}>
