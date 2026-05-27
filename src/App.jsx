@@ -352,9 +352,6 @@ export default function Dashboard(){
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
   var busiest=useMemo(function(){var c={};ef.forEach(function(e){c[e.date]=(c[e.date]||0)+1});var en=Object.entries(c).sort(function(a,b){return b[1]-a[1]});if(!en.length)return{count:0,fmt:'N/A',films:[]};var d=en[0][0],n=en[0][1],p=d.split('-').map(Number);return{count:n,fmt:MF[p[1]-1]+' '+p[2]+', '+p[0],films:ef.filter(function(e){return e.date===d}).map(function(e){return e.name})}},[ef]);
   var bestMo=useMemo(function(){var c={};ef.forEach(function(e){var m=e.date.slice(0,7);c[m]=(c[m]||0)+1});return Object.entries(c).sort(function(a,b){return b[1]-a[1]}).slice(0,1).map(function(x){return{label:fmtM(x[0]),count:x[1]}})},[ef]);
-  // New mini-stats (moneySpent comes later, after costData is defined)
-  var daysAtMovies=useMemo(function(){return new Set(ef.map(function(e){return e.date})).size},[ef]);
-  var totalRuntime=useMemo(function(){var mn=0;ef.forEach(function(e){var md=filmMeta[e.name+'|'+e.year];if(md&&md.runtime)mn+=md.runtime});return mn},[ef,filmMeta]);
   var hmData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return e.date.slice(0,4)}))).sort(),g={};yy.forEach(function(y){g[y]=Array(12).fill(0)});ea.forEach(function(e){var y=e.date.slice(0,4),m=parseInt(e.date.slice(5,7))-1;if(g[y])g[y][m]++});return{years:yy,grid:g,max:Math.max.apply(null,Object.values(g).map(function(a){return Math.max.apply(null,a)}).concat([1]))}},[ea]);
   var hmFilms=useMemo(function(){if(!selHM)return[];return ea.filter(function(e){return e.date.slice(0,4)===selHM.yr&&parseInt(e.date.slice(5,7))===selHM.mo+1})},[ea,selHM]);
   var cumData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return parseInt(e.date.slice(0,4))}))).sort(function(a,b){return a-b}),last={},first={};ea.forEach(function(e){var y=parseInt(e.date.slice(0,4)),m=parseInt(e.date.slice(5,7));last[y]=Math.max(last[y]||0,m);first[y]=Math.min(first[y]||13,m)});var rows=[];for(var m=1;m<=12;m++){var row={month:MS[m-1]};yy.forEach(function(y){row[y]=m<(first[y]||1)||m>(last[y]||12)?null:ea.filter(function(e){return parseInt(e.date.slice(0,4))===y&&parseInt(e.date.slice(5,7))<=m}).length});rows.push(row)}return{data:rows,years:yy}},[ea]);
@@ -525,37 +522,46 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
           <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:T.primary,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
           {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:T.muted,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
         </div>
-        <div className="flex flex-col gap-5 md:pl-8" style={{borderLeft:'0.5px solid '+T.border,position:'relative',zIndex:1}}>
+        <div className="md:pl-8 grid grid-cols-2 gap-x-4 gap-y-4" style={{borderLeft:'0.5px solid '+T.border,position:'relative',zIndex:1}}>
           <div>
-            <div style={{fontSize:10,letterSpacing:'0.2em',color:T.muted,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>In theaters</div>
-            <div style={{fontSize:26,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero}}>{stats.th}<span className="ml-2" style={{fontSize:14,color:T.accentPct||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.th/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.th!=null&&<div style={{fontSize:11,color:T.muted,marginTop:2}}>{fY(yoy.th,'pp')}</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>In theaters</div>
+            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.th}<span className="ml-1.5" style={{fontSize:12,color:T.accentPct||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.th/stats.total*100)+'%':''}</span></div>
+            {yoy&&yoy.th!=null&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{fY(yoy.th,'pp')}</div>}
           </div>
           <div>
-            <div style={{fontSize:10,letterSpacing:'0.2em',color:T.muted,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>With friends</div>
-            <div style={{fontSize:26,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero}}>{stats.fr}<span className="ml-2" style={{fontSize:14,color:T.accentPct||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.fr/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.fr!=null&&<div style={{fontSize:11,color:T.muted,marginTop:2}}>{fY(yoy.fr,'pp')}</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>With friends</div>
+            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.fr}<span className="ml-1.5" style={{fontSize:12,color:T.accentPct||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.fr/stats.total*100)+'%':''}</span></div>
+            {yoy&&yoy.fr!=null&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{fY(yoy.fr,'pp')}</div>}
           </div>
           <div>
-            <div style={{fontSize:10,letterSpacing:'0.2em',color:T.muted,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>Average rating</div>
-            <div style={{fontSize:26,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero}}>{stats.avg}<span className="ml-1.5" style={{fontSize:18,color:T.accentPct||T.primary}}>{'\u2605'}</span></div>
-            {yoy&&yoy.avg!=null&&<div style={{fontSize:11,color:T.muted,marginTop:2}}>{fY(yoy.avg,'r')}</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Best friend</div>
+            <div style={{fontSize:18,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{compD.length?compD[0].name:'\u2014'}</div>
+            {compD.length>0&&<div style={{fontSize:10,color:T.accentPct||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{compD[0].Films} films</div>}
+          </div>
+          <div>
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Avg rating</div>
+            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.avg}<span className="ml-1" style={{fontSize:15,color:T.accentPct||T.primary}}>{'\u2605'}</span></div>
+            {yoy&&yoy.avg!=null&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{fY(yoy.avg,'r')}</div>}
+          </div>
+          <div>
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Runtime</div>
+            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}</div>
+            {dirStats.rtCount<dirStats.rtTotal&&dirStats.rtTotal>0&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{dirStats.rtCount}/{dirStats.rtTotal} enriched</div>}
+          </div>
+          <div>
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Money spent</div>
+            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'}</div>
+            {stats.total>0&&moneySpent>0&&<div style={{fontSize:10,color:T.accentPct||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{'\u20AC'+(moneySpent/stats.total).toFixed(2)}/film</div>}
           </div>
         </div>
       </div>
 
-      {/* MINI-STATS STRIP — 2 rows */}
-      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border}}>
+      {/* MINI-STATS STRIP */}
+      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
         <Stat T={N} label="Longest binge" value={binge.streak+' days'} sub={binge.range}/>
         <Stat T={N} label="Current streak" value={streaks.week+' weeks'} sub={streaks.wr}/>
         <Stat T={N} label="Most in a day" value={busiest.count+' films'} sub={busiest.fmt}/>
         <Stat T={N} label="Busiest month" value={bestMo.length?bestMo[0].count+' films':'—'} sub={bestMo.length?bestMo[0].label:''} noBorder/>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="Days at the movies" value={daysAtMovies} sub={stats.total?Math.round(daysAtMovies/stats.total*100)+'% of films':''}/>
-        <Stat T={N} label="Total runtime" value={totalRuntime?Math.floor(totalRuntime/60)+'h '+(totalRuntime%60)+'m':'\u2014'} sub={totalRuntime?Math.round(totalRuntime/60)+' hours':''}/>
-        <Stat T={N} label="Money spent" value={moneySpent?'\u20AC'+Math.round(moneySpent):'\u2014'} sub={stats.total&&moneySpent?'\u20AC'+(moneySpent/stats.total).toFixed(2)+'/film':''}/>
-        <Stat T={N} label="Avg runtime" value={ef.length?Math.round(totalRuntime/Math.max(1,Object.values(filmMeta).filter(function(m){return m.runtime}).length))+' min':'\u2014'} sub={'across enriched films'} noBorder/>
       </div>
 
       {/* HEATMAP */}
