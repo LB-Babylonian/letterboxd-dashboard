@@ -201,10 +201,14 @@ function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r
 
 // Theme-aware rating color (5 buckets, more saturated = higher rating)
 // Bucket: 1: 0.5-1, 2: 1.5-2, 3: 2.5-3, 4: 3.5-4, 5: 4.5-5
-function rCT(r,T){if(!r||r===0)return NEUTRAL.mutedSoft;var b;if(r<=1)b=1;else if(r<=2)b=2;else if(r<=3)b=3;else if(r<=4)b=4;else b=5;var fades=[0.72,0.54,0.36,0.18,0];return blend(T.primary,NEUTRAL.paper,fades[b-1])}
+// Returns a neutral gray gradient (note basse = gris pâle, note haute = ink foncé) — independent of theme
+function rCT(r,T){if(!r||r===0)return NEUTRAL.mutedSoft;var b;if(r<=1)b=1;else if(r<=2)b=2;else if(r<=3)b=3;else if(r<=4)b=4;else b=5;var fades=[0.72,0.54,0.36,0.18,0];return blend(NEUTRAL.ink,NEUTRAL.paper,fades[b-1])}
 
-// Theme-aware year color (gradient: current year = primary, older = more muted)
-function yC(year,allYears,T){if(!allYears||!allYears.length)return T.primary;var sorted=allYears.slice().map(Number).sort(function(a,b){return a-b});var idx=sorted.indexOf(parseInt(year));if(idx===-1)return NEUTRAL.muted;var n=sorted.length;if(n===1)return T.primary;var fade=1-(idx/(n-1));return blend(T.primary,NEUTRAL.paper,(1-fade)*0.7)}
+// Year color — fixed qualitative palette, independent of theme.
+// Each year gets a distinct color from a 12-color palette (cycles if needed).
+// Based on ColorBrewer "Set3" / "Paired" but tuned for editorial cream background.
+var YEAR_PALETTE=['#B73E36','#4A6B8C','#C89A4A','#5A8F6B','#A65277','#7B5B8C','#8B6B2A','#3F8DAD','#C8584A','#6B7A4A','#A85E2A','#506B5C'];
+function yC(year,allYears,T){var y=parseInt(year);if(isNaN(y))return NEUTRAL.muted;return YEAR_PALETTE[Math.abs(y)%YEAR_PALETTE.length]}
 
 // Theme-aware YoY / diff sign colors
 function signColor(v,T,opts){opts=opts||{};var pos=opts.positiveIsGood!==false;var good=v>0?pos:!pos;if(Math.abs(v)<0.005)return NEUTRAL.muted;return good?T.primary:blend(T.primary,NEUTRAL.paper,0.55)}
@@ -348,6 +352,9 @@ export default function Dashboard(){
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
   var busiest=useMemo(function(){var c={};ef.forEach(function(e){c[e.date]=(c[e.date]||0)+1});var en=Object.entries(c).sort(function(a,b){return b[1]-a[1]});if(!en.length)return{count:0,fmt:'N/A',films:[]};var d=en[0][0],n=en[0][1],p=d.split('-').map(Number);return{count:n,fmt:MF[p[1]-1]+' '+p[2]+', '+p[0],films:ef.filter(function(e){return e.date===d}).map(function(e){return e.name})}},[ef]);
   var bestMo=useMemo(function(){var c={};ef.forEach(function(e){var m=e.date.slice(0,7);c[m]=(c[m]||0)+1});return Object.entries(c).sort(function(a,b){return b[1]-a[1]}).slice(0,1).map(function(x){return{label:fmtM(x[0]),count:x[1]}})},[ef]);
+  // New mini-stats (moneySpent comes later, after costData is defined)
+  var daysAtMovies=useMemo(function(){return new Set(ef.map(function(e){return e.date})).size},[ef]);
+  var totalRuntime=useMemo(function(){var mn=0;ef.forEach(function(e){var md=filmMeta[e.name+'|'+e.year];if(md&&md.runtime)mn+=md.runtime});return mn},[ef,filmMeta]);
   var hmData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return e.date.slice(0,4)}))).sort(),g={};yy.forEach(function(y){g[y]=Array(12).fill(0)});ea.forEach(function(e){var y=e.date.slice(0,4),m=parseInt(e.date.slice(5,7))-1;if(g[y])g[y][m]++});return{years:yy,grid:g,max:Math.max.apply(null,Object.values(g).map(function(a){return Math.max.apply(null,a)}).concat([1]))}},[ea]);
   var hmFilms=useMemo(function(){if(!selHM)return[];return ea.filter(function(e){return e.date.slice(0,4)===selHM.yr&&parseInt(e.date.slice(5,7))===selHM.mo+1})},[ea,selHM]);
   var cumData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return parseInt(e.date.slice(0,4))}))).sort(function(a,b){return a-b}),last={},first={};ea.forEach(function(e){var y=parseInt(e.date.slice(0,4)),m=parseInt(e.date.slice(5,7));last[y]=Math.max(last[y]||0,m);first[y]=Math.min(first[y]||13,m)});var rows=[];for(var m=1;m<=12;m++){var row={month:MS[m-1]};yy.forEach(function(y){row[y]=m<(first[y]||1)||m>(last[y]||12)?null:ea.filter(function(e){return parseInt(e.date.slice(0,4))===y&&parseInt(e.date.slice(5,7))<=m}).length});rows.push(row)}return{data:rows,years:yy}},[ea]);
@@ -399,6 +406,7 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
     var tkAll=[],tkC=0;films.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var cat=getCat(vn,fullReg);if(cat==='indie_venue'||(cat==='sub_venue'&&!isSubCovAt(e.date,subscriptions))){tkAll.push(e);var p=gTP(e.tags,fullReg);if(p!==null)tkC+=p}});if(tkAll.length&&tkC>0)platRows.push({plat:'Theaters (per ticket)',films:tkAll.length,sub:'Per ticket',cost:tkC,cpf:tkC/tkAll.length});
     var tot=st+tt+rt;return{yr:y,films:films.length,st:st,sbk:sbk,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,pf:films.length?tot/films.length:0,platRows:platRows}})},[all,subscriptions,fullReg]);
   var costDataFilt=useMemo(function(){return costYr==='All'?costData:costData.filter(function(d){return d.yr===costYr})},[costData,costYr]);
+  var moneySpent=useMemo(function(){var t=0;if(yr==='All'){costData.forEach(function(d){t+=d.tot})}else{var d=costData.find(function(d){return d.yr===yr});if(d)t=d.tot}return t},[costData,yr]);
   var allTimeTotals=useMemo(function(){var st=0,tt=0,tc=0,rt=0,rc=0,fn=0,pr=[];costData.forEach(function(d){st+=d.st;tt+=d.tt;tc+=d.tc;rt+=d.rt;rc+=d.rc;fn+=d.films;d.platRows.forEach(function(r){var ex=pr.find(function(x){return x.plat===r.plat});if(ex){ex.cost+=r.cost;ex.films+=r.films}else{pr.push({plat:r.plat,films:r.films,sub:r.sub,cost:r.cost})}})});pr.forEach(function(r){r.cpf=r.films?r.cost/r.films:0});var tot=st+tt+rt;return{st:st,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,films:fn,pf:fn?tot/fn:0,platRows:pr}},[costData]);
   var monthlySpend=useMemo(function(){if(!all.length)return[];var now=getNowYM();var months=[];var first=all[0].date.slice(0,7),last=all[all.length-1].date.slice(0,7);var cur=first;while(cur<=last){months.push(cur);var p=cur.split('-').map(Number);p[1]++;if(p[1]>12){p[0]++;p[1]=1}cur=p[0]+'-'+String(p[1]).padStart(2,'0')}return months.map(function(ym){var sc=subCostForMonth(ym,subscriptions);var mF=all.filter(function(e){return e.date.slice(0,7)===ym});var tk=0,rl=0;mF.forEach(function(e){var vn=gV(e.tags,fullReg);if(vn){var pr=gTP(e.tags,fullReg);if(pr!==null)tk+=pr}if(e.tags.some(function(t){return getCat(t,fullReg)==='platform_rental'})){var p2=gTP(e.tags,fullReg);if(p2!==null)rl+=p2}});return{m:MS[parseInt(ym.slice(5))-1]+' '+ym.slice(2,4),ym:ym,subs:sc,tickets:tk,rentals:rl,total:sc+tk+rl}})},[all,subscriptions,fullReg]);
   var monthlyFilt=useMemo(function(){if(costYr==='All')return monthlySpend;return monthlySpend.filter(function(m){return m.ym.indexOf(costYr)===0})},[monthlySpend,costYr]);
@@ -536,12 +544,18 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
         </div>
       </div>
 
-      {/* MINI-STATS STRIP */}
-      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+      {/* MINI-STATS STRIP — 2 rows */}
+      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border}}>
         <Stat T={N} label="Longest binge" value={binge.streak+' days'} sub={binge.range}/>
         <Stat T={N} label="Current streak" value={streaks.week+' weeks'} sub={streaks.wr}/>
         <Stat T={N} label="Most in a day" value={busiest.count+' films'} sub={busiest.fmt}/>
         <Stat T={N} label="Busiest month" value={bestMo.length?bestMo[0].count+' films':'—'} sub={bestMo.length?bestMo[0].label:''} noBorder/>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+        <Stat T={N} label="Days at the movies" value={daysAtMovies} sub={stats.total?Math.round(daysAtMovies/stats.total*100)+'% of films':''}/>
+        <Stat T={N} label="Total runtime" value={totalRuntime?Math.floor(totalRuntime/60)+'h '+(totalRuntime%60)+'m':'\u2014'} sub={totalRuntime?Math.round(totalRuntime/60)+' hours':''}/>
+        <Stat T={N} label="Money spent" value={moneySpent?'\u20AC'+Math.round(moneySpent):'\u2014'} sub={stats.total&&moneySpent?'\u20AC'+(moneySpent/stats.total).toFixed(2)+'/film':''}/>
+        <Stat T={N} label="Avg runtime" value={ef.length?Math.round(totalRuntime/Math.max(1,Object.values(filmMeta).filter(function(m){return m.runtime}).length))+' min':'\u2014'} sub={'across enriched films'} noBorder/>
       </div>
 
       {/* HEATMAP */}
