@@ -29,11 +29,11 @@ var NEUTRAL={
 // ============================================================
 var THEMES=[
   {id:'matrix',name:'Matrix',dark:true,paper:'#000000',surface:'#050B05',surfaceAlt:'#0B170B',border:'#0B270B',borderStrong:'#153D15',ink:'#0BF057',inkSoft:'#09C046',muted:'#068034',mutedSoft:'#035022',primary:'#18DF5B',secondary:'#10B747',glow:'#00FF55',gradient:['#000000','#020602','#000000'],accentTh:'#08C846',accentRt:'#00FF55',accentPct:'#FF1A1A',dots:['#00FF55','#08C846','#FF1A1A']},
-  {id:'br2049',name:'Blade Runner 2049',dark:true,paper:'#271812',surface:'#36211A',surfaceAlt:'#44291C',border:'#66381B',borderStrong:'#85492C',ink:'#F0C79A',inkSoft:'#E0945C',muted:'#B1693D',mutedSoft:'#85492C',primary:'#E68344',secondary:'#73B8A9',glow:'#FF8030',gradient:['#2A1810','#3A2018','#1F1208'],accentTh:'#6BBFAC',accentRt:'#FF8030',accentPct:'#E879B8',dots:['#FF8030','#6BBFAC','#E879B8']},
+  {id:'br2049',name:'Blade Runner 2049',dark:true,paper:'#0F1426',surface:'#1A1F33',surfaceAlt:'#252A40',border:'#1F2540',borderStrong:'#3A4258',ink:'#F0C79A',inkSoft:'#E0945C',muted:'#A878A0',mutedSoft:'#7050A0',primary:'#E879B8',secondary:'#FF8030',glow:'#E879B8',gradient:['#0A0F2A','#15203F','#1A1A3A'],accentTh:'#FF8030',accentRt:'#E879B8',accentPct:'#5570B8',dots:['#E879B8','#FF8030','#5570B8']},
   {id:'amelie',name:'Amélie',dark:false,paper:'#D9A841',surface:'#C8962D',surfaceAlt:'#B98822',border:'#B18427',borderStrong:'#86661E',ink:'#2B4C2B',inkSoft:'#3B5C3B',muted:'#57471B',mutedSoft:'#76662C',primary:'#AC322C',secondary:'#2C4A2C',gradient:['#E8AC2F','#DDA124','#C89018'],accentTh:'#2A4F2A',accentRt:'#C42820',accentPct:'#5A4818',dots:['#C42820','#2A4F2A','#5A4818']},
-  {id:'lalaland',name:'La La Land',dark:true,paper:'#0E1B39',surface:'#1B274B',surfaceAlt:'#232F56',border:'#2F406C',borderStrong:'#42538B',ink:'#EEE7D6',inkSoft:'#CEC7B6',muted:'#8D9BC4',mutedSoft:'#61719C',primary:'#F0E8D5',secondary:'#EDE7D7',glow:'#FFD85A',gradient:['#0A1A3F','#162553','#1E2D5E'],accentTh:'#FFD85A',accentRt:'#F0E8D5',accentPct:'#A8C0E5',dots:['#FFD85A','#F0E8D5','#A8C0E5']},
-  {id:'budapest',name:'Grand Budapest',dark:false,paper:'#F5C5C8',surface:'#F0BAC4',surfaceAlt:'#E7A5B2',border:'#C5A383',borderStrong:'#874D6A',ink:'#5B2A4A',inkSoft:'#7B3D5C',muted:'#9C796D',mutedSoft:'#B59A8A',primary:'#7B3D5C',secondary:'#E8C97A',gradient:['#F5D5C8','#F0B5B8','#E69BA0'],accentTh:'#7B3D5C',accentRt:'#E8C97A',accentPct:'#B89A88',dots:['#E8C97A','#7B3D5C','#D88FA8']},
-  {id:'mood',name:'In the Mood for Love',dark:true,paper:'#202C29',surface:'#2A3834',surfaceAlt:'#34443F',border:'#2E443F',borderStrong:'#405854',ink:'#E5D4AB',inkSoft:'#D0BB90',muted:'#7B8E87',mutedSoft:'#5B6E67',primary:'#B13A35',secondary:'#C9A565',glow:'#D4A85A',gradient:['#1F2E2A','#283A35','#324640'],accentTh:'#D4A85A',accentRt:'#C8302A',accentPct:'#7A8F88',dots:['#C8302A','#D4A85A','#E8D5A8']},
+  {id:'lalaland',name:'La La Land',dark:true,paper:'#0E1B39',surface:'#1B274B',surfaceAlt:'#232F56',border:'#2F406C',borderStrong:'#42538B',ink:'#FFFFFF',inkSoft:'#E8E0CE',muted:'#8D9BC4',mutedSoft:'#61719C',primary:'#3F6BC8',secondary:'#FFFFFF',glow:'#FFD85A',gradient:['#0A1A3F','#162553','#1E2D5E'],accentTh:'#FFD85A',accentRt:'#FFFFFF',accentPct:'#FFD85A',dots:['#FFD85A','#FFFFFF','#3F6BC8']},
+  {id:'budapest',name:'Grand Budapest',dark:false,paper:'#F8D1D8',surface:'#F2C5CE',surfaceAlt:'#ECB8C3',border:'#D8859A',borderStrong:'#8B4A6B',ink:'#5B2A4A',inkSoft:'#7B3D5C',muted:'#9C796D',mutedSoft:'#B59A8A',primary:'#D8607F',secondary:'#8B4A6B',gradient:['#F8D1D8','#F8D1D8','#F8D1D8'],accentTh:'#8B4A6B',accentRt:'#E8C97A',accentPct:'#B89A88',dots:['#D8607F','#8B4A6B','#E8C97A']},
+  {id:'mood',name:'In the Mood for Love',dark:true,paper:'#1A1410',surface:'#241B14',surfaceAlt:'#2E2218',border:'#2E2218',borderStrong:'#4A3825',ink:'#E5D4AB',inkSoft:'#D0BB90',muted:'#7B8E87',mutedSoft:'#5B6E67',primary:'#C8302A',secondary:'#1A1410',glow:'#D4A85A',gradient:['#1A1410','#241B14','#1F2E2A'],accentTh:'#3A5A48',accentRt:'#C8302A',accentPct:'#D4A85A',dots:['#C8302A','#1A1410','#3A5A48']},
   {id:'interstellar',name:'Interstellar',dark:true,paper:'#06080F',surface:'#0B1117',surfaceAlt:'#111A29',border:'#162132',borderStrong:'#213446',ink:'#F0F4F7',inkSoft:'#D0D8DF',muted:'#7390B8',mutedSoft:'#44619A',primary:'#385295',secondary:'#F0F4F7',glow:'#F0F4F8',gradient:['#050811','#0A1119','#0F1A2D'],accentTh:'#FFFFFF',accentRt:'#FF8C28',accentPct:'#7090BD',dots:['#FFFFFF','#FF8C28','#2D4FA5']},
   {id:'killbill',name:'Kill Bill',dark:false,paper:'#EDC91B',surface:'#DEBB1A',surfaceAlt:'#CFAC18',border:'#180A05',borderStrong:'#180A05',ink:'#180A05',inkSoft:'#371A0C',muted:'#552113',mutedSoft:'#742A23',primary:'#78121C',secondary:'#170A06',gradient:['#FFD400','#F0C500','#E0B500'],accentTh:'#A00510',accentRt:'#C40510',accentPct:'#5A2010',dots:['#C40510','#1A0A05','#FFD400']},
   {id:'akira',name:'Akira',dark:true,paper:'#090808',surface:'#130A0A',surfaceAlt:'#1C0B0B',border:'#270909',borderStrong:'#3B1111',ink:'#F0F0F0',inkSoft:'#C8C8C8',muted:'#0CAEAE',mutedSoft:'#077171',primary:'#DD163E',secondary:'#1BD7D7',glow:'#FF0033',gradient:['#0A0808','#150A0A','#1F0A0A'],accentTh:'#00E5E5',accentRt:'#FFD800',accentPct:'#FF00CC',dots:['#FF0033','#00E5E5','#FFD800']},
@@ -76,34 +76,37 @@ var FONT_MAP={
   block:'"Bungee", "Bebas Neue", Impact, sans-serif',
   japdisplay:'"Dela Gothic One", "Noto Sans JP", sans-serif',
   marker:'"Permanent Marker", "Marker Felt", cursive',
-  jost:'"Jost", "Futura", "Avenir", sans-serif'
+  jost:'"Jost", "Futura", "Avenir", sans-serif',
+  cyberpunk:'"Audiowide", "Orbitron", "Bebas Neue", sans-serif',
+  artdeco:'"Limelight", "Poiret One", "Playfair Display", serif',
+  military:'"Black Ops One", "Bebas Neue", Impact, sans-serif'
 };
 function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
 
 var THEME_COPY={
-  matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'films.count',heroSuffix:'[\u0394 {n} from prev cycle]',fonts:{hero:'monoX',label:'mono',title:'mono'}},
-  br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Films seen',heroSuffix:'{n} since last scan',fonts:{hero:'monoX',label:'mono',title:'cinzel'}},
-  amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Films vus',heroSuffix:'soit {n} de plus !',fonts:{hero:'handwrite',label:'handwrite',title:'handwrite'}},
-  lalaland:{masthead:'— City of stars —',title:'a year in pictures',heroLabel:'Films watched',heroSuffix:'{n} more than before',fonts:{hero:'script',label:'serif',title:'serif'}},
-  budapest:{masthead:'— ★ —',title:'The Grand Cinema Archive',heroLabel:'Films',heroSuffix:'— a most extraordinary year, {n} more —',fonts:{hero:'script',label:'sans',title:'script'}},
-  mood:{masthead:'— 花樣年華 —',title:'Those vanished years',heroLabel:'Films watched',heroSuffix:'{n} since',fonts:{hero:'serif',label:'sans',title:'serif'}},
-  interstellar:{masthead:'LOG · CYCLE {year}',title:'Do not go gentle',heroLabel:'Films watched',heroSuffix:'{n} // Δt = 1y',fonts:{hero:'cinzel',label:'mono',title:'cinzel'}},
-  killbill:{masthead:'VOL. IV · {year}',title:"The Bride's catalog",heroLabel:'Marked films',heroSuffix:'{n} names crossed off',fonts:{hero:'japdisplay',label:'sans',title:'japdisplay'}},
+  matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'red.pills.taken',heroSuffix:'[\u0394 {n} from prev cycle]',fonts:{hero:'monoX',label:'mono',title:'mono'}},
+  br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Miracles witnessed',heroSuffix:'{n} since last scan',fonts:{hero:'cyberpunk',label:'mono',title:'cyberpunk'}},
+  amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Petits bonheurs',heroSuffix:'soit {n} de plus !',fonts:{hero:'handwrite',label:'handwrite',title:'handwrite'}},
+  lalaland:{masthead:'— City of stars —',title:'a year in pictures',heroLabel:'Dreams chased',heroSuffix:'{n} more than before',fonts:{hero:'artdeco',label:'serif',title:'artdeco'}},
+  budapest:{masthead:'— ★ —',title:'The Grand Cinema Archive',heroLabel:'Items in the registry',heroSuffix:'— a most extraordinary year, {n} more —',fonts:{hero:'script',label:'sans',title:'script'}},
+  mood:{masthead:'— 花樣年華 —',title:'那些逸去的年华 · Those vanished years',heroLabel:'Glances exchanged',heroSuffix:'{n} since',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  interstellar:{masthead:'LOG · CYCLE {year}',title:'Do not go gentle',heroLabel:'Light-years traversed',heroSuffix:'{n} // Δt = 1y',fonts:{hero:'cyberpunk',label:'mono',title:'cyberpunk'}},
+  killbill:{masthead:'VOL. IV · {year}',title:"The Bride's catalog",heroLabel:'Names crossed off',heroSuffix:'{n} names crossed off',fonts:{hero:'japdisplay',label:'sans',title:'japdisplay'}},
   akira:{masthead:'// NEO-TOKYO · {year}',title:'アーカイブ ARCHIVE',heroLabel:'films.consumed',heroSuffix:'[Δ {n} ↗]',fonts:{hero:'monoX',label:'mono',title:'japdisplay'}},
-  pirates:{masthead:"— Ye Olde Captain's Log —",title:'Babylonian, of the Black Pearl',heroLabel:'Films plundered',heroSuffix:'{n} since last voyage',fonts:{hero:'oldserif',label:'typewriter',title:'oldserif'}},
-  incredibles:{masthead:'— Issue No. {total} · {year} —',title:'THE CINEMA FILES',heroLabel:'Films watched',heroSuffix:'{n} SINCE LAST ISSUE!',fonts:{hero:'block',label:'marker',title:'block'}},
-  space2001:{masthead:'DISCOVERY ONE / {year}',title:'The Annual Mission Log',heroLabel:'FILMS · OBSERVED',heroSuffix:'> DELTA {n} // STAR GATE OPEN',fonts:{hero:'cinzel',label:'mono',title:'cinzel'}},
-  madmax:{masthead:'▲ WITNESS · MMXXV ▲',title:'SHINY AND CHROME',heroLabel:'War rigs counted',heroSuffix:'{n} · INTO VALHALLA',fonts:{hero:'impact',label:'sans',title:'impact'}},
-  shining_hotel:{masthead:'— ROOM 237 · MMXXV —',title:'all work and no play',heroLabel:'Films witnessed',heroSuffix:'{n} . . . . . come play with us',fonts:{hero:'typewriter',label:'typewriter',title:'typewriter'}},
-  mononoke:{masthead:'— もののけ姫 · MMXXV —',title:"The forest spirit's chronicle",heroLabel:'Films seen',heroSuffix:'{n} since the wolves last spoke',fonts:{hero:'japdisplay',label:'sans',title:'serif'}},
+  pirates:{masthead:"— Ye Olde Captain's Log —",title:'Babylonian, of the Black Pearl',heroLabel:'Aztec gold pieces collected',heroSuffix:'{n} since last voyage',fonts:{hero:'oldserif',label:'typewriter',title:'oldserif'}},
+  incredibles:{masthead:'— VOL. {total} · {year} —',title:'THE INCREDIBLE BABYLONIAN',heroLabel:'Missions completed',heroSuffix:'{n} SINCE LAST ISSUE!',fonts:{hero:'block',label:'marker',title:'block'}},
+  space2001:{masthead:'DISCOVERY ONE / {year}',title:'The Annual Mission Log',heroLabel:'Anomalies recorded',heroSuffix:'> DELTA {n} // STAR GATE OPEN',fonts:{hero:'cinzel',label:'mono',title:'cinzel'}},
+  madmax:{masthead:'▲ WITNESS · MMXXV ▲',title:'SHINY AND CHROME',heroLabel:'War rigs counted',heroSuffix:'{n} · INTO VALHALLA',fonts:{hero:'military',label:'sans',title:'military'}},
+  shining_hotel:{masthead:'— ROOM 237 · MMXXV —',title:'all work and no play',heroLabel:'Pages typed',heroSuffix:'{n} . . . . . come play with us',fonts:{hero:'typewriter',label:'typewriter',title:'typewriter'}},
+  mononoke:{masthead:'— もののけ姫 · MMXXV —',title:"The forest spirit's chronicle",heroLabel:'Spirits encountered',heroSuffix:'{n} since the wolves last spoke',fonts:{hero:'japdisplay',label:'sans',title:'serif'}},
   lighthouse:{masthead:'— LOG · MMXXV —',title:"Why'd ye spill yer beans?",heroLabel:'Watches kept',heroSuffix:'{n} // damn ye to the brine',fonts:{hero:'blackletter',label:'oldserif',title:'oldserif'}},
   whiplash:{masthead:'— STUDIO BAND · {year} —',title:'Not quite my tempo',heroLabel:'Bars rushed · {total} BPM',heroSuffix:'{n} // FASTER. AGAIN.',fonts:{hero:'impact',label:'sans',title:'impact'}},
   mrfox:{masthead:'— Mr. Fox & Son · MMXXV —',title:'A most delightful annual report',heroLabel:'Films, all {total} of them',heroSuffix:'cuss yes · {n} more',fonts:{hero:'jost',label:'jost',title:'jost'}},
   substance:{masthead:'— THE SUBSTANCE® —',title:'A better version of yourself',heroLabel:'Doses · activated',heroSuffix:'{n} · remember, you are one',fonts:{hero:'anton',label:'serif',title:'serif'}},
-  barbie:{masthead:'— BARBIELAND · {year} —',title:'Hi Barbie! Hi Babylonian!',heroLabel:'Movies seen',heroSuffix:'{n} · Kenough',fonts:{hero:'script',label:'sans',title:'script'}},
-  batman:{masthead:'— GOTHAM · YEAR TWO —',title:'I am the shadows · the journal',heroLabel:'Case files',heroSuffix:'{n} · vengeance recorded',fonts:{hero:'blackletter',label:'mono',title:'blackletter'}},
-  dtrt:{masthead:'— BED-STUY · DO OR DIE · MMXXV —',title:'FIGHT THE POWER!',heroLabel:'Films watched',heroSuffix:'{n} · WAKE UP, MISTER SEÑOR LOVE DADDY',fonts:{hero:'block',label:'marker',title:'block'}},
-  oppenheimer:{masthead:'— TRINITY · 16 JULY · MMXXV —',title:'Now I am become Babylonian',heroLabel:'Frames witnessed',heroSuffix:'{n} // CHAIN REACTION',fonts:{hero:'cinzel',label:'mono',title:'cinzel'}},
+  barbie:{masthead:'— BARBIELAND · {year} —',title:'Hi Barbie! Hi Babylonian!',heroLabel:'Outfits worn',heroSuffix:'{n} · Kenough',fonts:{hero:'script',label:'sans',title:'script'}},
+  batman:{masthead:'— GOTHAM · YEAR TWO —',title:'I am the shadows · the journal',heroLabel:'Nights on patrol',heroSuffix:'{n} · vengeance recorded',fonts:{hero:'blackletter',label:'mono',title:'blackletter'}},
+  dtrt:{masthead:'— BED-STUY · DO OR DIE · MMXXV —',title:'FIGHT THE POWER!',heroLabel:'Stoop sessions',heroSuffix:'{n} · WAKE UP, MISTER SEÑOR LOVE DADDY',fonts:{hero:'block',label:'marker',title:'block'}},
+  oppenheimer:{masthead:'— TRINITY · 16 JULY · MMXXV —',title:'Now I am become Babylonian',heroLabel:'Decisions made',heroSuffix:'{n} // CHAIN REACTION',fonts:{hero:'cinzel',label:'mono',title:'cinzel'}},
   dollars:{masthead:'— EL PASO · MDCCCLXVII —',title:'Per un pugno di film',heroLabel:'Bounties collected',heroSuffix:'{n} dollari · the bad & the ugly',fonts:{hero:'cinzel',label:'sans',title:'cinzel'}}
 };
 
@@ -160,7 +163,7 @@ var ThemeOrnament=function(p){var T=p.T;var id=T.id;
 
   // LIGHTHOUSE — beam from the right (lighthouse source off-screen right) widening leftward toward the 142
   if(id==='lighthouse')return <div style={Object.assign({},orn,{top:0,left:0,bottom:0,right:0,overflow:'hidden'})}>
-    <svg viewBox="0 0 400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><defs><linearGradient id="beamgrad" x1="100%" y1="50%" x2="0%" y2="50%"><stop offset="0%" stopColor={T.primary} stopOpacity="0.85"/><stop offset="30%" stopColor={T.primary} stopOpacity="0.5"/><stop offset="100%" stopColor={T.primary} stopOpacity="0"/></linearGradient></defs><polygon points="265,100 30,30 30,170" fill="url(#beamgrad)"/></svg>
+    <svg viewBox="0 0 400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><defs><linearGradient id="beamgrad" x1="100%" y1="50%" x2="0%" y2="50%"><stop offset="0%" stopColor={T.primary} stopOpacity="0.85"/><stop offset="30%" stopColor={T.primary} stopOpacity="0.5"/><stop offset="100%" stopColor={T.primary} stopOpacity="0"/></linearGradient></defs><polygon points="265,65 30,5 30,140" fill="url(#beamgrad)"/></svg>
   </div>;
 
   // BARBIE — moved inside hero square (subtle hearts/dots)
@@ -173,10 +176,7 @@ var ThemeOrnament=function(p){var T=p.T;var id=T.id;
     <div style={{position:'absolute',top:80,right:'18%',width:5,height:5,borderRadius:'50%',background:T.secondary,opacity:0.6}}/>
   </div>;
 
-  // OPPENHEIMER — Trinity glow moved inside hero (was outside-top before), positioned around the 142
-  if(id==='oppenheimer')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,overflow:'hidden'})}>
-    <div style={{position:'absolute',top:'20%',right:'-10%',width:'70%',height:'80%',background:'radial-gradient(circle at 30% 50%, '+T.primary+'66 0%, '+T.primary+'22 25%, transparent 60%)',animation:'trinitybreathe 6s ease-in-out infinite'}}/>
-  </div>;
+  // OPPENHEIMER — Trinity glow removed per request
 
   // DTRT — top zigzag stripe (poster yellow/red) + faint diagonal pattern on background
   if(id==='dtrt')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,overflow:'hidden'})}>
@@ -200,9 +200,8 @@ function blend(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);return rgbToHe
 function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b;return rgbToHex(a.r+dr*f,a.g+dg*f,a.b+db*f)}
 
 // Theme-aware rating color (5 buckets, more saturated = higher rating)
-// Bucket: 1: 0.5-1, 2: 1.5-2, 3: 2.5-3, 4: 3.5-4, 5: 4.5-5
-// Returns a neutral gray gradient (note basse = gris pâle, note haute = ink foncé) — independent of theme
-function rCT(r,T){if(!r||r===0)return NEUTRAL.mutedSoft;var b;if(r<=1)b=1;else if(r<=2)b=2;else if(r<=3)b=3;else if(r<=4)b=4;else b=5;var fades=[0.72,0.54,0.36,0.18,0];return blend(NEUTRAL.ink,NEUTRAL.paper,fades[b-1])}
+// Returns T.primary uniformly for all ratings (no more gradient based on note)
+function rCT(r,T){if(!r||r===0)return NEUTRAL.mutedSoft;return T.primary}
 
 // Year color — fixed qualitative palette, independent of theme.
 // Each year gets a distinct color from a 12-color palette (cycles if needed).
@@ -217,7 +216,8 @@ function signColor(v,T,opts){opts=opts||{};var pos=opts.positiveIsGood!==false;v
 function seriesColors(T){return[T.primary,blend(T.primary,NEUTRAL.paper,0.35),blend(T.primary,NEUTRAL.paper,0.6)]}
 
 // Heatmap intensity color
-function hmColor(count,max,year,currentYr,T){if(!count)return NEUTRAL.surface;var intensity=0.2+(count/max)*0.7;var isCurrent=String(year)===String(currentYr);var base=isCurrent?T.primary:(T.secondary&&!NEUTRAL.dark?T.secondary:T.primary);var bg=NEUTRAL.dark?'#000000':'#FFFFFF';return blend(base,bg,1-intensity)}
+// Heatmap: always blend T.primary toward white. Text on filled cells should always be black/dark for contrast.
+function hmColor(count,max,year,currentYr,T){if(!count)return NEUTRAL.surface;var intensity=0.2+(count/max)*0.7;return blend(T.primary,'#FFFFFF',1-intensity)}
 
 // Read-only category styling — keeps using fixed colors for tag admin (rarely used, not worth theming)
 var CI_BASE={
@@ -525,33 +525,32 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
         <div className="md:pl-8 grid grid-cols-2 gap-x-4 gap-y-4" style={{borderLeft:'0.5px solid '+T.border,position:'relative',zIndex:1}}>
           <div>
             <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>In theaters</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.th}<span className="ml-1.5" style={{fontSize:12,color:T.accentPct||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.th/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.th!=null&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{fY(yoy.th,'pp')}</div>}
+            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.th}<span className="ml-1.5" style={{fontSize:12,color:T.secondary||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.th/stats.total*100)+'%':''}</span></div>
+            {yoy&&yoy.th!=null&&<div style={{fontSize:10,color:T.secondary||T.muted,marginTop:2}}>{fY(yoy.th,'pp')}</div>}
           </div>
           <div>
             <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>With friends</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.fr}<span className="ml-1.5" style={{fontSize:12,color:T.accentPct||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.fr/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.fr!=null&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{fY(yoy.fr,'pp')}</div>}
+            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.fr}<span className="ml-1.5" style={{fontSize:12,color:T.secondary||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.fr/stats.total*100)+'%':''}</span></div>
+            {yoy&&yoy.fr!=null&&<div style={{fontSize:10,color:T.secondary||T.muted,marginTop:2}}>{fY(yoy.fr,'pp')}</div>}
           </div>
           <div>
             <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Best friend</div>
-            <div style={{fontSize:18,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{compD.length?compD[0].name:'\u2014'}</div>
-            {compD.length>0&&<div style={{fontSize:10,color:T.accentPct||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{compD[0].Films} films</div>}
+            <div style={{fontSize:18,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{compD.length?compD[0].name:'\u2014'}</div>
+            {compD.length>0&&<div style={{fontSize:10,color:T.secondary||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{compD[0].Films} films</div>}
           </div>
           <div>
             <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Avg rating</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.avg}<span className="ml-1" style={{fontSize:15,color:T.accentPct||T.primary}}>{'\u2605'}</span></div>
-            {yoy&&yoy.avg!=null&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{fY(yoy.avg,'r')}</div>}
+            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.avg}<span className="ml-1" style={{fontSize:15,color:T.secondary||T.primary}}>{'\u2605'}</span></div>
+            {yoy&&yoy.avg!=null&&<div style={{fontSize:10,color:T.secondary||T.muted,marginTop:2}}>{fY(yoy.avg,'r')}</div>}
           </div>
           <div>
             <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Runtime</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}</div>
-            {dirStats.rtCount<dirStats.rtTotal&&dirStats.rtTotal>0&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>{dirStats.rtCount}/{dirStats.rtTotal} enriched</div>}
+            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}</div>
           </div>
           <div>
             <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Money spent</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.secondary||T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'}</div>
-            {stats.total>0&&moneySpent>0&&<div style={{fontSize:10,color:T.accentPct||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{'\u20AC'+(moneySpent/stats.total).toFixed(2)}/film</div>}
+            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'}</div>
+            {stats.total>0&&moneySpent>0&&<div style={{fontSize:10,color:T.secondary||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{'\u20AC'+(moneySpent/stats.total).toFixed(2)}/film</div>}
           </div>
         </div>
       </div>
@@ -569,7 +568,7 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
         <SectionHead T={N} title="The viewing calendar" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a cell to see the films</span>}/>
         <div className="overflow-x-auto"><div style={{minWidth:380}}>
           <div className="flex items-center mb-1"><div style={{width:36}}/>{MS.map(function(m,i){return <div key={i} className="flex-1 text-center" style={{fontSize:10,color:N.muted,letterSpacing:'0.05em'}}>{m}</div>})}</div>
-          {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:0,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max,y,yr,T);var it=c===0?0:0.18+(c/hmData.max)*0.82;return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?(it>0.55?(N.dark?N.ink:N.paper):N.ink):'transparent',borderRadius:0,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
+          {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:0,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max,y,yr,T);return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?'#000000':'transparent',borderRadius:0,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
         </div></div>
         {selHM&&<FilmList T={N} title={MF[selHM.mo]+' '+selHM.yr} films={hmFilms} onClose={function(){sSelHM(null)}}/>}
       </div>
