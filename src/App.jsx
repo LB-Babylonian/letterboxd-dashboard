@@ -30,14 +30,14 @@ var NEUTRAL={
 var THEMES=[
   {id:'matrix',name:'Matrix',dark:true,paper:'#000000',surface:'#050B05',surfaceAlt:'#0B170B',border:'#0B270B',borderStrong:'#0F3A0F',ink:'#00FF55',inkSoft:'#00CC44',muted:'#008833',mutedSoft:'#005522',primary:'#00FF55',secondary:'#FF1A1A',gradient:['#000000','#020602','#000000'],accentTh:'#00FF55',accentRt:'#00FF55',accentPct:'#FF1A1A',dots:['#00FF55','#FF1A1A','#FFFFFF'],glow:'#00FF55'},
   {id:'br2049',name:'Blade Runner 2049',dark:true,paper:'#180F2A',surface:'#221842',surfaceAlt:'#2A1F55',border:'#3A2A6A',borderStrong:'#4A3590',ink:'#F0C79A',inkSoft:'#E0945C',muted:'#A878A0',mutedSoft:'#7050A0',primary:'#E0258A',secondary:'#FF8030',gradient:['#10082A','#1A1140','#240F3A'],accentTh:'#E0258A',accentRt:'#E0258A',accentPct:'#FF8030',dots:['#E0258A','#FF8030','#5570B8'],glow:'#E0258A'},
-  {id:'amelie',name:'Amélie',dark:false,paper:'#2A4F2A',surface:'#345A34',surfaceAlt:'#3E6A3E',border:'#3E5F3E',borderStrong:'#5A7A5A',ink:'#E8AC2F',inkSoft:'#D89A1A',muted:'#B0985A',mutedSoft:'#85734A',primary:'#2A4F2A',secondary:'#E8AC2F',gradient:['#2A4F2A','#345A34','#3E6A3E'],accentTh:'#E8AC2F',accentRt:'#E8AC2F',accentPct:'#C42820',dots:['#E8AC2F','#C42820','#2A4F2A']},
-  {id:'lalaland',name:'La La Land',dark:true,paper:'#0E1B39',surface:'#1B274B',surfaceAlt:'#232F56',border:'#2F406C',borderStrong:'#42538B',ink:'#F5F0E6',inkSoft:'#E8E0CE',muted:'#8D9BC4',mutedSoft:'#61719C',primary:'#1A2D5A',secondary:'#F5F0E6',gradient:['#0A1A3F','#162553','#1E2D5E'],accentTh:'#F5F0E6',accentRt:'#F5F0E6',accentPct:'#1A2D5A',dots:['#F5F0E6','#FFD85A','#1A2D5A'],glow:'#F5F0E6'},
-  {id:'budapest',name:'Grand Budapest',dark:false,paper:'#F5BFC8',surface:'#F5BFC8',surfaceAlt:'#F5BFC8',border:'#D8859A',borderStrong:'#8B4A6B',ink:'#5B2A4A',inkSoft:'#7B3D5C',muted:'#9C796D',mutedSoft:'#B59A8A',primary:'#8B4A6B',secondary:'#E8C97A',gradient:['#F5BFC8','#F5BFC8','#F5BFC8'],accentTh:'#8B4A6B',accentRt:'#8B4A6B',accentPct:'#E8C97A',dots:['#8B4A6B','#E8C97A','#5B2A4A']},
-  {id:'mood',name:'In the Mood for Love',dark:true,paper:'#8B0815',surface:'#9B1220',surfaceAlt:'#A8202C',border:'#5A0810',borderStrong:'#3A0508',ink:'#1A0A0A',inkSoft:'#3A1A1A',muted:'#D8A0A0',mutedSoft:'#A85A5A',primary:'#C8302A',secondary:'#1A0A0A',gradient:['#8B0815','#9B1220','#A8202C'],accentTh:'#1A0A0A',accentRt:'#1A0A0A',accentPct:'#2A5A38',dots:['#1A0A0A','#2A5A38','#E8D5A8'],glow:'#C8302A'},
+  {id:'amelie',name:'Amélie',dark:false,paper:'#2A4F2A',surface:'#345A34',surfaceAlt:'#3E6A3E',border:'#3E5F3E',borderStrong:'#5A7A5A',ink:'#E8AC2F',inkSoft:'#D89A1A',muted:'#B0985A',mutedSoft:'#85734A',primary:'#2A4F2A',secondary:'#E8AC2F',gradient:['#2A4F2A','#345A34','#3E6A3E'],accentTh:'#E8AC2F',accentRt:'#E8AC2F',accentPct:'#C42820',dots:['#E8AC2F','#C42820','#2A4F2A'],metricColor:'#C42820'},
+  {id:'lalaland',name:'La La Land',dark:true,paper:'#0E1B39',surface:'#1B274B',surfaceAlt:'#232F56',border:'#2F406C',borderStrong:'#42538B',ink:'#F5F0E6',inkSoft:'#E8E0CE',muted:'#8D9BC4',mutedSoft:'#61719C',primary:'#1A2D5A',secondary:'#F5F0E6',gradient:['#0A1A3F','#162553','#1E2D5E'],accentTh:'#F5F0E6',accentRt:'#F5F0E6',accentPct:'#1A2D5A',dots:['#F5F0E6','#FFD85A','#1A2D5A'],glow:'#F5F0E6',metricColor:'#FFFFFF'},
+  {id:'budapest',name:'Grand Budapest',dark:false,paper:'#F5BFC8',surface:'#F5BFC8',surfaceAlt:'#F5BFC8',border:'#D8859A',borderStrong:'#8B4A6B',ink:'#5B2A4A',inkSoft:'#7B3D5C',muted:'#9C796D',mutedSoft:'#B59A8A',primary:'#8B4A6B',secondary:'#E8C97A',gradient:['#F5BFC8','#F5BFC8','#F5BFC8'],accentTh:'#8B4A6B',accentRt:'#8B4A6B',accentPct:'#E8C97A',dots:['#8B4A6B','#E8C97A','#5B2A4A'],subColor:'#8B4A6B'},
+  {id:'mood',name:'In the Mood for Love',dark:true,paper:'#8B0815',surface:'#9B1220',surfaceAlt:'#A8202C',border:'#5A0810',borderStrong:'#3A0508',ink:'#1A0A0A',inkSoft:'#3A1A1A',muted:'#D8A0A0',mutedSoft:'#A85A5A',primary:'#C8302A',secondary:'#1A0A0A',gradient:['#8B0815','#9B1220','#A8202C'],accentTh:'#1A0A0A',accentRt:'#1A0A0A',accentPct:'#2A5A38',dots:['#1A0A0A','#2A5A38','#E8D5A8'],glow:'#C8302A',metricColor:'#1A0A0A',subColor:'#3A5A48'},
   {id:'interstellar',name:'Interstellar',dark:true,paper:'#050811',surface:'#0A1119',surfaceAlt:'#0F1A2D',border:'#152134',borderStrong:'#1F3548',ink:'#F0F4F8',inkSoft:'#D0D8E0',muted:'#7090BD',mutedSoft:'#4060A0',primary:'#2D4FA5',secondary:'#FFFFFF',gradient:['#050811','#0A1119','#0F1A2D'],accentTh:'#2D4FA5',accentRt:'#FFFFFF',accentPct:'#FFFFFF',dots:['#FFFFFF','#2D4FA5','#FF8C28'],glow:'#FFFFFF'},
-  {id:'killbill',name:'Kill Bill',dark:false,paper:'#FFD400',surface:'#FFD400',surfaceAlt:'#FFD400',border:'#1A0A05',borderStrong:'#1A0A05',ink:'#1A0A05',inkSoft:'#3A1A0A',muted:'#7A4810',mutedSoft:'#8B5510',primary:'#E10510',secondary:'#1A0A05',gradient:['#FFD400','#FFD400','#FFD400'],accentTh:'#E10510',accentRt:'#E10510',accentPct:'#1A0A05',dots:['#E10510','#1A0A05','#FFD400']},
+  {id:'killbill',name:'Kill Bill',dark:false,paper:'#FFD400',surface:'#FFD400',surfaceAlt:'#FFD400',border:'#1A0A05',borderStrong:'#1A0A05',ink:'#1A0A05',inkSoft:'#3A1A0A',muted:'#7A4810',mutedSoft:'#8B5510',primary:'#E10510',secondary:'#1A0A05',gradient:['#FFD400','#FFD400','#FFD400'],accentTh:'#E10510',accentRt:'#E10510',accentPct:'#1A0A05',dots:['#E10510','#1A0A05','#FFD400'],metricColor:'#1A0A05',subColor:'#E10510'},
   {id:'akira',name:'Akira',dark:true,paper:'#0A0808',surface:'#150A0A',surfaceAlt:'#1F0A0A',border:'#2A0808',borderStrong:'#3F1010',ink:'#F0F0F0',inkSoft:'#C8C8C8',muted:'#00B5B5',mutedSoft:'#007575',primary:'#FF0033',secondary:'#00E5E5',gradient:['#0A0808','#150A0A','#1F0A0A'],accentTh:'#FF0033',accentRt:'#FF0033',accentPct:'#00E5E5',dots:['#FF0033','#00E5E5','#FFD800'],glow:'#FF0033'},
-  {id:'incredibles',name:'The Incredibles',dark:true,paper:'#D81B1B',surface:'#C81515',surfaceAlt:'#B01010',border:'#1A1A1A',borderStrong:'#1A1A1A',ink:'#F5B43A',inkSoft:'#E8A82A',muted:'#FFE085',mutedSoft:'#D88B5A',primary:'#D81B1B',secondary:'#F5B43A',gradient:['#D81B1B','#C81515','#B01010'],accentTh:'#F5B43A',accentRt:'#F5B43A',accentPct:'#1A1A1A',dots:['#F5B43A','#1A1A1A','#FFFFFF']},
+  {id:'incredibles',name:'The Incredibles',dark:true,paper:'#D81B1B',surface:'#C81515',surfaceAlt:'#B01010',border:'#1A1A1A',borderStrong:'#1A1A1A',ink:'#F5B43A',inkSoft:'#E8A82A',muted:'#FFE085',mutedSoft:'#D88B5A',primary:'#D81B1B',secondary:'#F5B43A',gradient:['#D81B1B','#C81515','#B01010'],accentTh:'#F5B43A',accentRt:'#F5B43A',accentPct:'#1A1A1A',dots:['#F5B43A','#1A1A1A','#FFFFFF'],metricColor:'#F5B43A',descriptorColor:'#1A1A1A',subColor:'#1A1A1A'},
   {id:'space2001',name:'2001: A Space Odyssey',dark:false,paper:'#F0EFEC',surface:'#F0EFEC',surfaceAlt:'#F0EFEC',border:'#C0BFB8',borderStrong:'#8B8A85',ink:'#1A1A1A',inkSoft:'#3A3A3A',muted:'#5A5A5A',mutedSoft:'#7A7A7A',primary:'#D80808',secondary:'#FF6510',gradient:['#F0EFEC','#F0EFEC','#F0EFEC'],accentTh:'#D80808',accentRt:'#FF6510',accentPct:'#1A4A85',dots:['#D80808','#FF6510','#FFD428']},
   {id:'lighthouse',name:'The Lighthouse',dark:false,paper:'#D9D6CE',surface:'#CCC9C1',surfaceAlt:'#B8B5AD',border:'#1A1410',borderStrong:'#1A1410',ink:'#1A1410',inkSoft:'#3A3530',muted:'#5A554F',mutedSoft:'#7A7570',primary:'#1A1410',secondary:'#1A1410',gradient:['#D9D6CE','#CCC9C1','#B8B5AD'],accentTh:'#1A1410',accentRt:'#1A1410',accentPct:'#1A1410',dots:['#1A1410','#5A554F','#E8A82A']},
   {id:'substance',name:'The Substance',dark:false,paper:'#FFFFFF',surface:'#F5F5F0',surfaceAlt:'#EAEAE0',border:'#000000',borderStrong:'#000000',ink:'#000000',inkSoft:'#1A1A1A',muted:'#3A3A3A',mutedSoft:'#5A5A5A',primary:'#7BC828',secondary:'#FFE026',gradient:['#FFFFFF','#F5F5F0','#EAEAE0'],accentTh:'#7BC828',accentRt:'#7BC828',accentPct:'#D8281A',dots:['#7BC828','#FFE026','#D8281A'],glow:'#7BC828'},
@@ -70,21 +70,23 @@ var FONT_MAP={
   cyberpunk:'"Audiowide", "Orbitron", "Bebas Neue", sans-serif',
   artdeco:'"Limelight", "Poiret One", "Playfair Display", serif',
   military:'"Black Ops One", "Bebas Neue", Impact, sans-serif',
-  futurist:'"Orbitron", "Audiowide", "Bebas Neue", sans-serif'
+  futurist:'"Orbitron", "Audiowide", "Bebas Neue", sans-serif',
+  iceberg:'"Iceberg", "Orbitron", "Bebas Neue", sans-serif',
+  bungeeInline:'"Bungee Inline", "Bungee", "Bebas Neue", sans-serif'
 };
 function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
 
 var THEME_COPY={
   matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'red.pills.taken',heroSuffix:'[\u0394 {n} from prev cycle]',fonts:{hero:'monoX',label:'mono',title:'mono'}},
-  br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Miracles witnessed',heroSuffix:'{n} since last scan',fonts:{hero:'cyberpunk',label:'mono',title:'cyberpunk'}},
+  br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Miracles witnessed',heroSuffix:'{n} since last scan',fonts:{hero:'iceberg',label:'mono',title:'iceberg'}},
   amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Petits bonheurs',heroSuffix:'soit {n} de plus !',fonts:{hero:'handwrite',label:'handwrite',title:'handwrite'}},
   lalaland:{masthead:'— City of stars —',title:'a year in pictures',heroLabel:'Dreams chased',heroSuffix:'{n} more than before',fonts:{hero:'artdeco',label:'serif',title:'artdeco'}},
   budapest:{masthead:'— ★ —',title:'The Grand Cinema Archive',heroLabel:'Items in the registry',heroSuffix:'— a most extraordinary year, {n} more —',fonts:{hero:'cinzel',label:'serif',title:'cinzel'}},
   mood:{masthead:'— 花樣年華 —',title:'那些逸去的年华 · Those vanished years',heroLabel:'Glances exchanged 一佛一代',heroSuffix:'{n} since',fonts:{hero:'serif',label:'sans',title:'serif'}},
-  interstellar:{masthead:'LOG · CYCLE {year}',title:'Do not go gentle',heroLabel:'Light-years traversed',heroSuffix:'{n} // Δt = 1y',fonts:{hero:'futurist',label:'mono',title:'futurist'}},
+  interstellar:{masthead:'LOG · CYCLE {year}',title:'Do not go gentle',heroLabel:'Light-years traversed',heroSuffix:'{n} // Δt = 1y',fonts:{hero:'bungeeInline',label:'mono',title:'bungeeInline'}},
   killbill:{masthead:'VOL. IV · {year}',title:"The Bride's catalog",heroLabel:'Names crossed off',heroSuffix:'{n} names crossed off',fonts:{hero:'japdisplay',label:'sans',title:'japdisplay'}},
   akira:{masthead:'// NEO-TOKYO · {year}',title:'アーカイブ ARCHIVE',heroLabel:'Bikes drifted バイク・ドリフト',heroSuffix:'[Δ {n} ↗]',fonts:{hero:'monoX',label:'mono',title:'japdisplay'}},
-  incredibles:{masthead:'— VOL. {total} · {year} —',title:'THE INCREDIBLE BABYLONIAN',heroLabel:'Bad guys terminated',heroSuffix:'{n} SINCE LAST ISSUE!',fonts:{hero:'block',label:'marker',title:'block'}},
+  incredibles:{masthead:'— VOL. {total} · {year} —',title:'THE INCREDIBLE BABYLONIAN',heroLabel:'Super Suits Found',heroSuffix:'{n} SINCE LAST ISSUE!',fonts:{hero:'block',label:'marker',title:'block'}},
   space2001:{masthead:'DISCOVERY ONE / {year}',title:'The Annual Mission Log',heroLabel:'Monoliths approached',heroSuffix:'> DELTA {n} // STAR GATE OPEN',fonts:{hero:'sans',label:'sans',title:'sans'}},
   lighthouse:{masthead:'— LOG · MMXXV —',title:"Why'd ye spill yer beans?",heroLabel:'Watches kept',heroSuffix:'{n} // damn ye to the brine',fonts:{hero:'blackletter',label:'oldserif',title:'oldserif'}},
   substance:{masthead:'— THE SUBSTANCE® —',title:'A better version of yourself',heroLabel:'Doses · activated',heroSuffix:'{n} · remember, you are one',fonts:{hero:'anton',label:'serif',title:'serif'}},
@@ -143,9 +145,7 @@ var ThemeOrnament=function(p){var T=p.T;var id=T.id;
   </div>;
 
   // LIGHTHOUSE — beam from the right (lighthouse source off-screen right) widening leftward toward the 142
-  if(id==='lighthouse')return <div style={Object.assign({},orn,{top:0,left:0,bottom:0,right:0,overflow:'hidden'})}>
-    <svg viewBox="0 0 400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%'}}><defs><linearGradient id="beamgrad" x1="100%" y1="50%" x2="0%" y2="50%"><stop offset="0%" stopColor={T.primary} stopOpacity="0.85"/><stop offset="30%" stopColor={T.primary} stopOpacity="0.5"/><stop offset="100%" stopColor={T.primary} stopOpacity="0"/></linearGradient></defs><polygon points="265,85 30,25 30,160" fill="url(#beamgrad)"/></svg>
-  </div>;
+  // LIGHTHOUSE — beam removed per user request
 
   // BARBIE — moved inside hero square (subtle hearts/dots)
   if(id==='barbie')return <div style={Object.assign({},orn,{top:0,left:0,right:0,bottom:0,overflow:'hidden'})}>
@@ -293,6 +293,10 @@ export default function Dashboard(){
   var[themeId,sThemeId]=useState(function(){try{var prev=localStorage.getItem('dashboard_theme_current')||'';var pool=THEMES.filter(function(t){return t.id!==prev});if(!pool.length)pool=THEMES;var pick=pool[Math.floor(Math.random()*pool.length)].id;localStorage.setItem('dashboard_theme_previous',prev);localStorage.setItem('dashboard_theme_current',pick);return pick}catch(e){return THEMES[0].id}});
   var[showPicker,sShowPicker]=useState(false);
   var T=fullTheme(themeId);
+  // Resolved colors with fallback: metricColor for big numbers, descriptorColor for "In theaters" labels, subColor for percentages
+  var heroMetricC=T.metricColor||T.primary;
+  var heroDescriptorC=T.descriptorColor||T.muted;
+  var heroSubC=T.subColor||T.secondary||T.primary;
   // N = neutral editorial palette + T.primary as accent. Used everywhere EXCEPT in the hero block.
   var N=Object.assign({},NEUTRAL,{primary:T.primary,secondary:T.primary,glow:T.glow,id:T.id,name:T.name,fonts:{},copy:{}});
   var pickTheme=useCallback(function(id){try{localStorage.setItem('dashboard_theme_previous',themeId);localStorage.setItem('dashboard_theme_current',id)}catch(e){}sThemeId(id);sShowPicker(false)},[themeId]);
@@ -499,39 +503,39 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
           <div style={{width:5,height:5,background:T.dots[2],borderRadius:'50%'}}/>
         </div>}
         <div className="md:col-span-2" style={{position:'relative',zIndex:1}}>
-          <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase',marginBottom:14,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
-          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:T.primary,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
-          {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:T.muted,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
+          <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:14,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
+          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+          {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:heroSubC,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
         </div>
         <div className="md:pl-8 grid grid-cols-2 gap-x-4 gap-y-4" style={{borderLeft:'0.5px solid '+T.border,position:'relative',zIndex:1}}>
           <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>In theaters</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.th}<span className="ml-1.5" style={{fontSize:12,color:T.secondary||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.th/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.th!=null&&<div style={{fontSize:10,color:T.secondary||T.muted,marginTop:2}}>{fY(yoy.th,'pp')}</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>In theaters</div>
+            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.th}<span className="ml-1.5" style={{fontSize:12,color:heroSubC,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.th/stats.total*100)+'%':''}</span></div>
+            {yoy&&yoy.th!=null&&<div style={{fontSize:10,color:heroSubC,marginTop:2}}>{fY(yoy.th,'pp')}</div>}
           </div>
           <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>With friends</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.fr}<span className="ml-1.5" style={{fontSize:12,color:T.secondary||T.primary,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.fr/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.fr!=null&&<div style={{fontSize:10,color:T.secondary||T.muted,marginTop:2}}>{fY(yoy.fr,'pp')}</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>With friends</div>
+            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.fr}<span className="ml-1.5" style={{fontSize:12,color:heroSubC,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.fr/stats.total*100)+'%':''}</span></div>
+            {yoy&&yoy.fr!=null&&<div style={{fontSize:10,color:heroSubC,marginTop:2}}>{fY(yoy.fr,'pp')}</div>}
           </div>
           <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Best friend</div>
-            <div style={{fontSize:18,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{compD.length?compD[0].name:'\u2014'}</div>
-            {compD.length>0&&<div style={{fontSize:10,color:T.secondary||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{compD[0].Films} films</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Best friend</div>
+            <div style={{fontSize:18,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{compD.length?compD[0].name:'\u2014'}</div>
+            {compD.length>0&&<div style={{fontSize:10,color:heroSubC,marginTop:2,fontFamily:fontOf('sans')}}>{compD[0].Films} films</div>}
           </div>
           <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Avg rating</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.avg}<span className="ml-1" style={{fontSize:15,color:T.secondary||T.primary}}>{'\u2605'}</span></div>
-            {yoy&&yoy.avg!=null&&<div style={{fontSize:10,color:T.secondary||T.muted,marginTop:2}}>{fY(yoy.avg,'r')}</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Avg rating</div>
+            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.avg}<span className="ml-1" style={{fontSize:15,color:heroSubC}}>{'\u2605'}</span></div>
+            {yoy&&yoy.avg!=null&&<div style={{fontSize:10,color:heroSubC,marginTop:2}}>{fY(yoy.avg,'r')}</div>}
           </div>
           <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Runtime</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}</div>
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Runtime</div>
+            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}</div>
           </div>
           <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:T.muted,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Money spent</div>
-            <div style={{fontSize:22,fontWeight:600,color:T.primary,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'}</div>
-            {stats.total>0&&moneySpent>0&&<div style={{fontSize:10,color:T.secondary||T.primary,marginTop:2,fontFamily:fontOf('sans')}}>{'\u20AC'+(moneySpent/stats.total).toFixed(2)}/film</div>}
+            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Money spent</div>
+            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'}</div>
+            {stats.total>0&&moneySpent>0&&<div style={{fontSize:10,color:heroSubC,marginTop:2,fontFamily:fontOf('sans')}}>{'\u20AC'+(moneySpent/stats.total).toFixed(2)}/film</div>}
           </div>
         </div>
       </div>
