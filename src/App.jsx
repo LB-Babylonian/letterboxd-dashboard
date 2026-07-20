@@ -14,8 +14,8 @@ var TMDB='eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhYTIwMzZiNDljZDZlN2YzYTA5YTkzZmMyM2M2M
 // ratings, hover, etc.
 // ============================================================
 var NEUTRAL={
-  paper:'#FAF7F0',surface:'#F2EEE1',surfaceAlt:'#EDE7D5',
-  border:'#E5DFCF',borderStrong:'#D5CEB8',
+  paper:'#F2EBDA',surface:'#E9E1CC',surfaceAlt:'#DED5BC',
+  border:'#D8CFB8',borderStrong:'#B8AE94',
   ink:'#1A1A1A',inkSoft:'#3A3A38',muted:'#6B6B68',mutedSoft:'#8B8B85',
   dark:false
 };
@@ -28,7 +28,7 @@ var NEUTRAL={
 // Secondary is optional and used for accents (e.g. labels).
 // ============================================================
 var THEMES=[
-  {id:'neutral',name:'Default',dark:false,paper:'#FAF7F0',surface:'#F2EEE1',surfaceAlt:'#EDE7D5',border:'#E5DFCF',borderStrong:'#D5CEB8',ink:'#1A1A1A',inkSoft:'#3A3A38',muted:'#6B6B68',mutedSoft:'#8B8B85',primary:'#1F4258',secondary:'#1A1A1A',chartTextColor:'#FAF7F0',gradient:['#FAF7F0','#FAF7F0','#FAF7F0'],accentTh:'#1F4258',accentRt:'#1F4258',accentPct:'#6B6B68',dots:['#1F4258','#1A1A1A','#6B6B68'],metricColor:'#1A1A1A',descriptorColor:'#6B6B68',subColor:'#6B6B68'},
+  {id:'neutral',name:'Default',dark:false,paper:'#F2EBDA',surface:'#E9E1CC',surfaceAlt:'#DED5BC',border:'#D8CFB8',borderStrong:'#B8AE94',ink:'#1A1A1A',inkSoft:'#3A3A38',muted:'#6B6B68',mutedSoft:'#8B8B85',primary:'#7A2E2A',secondary:'#1A1A1A',chartTextColor:'#F2EBDA',gradient:['#F2EBDA','#F2EBDA','#F2EBDA'],accentTh:'#7A2E2A',accentRt:'#7A2E2A',accentPct:'#6B6B68',dots:['#7A2E2A','#1A1A1A','#6B6B68'],metricColor:'#1A1A1A',descriptorColor:'#6B6B68',subColor:'#6B6B68'},
   {id:'matrix',name:'Matrix',dark:true,paper:'#000000',surface:'#050B05',surfaceAlt:'#0B170B',border:'#0B270B',borderStrong:'#0F3A0F',ink:'#00FF55',inkSoft:'#00CC44',muted:'#008833',mutedSoft:'#005522',primary:'#00FF55',secondary:'#FF1A1A',gradient:['#000000','#020602','#000000'],accentTh:'#00FF55',accentRt:'#00FF55',accentPct:'#FF1A1A',dots:['#00FF55','#FF1A1A','#FFFFFF'],glow:'#00FF55',chartTextColor:'#000000'},
   {id:'br2049',name:'Blade Runner 2049',dark:true,paper:'#180F2A',surface:'#221842',surfaceAlt:'#2A1F55',border:'#3A2A6A',borderStrong:'#4A3590',ink:'#F0C79A',inkSoft:'#E0945C',muted:'#A878A0',mutedSoft:'#7050A0',primary:'#3F2A6A',secondary:'#FF8030',gradient:['#10082A','#1A1140','#240F3A'],accentTh:'#E0258A',accentRt:'#E0258A',accentPct:'#FF8030',dots:['#E0258A','#FF8030','#5570B8'],glow:'#E0258A',metricColor:'#E0258A',chartTextColor:'#F5F0E6'},
   {id:'amelie',name:'Amélie',dark:false,paper:'#2A4F2A',surface:'#345A34',surfaceAlt:'#3E6A3E',border:'#3E5F3E',borderStrong:'#5A7A5A',ink:'#E8AC2F',inkSoft:'#D89A1A',muted:'#B0985A',mutedSoft:'#85734A',primary:'#2A4F2A',secondary:'#E8AC2F',gradient:['#2A4F2A','#345A34','#3E6A3E'],accentTh:'#E8AC2F',accentRt:'#E8AC2F',accentPct:'#C42820',dots:['#E8AC2F','#C42820','#2A4F2A'],metricColor:'#C42820',chartTextColor:'#F5E0B8'},
