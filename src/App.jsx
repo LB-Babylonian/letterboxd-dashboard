@@ -184,7 +184,20 @@ function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r
 
 // Theme-aware rating color (5 buckets, more saturated = higher rating)
 // Returns T.primary uniformly for all ratings (no more gradient based on note)
-function rCT(r,T){if(!r||r===0)return NEUTRAL.mutedSoft;return T.primary}
+// Rating color: continuous hue interpolation from red (1★) → orange (3★) → green (5★).
+// Uses HSL for smooth transition. Returns muted gray if no rating.
+function rCT(r,T){
+  if(!r||r===0)return NEUTRAL.mutedSoft;
+  var clamped=Math.max(1,Math.min(5,r));
+  // Normalize to 0-1 (1★ = 0, 5★ = 1)
+  var t=(clamped-1)/4;
+  // Hue: 0 (red) → 30 (orange) → 130 (green)
+  var hue=t<0.5?(t*2)*30:30+((t-0.5)*2)*100;
+  // Saturation and lightness kept saturated for dark bg legibility
+  var sat=75;
+  var lum=52;
+  return 'hsl('+Math.round(hue)+','+sat+'%,'+lum+'%)';
+}
 
 // Year color — fixed qualitative palette, independent of theme.
 // Each year gets a distinct color from a 12-color palette (cycles if needed).
