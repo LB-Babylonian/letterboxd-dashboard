@@ -28,7 +28,7 @@ var NEUTRAL={
 // Secondary is optional and used for accents (e.g. labels).
 // ============================================================
 var THEMES=[
-  {id:'neutral',name:'Default',dark:true,paper:'#14181C',surface:'#1C2228',surfaceAlt:'#242A31',border:'#2C333B',borderStrong:'#3D4550',ink:'#FFFFFF',inkSoft:'#99AABB',muted:'#667788',mutedSoft:'#4A5560',primary:'#00E054',secondary:'#FF8000',chartTextColor:'#14181C',gradient:['#14181C','#181D22','#1C2228'],accentTh:'#00E054',accentRt:'#FF8000',accentPct:'#40BCF4',dots:['#00E054','#FF8000','#40BCF4'],metricColor:'#FFFFFF',descriptorColor:'#667788',subColor:'#99AABB',glow:'#00E054'},
+  {id:'neutral',name:'Default',dark:true,paper:'#14181C',surface:'#1C2228',surfaceAlt:'#242A31',border:'#2C333B',borderStrong:'#3D4550',ink:'#FFFFFF',inkSoft:'#99AABB',muted:'#667788',mutedSoft:'#4A5560',primary:'#00E054',secondary:'#FF8000',chartTextColor:'#14181C',gradient:['#14181C','#181D22','#1C2228'],accentTh:'#00E054',accentRt:'#FF8000',accentPct:'#40BCF4',dots:['#00E054','#FF8000','#40BCF4'],metricColor:'#FFFFFF',descriptorColor:'#667788',subColor:'#99AABB'},
   {id:'matrix',name:'Matrix',dark:true,paper:'#000000',surface:'#050B05',surfaceAlt:'#0B170B',border:'#0B270B',borderStrong:'#0F3A0F',ink:'#00FF55',inkSoft:'#00CC44',muted:'#008833',mutedSoft:'#005522',primary:'#00FF55',secondary:'#FF1A1A',gradient:['#000000','#020602','#000000'],accentTh:'#00FF55',accentRt:'#00FF55',accentPct:'#FF1A1A',dots:['#00FF55','#FF1A1A','#FFFFFF'],glow:'#00FF55',chartTextColor:'#000000'},
   {id:'br2049',name:'Blade Runner 2049',dark:true,paper:'#180F2A',surface:'#221842',surfaceAlt:'#2A1F55',border:'#3A2A6A',borderStrong:'#4A3590',ink:'#F0C79A',inkSoft:'#E0945C',muted:'#A878A0',mutedSoft:'#7050A0',primary:'#3F2A6A',secondary:'#FF8030',gradient:['#10082A','#1A1140','#240F3A'],accentTh:'#E0258A',accentRt:'#E0258A',accentPct:'#FF8030',dots:['#E0258A','#FF8030','#5570B8'],glow:'#E0258A',metricColor:'#E0258A',chartTextColor:'#F5F0E6'},
   {id:'amelie',name:'Amélie',dark:false,paper:'#2A4F2A',surface:'#345A34',surfaceAlt:'#3E6A3E',border:'#3E5F3E',borderStrong:'#5A7A5A',ink:'#E8AC2F',inkSoft:'#D89A1A',muted:'#B0985A',mutedSoft:'#85734A',primary:'#2A4F2A',secondary:'#E8AC2F',gradient:['#2A4F2A','#345A34','#3E6A3E'],accentTh:'#E8AC2F',accentRt:'#E8AC2F',accentPct:'#C42820',dots:['#E8AC2F','#C42820','#2A4F2A'],metricColor:'#C42820',chartTextColor:'#F5E0B8'},
@@ -78,7 +78,7 @@ var FONT_MAP={
 function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
 
 var THEME_COPY={
-  neutral:{masthead:'\u2014 Issue No. {total} \u00b7 {year} \u2014',title:'A year at the movies',heroLabel:'Films watched',heroSuffix:'+{n} since last year',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  neutral:{masthead:'\u2014 Issue No. {total} \u00b7 {year} \u2014',title:'A year at the movies',heroLabel:'Films watched',heroSuffix:'{n} since last year',fonts:{hero:'serif',label:'sans',title:'serif'}},
   matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'red.pills.taken',heroSuffix:'[\u0394 {n} from prev cycle]',fonts:{hero:'monoX',label:'mono',title:'mono'}},
   br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Miracles witnessed',heroSuffix:'{n} since last scan',fonts:{hero:'iceberg',label:'mono',title:'iceberg'}},
   amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Petits bonheurs',heroSuffix:'soit {n} de plus !',fonts:{hero:'handwrite',label:'handwrite',title:'handwrite'}},
@@ -184,18 +184,19 @@ function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r
 
 // Theme-aware rating color (5 buckets, more saturated = higher rating)
 // Returns T.primary uniformly for all ratings (no more gradient based on note)
-// Rating color: continuous hue interpolation from red (1★) → orange (3★) → green (5★).
-// Uses HSL for smooth transition. Returns muted gray if no rating.
+// Rating color: continuous hue interpolation from red (1★) → orange (3.5★) → green (5★).
+// Curve skewed so green dominates (most films rated 3-5). Saturation dropped for less neon feel.
 function rCT(r,T){
   if(!r||r===0)return NEUTRAL.mutedSoft;
   var clamped=Math.max(1,Math.min(5,r));
-  // Normalize to 0-1 (1★ = 0, 5★ = 1)
   var t=(clamped-1)/4;
-  // Hue: 0 (red) → 30 (orange) → 130 (green)
-  var hue=t<0.5?(t*2)*30:30+((t-0.5)*2)*100;
-  // Saturation and lightness kept saturated for dark bg legibility
-  var sat=75;
-  var lum=52;
+  // Skewed curve: pow(t, 0.7) makes low ratings stay red/orange longer, then green kicks in
+  var skewed=Math.pow(t,0.7);
+  // Hue: 0 (red) → 25 (orange) at 40% of curve → 130 (green muted) at 100%
+  var hue=skewed<0.4?(skewed/0.4)*25:25+((skewed-0.4)/0.6)*105;
+  // Lower saturation, adjusted lightness for less neon feel on dark bg
+  var sat=58;
+  var lum=48;
   return 'hsl('+Math.round(hue)+','+sat+'%,'+lum+'%)';
 }
 
@@ -286,7 +287,7 @@ function Stat(p){var T=p.T;var yoyColor=p.yoy?(p.yoy.charAt(0)==='+'?T.primary:p
 function SrtB(p){var T=p.T;return <button onClick={p.onToggle} className="text-xs px-2 py-0.5 transition-colors" style={{color:NEUTRAL.muted,border:'0.5px solid '+NEUTRAL.border,borderRadius:4,background:'transparent'}}>{p.val==='avg'?'by count':'by rating'}</button>}
 
 // CTbl — Horizontal bar table
-function CTbl(p){var T=p.T;var sorted=p.sortMode==='avg'?[].concat(p.data).sort(function(a,b){return(b.Avg||0)-(a.Avg||0)}):p.data;var mc=Math.max.apply(null,sorted.map(function(d){return d.Films}).concat([1]));var barText=T.chartTextColor||NEUTRAL.ink;return <div className="space-y-0.5">{sorted.map(function(d,i){var ac=p.sel===d.name;var barColor=rCT(d.Avg,T);return <div key={i} onClick={function(){p.onSel(ac?null:d.name)}} title={d.tip||''} className="flex items-center gap-2 cursor-pointer py-0.5 px-1" style={{borderRadius:4,background:ac?NEUTRAL.surfaceAlt:'transparent',boxShadow:ac?'inset 0 0 0 1px '+T.primary:'none'}}><div className="w-20 md:w-32 text-xs text-right truncate" style={{color:NEUTRAL.inkSoft}} title={d.name}>{d.name}</div><div className="flex-1 h-6 flex items-center" style={{background:NEUTRAL.surface,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.Films/mc)*100,8)+'%',minWidth:30,backgroundColor:barColor,borderRadius:4}}><span className="text-xs" style={{color:barText,fontWeight:500}}>{d.Films}</span></div></div><div className="w-12 text-xs text-right font-mono" style={{color:NEUTRAL.ink}}>{d.Avg>0?d.Avg.toFixed(1)+'\u2605':'\u2014'}</div></div>})}</div>}
+function CTbl(p){var T=p.T;var sorted=p.sortMode==='avg'?[].concat(p.data).sort(function(a,b){return(b.Avg||0)-(a.Avg||0)}):p.data;var mc=Math.max.apply(null,sorted.map(function(d){return d.Films}).concat([1]));var barText=T.chartTextColor||NEUTRAL.ink;return <div className="space-y-0.5">{sorted.map(function(d,i){var ac=p.sel===d.name;var barColor=rCT(d.Avg,T);return <div key={i} onClick={function(){p.onSel(ac?null:d.name)}} title={d.tip||''} className="flex items-center gap-2 cursor-pointer py-0.5 px-1" style={{borderRadius:4,background:ac?NEUTRAL.surfaceAlt:'transparent',boxShadow:ac?'inset 0 0 0 1px '+T.primary:'none'}}><div className="w-20 md:w-32 text-xs text-right truncate" style={{color:NEUTRAL.inkSoft}} title={d.name}>{d.name}</div><div className="flex-1 h-6 flex items-center" style={{background:NEUTRAL.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.Films/mc)*100,8)+'%',minWidth:30,backgroundColor:barColor,borderRadius:4}}><span className="text-xs" style={{color:barText,fontWeight:500}}>{d.Films}</span></div></div><div className="w-12 text-xs text-right font-mono" style={{color:NEUTRAL.ink}}>{d.Avg>0?d.Avg.toFixed(1)+'\u2605':'\u2014'}</div></div>})}</div>}
 
 // FilmList — Selected film panel
 function FilmList(p){var T=p.T;if(!p.films||!p.films.length)return null;return <div className="mt-3 p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+T.primary,borderRadius:4}}><div className="flex justify-between items-center mb-2"><div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div><button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,borderRadius:4}}>{'\u2715'}</button></div><div className="max-h-72 overflow-y-auto">{p.films.map(function(f,i){return <div key={i} className="text-xs py-1.5 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span><span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span></div>})}</div></div>}
