@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, Component } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { createClient } from "@supabase/supabase-js";
 // Supabase config comes from .env (see .env.example). Note that Vite inlines
@@ -358,6 +358,27 @@ function parseTop50(raw){try{var cl=fixEnc(raw).replace(/^\uFEFF/,"").replace(/\
 function parseWatchlist(raw){try{var cl=fixEnc(raw).replace(/^\uFEFF/,"").replace(/\r\n/g,"\n").replace(/\r/g,"\n");var lines=cl.split("\n").filter(function(l){return l.trim()});if(lines.length<2)return[];var hdr=pCSVL(lines[0]).map(function(h){return h.trim()});var hi={};hdr.forEach(function(h,i){hi[h]=i});var res=[];for(var i=1;i<lines.length;i++){var flds=pCSVL(lines[i]);var dt=(flds[hi["Date"]]||"").trim();var nm=(flds[hi["Name"]]||"").trim();var yr=parseInt((flds[hi["Year"]]||"").trim());var uri=(flds[hi["Letterboxd URI"]]||"").trim();if(nm&&yr)res.push({date:dt,name:nm,year:yr,uri:uri})}return res}catch(e){return[]}}
 function parseReviews(raw){try{var cl=fixEnc(raw).replace(/^\uFEFF/,"").replace(/\r\n/g,"\n").replace(/\r/g,"\n");var lines=cl.split("\n");if(lines.length<2)return[];var hdr=pCSVL(lines[0]).map(function(h){return h.trim()});var hi={};hdr.forEach(function(h,i){hi[h]=i});var res=[];var buf=[];for(var i=1;i<lines.length;i++){buf.push(lines[i]);var joined=buf.join("\n");var flds=pCSVL(joined);if(flds.length>=hdr.length){var nm=(flds[hi["Name"]]||"").trim();var yr=parseInt((flds[hi["Year"]]||"").trim());var rv=(flds[hi["Review"]]||"").trim();var tg=(flds[hi["Tags"]]||"").trim().toLowerCase();var rt=(flds[hi["Rating"]]||"").trim();if(nm&&tg.indexOf("yesmine")!==-1){var cleaned=rv.replace(/\u2019/g,"'").replace(/\u2018/g,"'");var yMatch=cleaned.match(/Y.s\s*rating\s*[:\=]\s*([\d.]+|sleep|memory)\/5/i);if(yMatch){var yVal=yMatch[1];var yNum=parseFloat(yVal);res.push({name:nm,year:yr,yRating:isNaN(yNum)?yVal:yNum,myRating:rt?parseFloat(rt):null})}}buf=[]}}return res}catch(e){return[]}}
 
+// A render error anywhere in a tab used to blank the entire page — React unmounts
+// the whole tree and you get a white screen with the reason only in the console.
+// This catches it, keeps the rest of the app usable, and puts the message on screen.
+class TabErrorBoundary extends Component{
+  constructor(props){super(props);this.state={err:null}}
+  static getDerivedStateFromError(err){return{err:err}}
+  componentDidCatch(err,info){console.error('Dashboard render error:',err,info)}
+  render(){
+    if(!this.state.err)return this.props.children;
+    var e=this.state.err;
+    return <div className="p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+NEG,borderRadius:4}}>
+      <div style={{fontSize:13,fontWeight:500,color:NEUTRAL.ink,marginBottom:4}}>This section failed to render.</div>
+      <div style={{fontSize:11,color:NEUTRAL.muted,marginBottom:10}}>The rest of the dashboard still works — switch tabs to carry on. Details below.</div>
+      <pre style={{fontSize:11,color:NEG,whiteSpace:'pre-wrap',margin:0}}>{String(e&&e.message||e)}</pre>
+      <pre style={{fontSize:10,color:NEUTRAL.mutedSoft,whiteSpace:'pre-wrap',marginTop:8,maxHeight:220,overflow:'auto'}}>{String(e&&e.stack||'').slice(0,1500)}</pre>
+      <button onClick={function(){this.setState({err:null})}.bind(this)} className="text-xs mt-3 px-2 py-1"
+        style={{color:NEUTRAL.inkSoft,background:'transparent',border:'0.5px solid '+NEUTRAL.borderStrong,borderRadius:4,cursor:'pointer'}}>Try again</button>
+    </div>;
+  }
+}
+
 export default function Dashboard(){
   var[loading,sLoading]=useState(true);var[pd,sPd]=useState('');var[subscriptions,sSubscriptions]=useState(DSUBS);var[reg,sReg]=useState({});
   var[sI,sSI]=useState(false);var[csv,sCsv]=useState('');var[iR,sIR]=useState(null);
@@ -579,6 +600,7 @@ export default function Dashboard(){
       {tab==='people'&&<button onClick={function(){sDirUniq(function(v){return!v})}} style={dirUniq?{padding:'4px 10px',fontSize:11,fontWeight:500,color:N.paper,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'4px 10px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{dirUniq?'All watches':'Unique films only'}</button>}
     </div>}
 
+    <TabErrorBoundary key={tab}>
     {/* ===== OVERVIEW ===== */}
     {tab==='overview'&&<div className="space-y-10">
 
@@ -775,6 +797,7 @@ export default function Dashboard(){
       <input style={Object.assign({},inputStyle,{width:'100%'})} placeholder="Filter tags..." value={tagSearch} onChange={function(e){sTagSearch(e.target.value)}}/>
       {CATS.map(function(cat){var tags=tagGroupedDash[cat];if(!tags||!tags.length)return null;return <div key={cat} className="p-4 mb-3" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><div style={{fontSize:13,fontWeight:500,color:N.inkSoft,marginBottom:8}}>{CI[cat].l} ({tags.length})</div><div className="space-y-0 max-h-64 overflow-y-auto">{tags.map(function(t){return renderTagRow(t,false)})}</div></div>})}
     </div>}
+    </TabErrorBoundary>
 
     <div className="mt-12 pt-4 text-center" style={{borderTop:'0.5px solid '+N.border}}><div style={{fontSize:10,letterSpacing:'0.2em',color:N.mutedSoft,textTransform:'uppercase',fontFamily:fontLabel}}>Babylonian's Letterboxd · {T.name}</div></div>
   </div></div>);
