@@ -366,7 +366,7 @@ function FilmList(p){var T=p.T;if(!p.films||!p.films.length)return null;return <
 // Profile picture. Drop the file at public/avatar.jpg and it appears; leave it out and
 // this renders nothing at all. Served from public/ rather than hotlinked from
 // Letterboxd's CDN so it cannot break when they reorganise their storage.
-var AVATAR_SRC='/avatar.jpg';
+var AVATAR_SRC='/Avatar.jpg';
 function Avatar(p){
   var[ok,sOk]=useState(true);
   if(!ok||!p.src)return null;
