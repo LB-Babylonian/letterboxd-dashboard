@@ -363,6 +363,17 @@ function CTbl(p){var T=p.T;var[open,sOpen]=useState(false);var sorted=p.sortMode
 // FilmList — Selected film panel
 function FilmList(p){var T=p.T;if(!p.films||!p.films.length)return null;return <div className="mt-3 p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+T.primary,borderRadius:4}}><div className="flex justify-between items-center mb-2"><div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div><button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,borderRadius:4}}>{'\u2715'}</button></div><div className="max-h-72 overflow-y-auto">{p.films.map(function(f,i){return <div key={i} className="text-xs py-1.5 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span><span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span></div>})}</div></div>}
 
+// Poster — 772 of 777 metadata rows carry a TMDB thumbnail (w92) that nothing rendered
+// until now. Small and lazy-loaded on purpose: this is for recognising a title at a
+// glance, not decoration. Falls back to an empty slot so rows never jump height.
+function Poster(p){
+  var w=p.w||24,h=Math.round(w*1.5);
+  var src=p.meta&&p.meta.poster;
+  var base={width:w,height:h,borderRadius:2,flex:'0 0 auto',background:NEUTRAL.surfaceAlt};
+  if(!src)return <div style={base}/>;
+  return <img src={src} alt="" loading="lazy" width={w} height={h} style={Object.assign({},base,{objectFit:'cover'})}/>;
+}
+
 // DQPanel — Data Quality (all colors derived from theme primary via blend)
 function DQPanel(p){var T=p.T;var d=p.data;if(!d)return null;var c1=T.primary,c2=NEUTRAL.inkSoft,c3=NEUTRAL.muted;return <div className="p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+NEUTRAL.border,borderRadius:4}}><SectionHead T={T} title="Data quality"/><div className="space-y-3">{d.unrated.length>0&&<div><div className="text-xs mb-1" style={{color:NEUTRAL.muted}}>Unrated: {d.unrated.length} films</div><div className="ml-4 max-h-32 overflow-y-auto">{d.unrated.map(function(e,i){return <div key={i} className="text-xs" style={{color:NEUTRAL.mutedSoft}}>{e.name} ({e.date})</div>})}</div></div>}{d.sP.length>0&&<div><div className="text-xs mb-1" style={{color:c3}}>Sub venue premium: {d.sP.length} payments</div><div className="ml-4 max-h-32 overflow-y-auto">{d.sP.map(function(x,i){return <div key={i} className="text-xs" style={{color:NEUTRAL.muted}}>{x.e.name} ({x.e.date}) - {x.price.toFixed(2)} EUR</div>})}</div></div>}{d.nP.length>0&&<div><div className="text-xs mb-1" style={{color:c1}}>Non-sub venue, no price: {d.nP.length}</div><div className="ml-4 max-h-32 overflow-y-auto">{d.nP.map(function(e,i){return <div key={i} className="text-xs" style={{color:NEUTRAL.muted}}>{e.name} ({e.date})</div>})}</div></div>}{d.nRP.length>0&&<div><div className="text-xs mb-1" style={{color:c1}}>Rental, no price: {d.nRP.length}</div><div className="ml-4 max-h-32 overflow-y-auto">{d.nRP.map(function(e,i){return <div key={i} className="text-xs" style={{color:NEUTRAL.muted}}>{e.name} ({e.date})</div>})}</div></div>}{d.nV.length>0&&<div><div className="text-xs mb-1" style={{color:c2}}>Theater tag, no venue: {d.nV.length}</div><div className="ml-4 max-h-32 overflow-y-auto">{d.nV.map(function(e,i){return <div key={i} className="text-xs" style={{color:NEUTRAL.muted}}>{e.name} ({e.date})</div>})}</div></div>}{d.nS.length>0&&<div><div className="text-xs mb-1" style={{color:c2}}>Venue tag, no theater: {d.nS.length}</div><div className="ml-4 max-h-32 overflow-y-auto">{d.nS.map(function(e,i){return <div key={i} className="text-xs" style={{color:NEUTRAL.muted}}>{e.name} ({e.date})</div>})}</div></div>}{d.nV.length===0&&d.nS.length===0&&d.nP.length===0&&d.nRP.length===0&&<div className="text-xs" style={{color:T.primary}}>No pricing issues</div>}</div></div>}
 
@@ -500,6 +511,11 @@ export default function Dashboard(){
   var tagFiltered=useMemo(function(){return tagAllSorted.filter(function(t){return!tagSearch||t.indexOf(tagSearch.toLowerCase())!==-1})},[tagAllSorted,tagSearch]);
   var tagSelCount=useMemo(function(){return Object.keys(tagSel).filter(function(k){return tagSel[k]}).length},[tagSel]);
   var tagGrouped=useMemo(function(){var g={_un:[]};CATS.forEach(function(c){g[c]=[]});tagFiltered.forEach(function(t){var c=fullReg[t]&&fullReg[t].cat;if(c&&g[c])g[c].push(t);else g._un.push(t)});return g},[tagFiltered,fullReg]);
+  // The watchlist was fetched on every load and never shown. Oldest additions first:
+  // "what have I been meaning to watch longest" is the useful read of 553 entries.
+  var watchedKeys=useMemo(function(){var m={};all.forEach(function(e){m[e.name+'|||'+e.year]=true});return m},[all]);
+  var wlSorted=useMemo(function(){return [].concat(wlData).sort(function(a,b){return(a.date||'')<(b.date||'')?-1:1})},[wlData]);
+  var wlWatched=useMemo(function(){return wlSorted.filter(function(f){return watchedKeys[f.name+'|||'+f.year]}).length},[wlSorted,watchedKeys]);
   var costYrs=useMemo(function(){return['All'].concat(Array.from(new Set(all.map(function(e){return e.date.slice(0,4)}))).sort())},[all]);
   var costData=useMemo(function(){var now=getNowYM();return Array.from(new Set(all.map(function(e){return e.date.slice(0,4)}))).sort().map(function(y){
     var films=all.filter(function(e){return e.date.indexOf(y)===0});var st=0,sbk=[];subscriptions.forEach(function(sub){sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var pTo=pr.to||now,yS=y+'-01',yE=y+'-12',eF=pr.from>yS?pr.from:yS,eT=pTo<yE?pTo:yE;if(eF>eT)return;var mo=mBt(eF,eT),co=mo*pr.price;st+=co;sbk.push({name:sub.name,mo:mo,price:pr.price,cost:co})})});
@@ -509,7 +525,6 @@ export default function Dashboard(){
     var tkAll=[],tkC=0;films.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var cat=getCat(vn,fullReg);if(cat==='indie_venue'||(cat==='sub_venue'&&!isSubCovAt(e.date,subscriptions))){tkAll.push(e);var p=gTP(e.tags,fullReg);if(p!==null)tkC+=p}});if(tkAll.length&&tkC>0)platRows.push({plat:'Theaters (per ticket)',films:tkAll.length,sub:'Per ticket',cost:tkC,cpf:tkC/tkAll.length});
     var tot=st+tt+rt;return{yr:y,films:films.length,st:st,sbk:sbk,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,pf:films.length?tot/films.length:0,platRows:platRows}})},[all,subscriptions,fullReg]);
   var costDataFilt=useMemo(function(){return costYr==='All'?costData:costData.filter(function(d){return d.yr===costYr})},[costData,costYr]);
-  var moneySpent=useMemo(function(){var t=0;if(yr==='All'){costData.forEach(function(d){t+=d.tot})}else{var d=costData.find(function(d){return d.yr===yr});if(d)t=d.tot}return t},[costData,yr]);
   var allTimeTotals=useMemo(function(){var st=0,tt=0,tc=0,rt=0,rc=0,fn=0,pr=[];costData.forEach(function(d){st+=d.st;tt+=d.tt;tc+=d.tc;rt+=d.rt;rc+=d.rc;fn+=d.films;d.platRows.forEach(function(r){var ex=pr.find(function(x){return x.plat===r.plat});if(ex){ex.cost+=r.cost;ex.films+=r.films}else{pr.push({plat:r.plat,films:r.films,sub:r.sub,cost:r.cost})}})});pr.forEach(function(r){r.cpf=r.films?r.cost/r.films:0});var tot=st+tt+rt;return{st:st,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,films:fn,pf:fn?tot/fn:0,platRows:pr}},[costData]);
   var monthlySpend=useMemo(function(){if(!all.length)return[];var now=getNowYM();var months=[];var first=all[0].date.slice(0,7),last=all[all.length-1].date.slice(0,7);var cur=first;while(cur<=last){months.push(cur);var p=cur.split('-').map(Number);p[1]++;if(p[1]>12){p[0]++;p[1]=1}cur=p[0]+'-'+String(p[1]).padStart(2,'0')}return months.map(function(ym){var sc=subCostForMonth(ym,subscriptions);var mF=all.filter(function(e){return e.date.slice(0,7)===ym});var tk=0,rl=0;mF.forEach(function(e){var vn=gV(e.tags,fullReg);if(vn){var pr=gTP(e.tags,fullReg);if(pr!==null)tk+=pr}if(e.tags.some(function(t){return getCat(t,fullReg)==='platform_rental'})){var p2=gTP(e.tags,fullReg);if(p2!==null)rl+=p2}});return{m:MS[parseInt(ym.slice(5))-1]+' '+ym.slice(2,4),ym:ym,subs:sc,tickets:tk,rentals:rl,total:sc+tk+rl}})},[all,subscriptions,fullReg]);
   var monthlyFilt=useMemo(function(){if(costYr==='All')return monthlySpend;return monthlySpend.filter(function(m){return m.ym.indexOf(costYr)===0})},[monthlySpend,costYr]);
@@ -614,25 +629,18 @@ export default function Dashboard(){
           <div style={{width:5,height:5,background:T.dots[2],borderRadius:'50%'}}/>
         </div>}
         <div style={{position:'relative',zIndex:1}}>
-          <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
+          <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?' \u00b7 all time':' \u00b7 '+yr}</div>
           <div className="flex items-baseline gap-4 flex-wrap">
             <div style={{fontSize:'clamp(46px, 6.5vw, 76px)',lineHeight:1,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+            {/* The three volume figures share the figure's baseline. This is what gives a
+                full-width band something to hold — the emptiness was a content problem, not a
+                padding one. Hours and rewatches belong to "how much did I watch" as much as the
+                count does, and rewatches were computed and discarded until now. */}
+            <div style={{fontSize:20,fontWeight:600,color:heroSubC,fontFamily:fontHero,letterSpacing:'-0.01em'}}>{dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':''}</div>
+            {stats.rw>0&&<div style={{fontSize:20,fontWeight:600,color:heroSubC,fontFamily:fontHero,letterSpacing:'-0.01em'}}>{stats.rw}<span style={{fontSize:11,fontWeight:400,marginLeft:4,fontFamily:fontOf('sans')}}>rewatches</span></div>}
             {yoy&&yoy.films!=null&&<div style={{fontSize:13,color:heroSubC,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
           </div>
         </div>
-      </div>
-
-      {/* KPI ROW — the six stats that used to be crammed into the hero card. They read
-          better as one row in the neutral palette than as a grid competing with the figure
-          for attention inside a themed frame. The streak/binge figures that used to sit
-          here moved down beside the calendar, which is what they actually describe. */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="In theaters" value={stats.th} sub={stats.total?Math.round(stats.th/stats.total*100)+'%':''} yoy={yoy&&yoy.th!=null?fY(yoy.th,'pp'):null}/>
-        <Stat T={N} label="With friends" value={stats.fr} sub={stats.total?Math.round(stats.fr/stats.total*100)+'%':''} yoy={yoy&&yoy.fr!=null?fY(yoy.fr,'pp'):null}/>
-        <Stat T={N} label="Best friend" value={compD.length?compD[0].name:'\u2014'} sub={compD.length?compD[0].Films+' films':''}/>
-        <Stat T={N} label="Avg rating" value={stats.avg+'\u2605'} yoy={yoy&&yoy.avg!=null?fY(yoy.avg,'r'):null}/>
-        <Stat T={N} label="Runtime" value={dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}/>
-        <Stat T={N} label="Money spent" value={moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'} sub={stats.total>0&&moneySpent>0?'\u20AC'+(moneySpent/stats.total).toFixed(2)+'/film':''} noBorder/>
       </div>
 
       {/* HEATMAP */}
@@ -668,27 +676,17 @@ export default function Dashboard(){
         <div className="flex gap-2 flex-wrap mt-2 items-center">{cumData.years.map(function(y){var ys=String(y);var pick=isoYrs.indexOf(ys)!==-1;var dim=isoYrs.length>0&&!pick;return <button key={y} className="yr-chip" onClick={function(){sIsoYrs(function(prev){return prev.indexOf(ys)!==-1?prev.filter(function(x){return x!==ys}):prev.concat([ys])})}} title={pick?'Remove '+ys+' from the comparison':'Show '+ys+' \u2014 click more years to compare them'} style={{opacity:dim?0.45:1,background:pick?N.surfaceAlt:undefined,borderColor:pick?yC(y,cumData.years):undefined}}><div style={{width:14,height:2,background:yC(y,cumData.years),borderRadius:4}}/><span className="text-xs" style={{color:pick?N.ink:N.muted}}>{y}</span></button>})}{isoYrs.length>0?<button onClick={function(){sIsoYrs([])}} className="text-xs px-2 py-0.5" style={{color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,cursor:'pointer'}}>{'\u2715'} All years</button>:<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a year to isolate {'\u00B7'} pick several to compare</span>}</div>
       </div>
 
-      {/* RATING DISTRIBUTION */}
-      <div>
-        <SectionHead T={N} title="Rating distribution" aside={<span className="text-xs" style={{color:N.muted}}>average <span style={{color:T.primary,fontWeight:500}}>{stats.avg}{'\u2605'}</span></span>}/>
-        <ResponsiveContainer width="100%" height={230}>
-          <BarChart data={rDist}>
-            <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
-            <XAxis dataKey="rating" tick={{fill:N.muted,fontSize:11}}/>
-            <YAxis tick={{fill:N.muted,fontSize:10}}/>
-            <Tooltip content={function(p){return <CTooltip {...p} T={N}/>}}/>
-            <Bar dataKey="count" name="Films" radius={[3,3,0,0]} cursor="pointer" onClick={function(d){sSR(function(p){return p===parseFloat(d.rating)?null:parseFloat(d.rating)})}}>
-              {rDist.map(function(d,i){var r=parseFloat(d.rating),a=sR===r;return <Cell key={i} fill={rCT(r)} fillOpacity={sR!==null&&!a?0.2:0.95} stroke={a?N.ink:'none'} strokeWidth={a?1.5:0}/>})}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-        {sR!==null&&<FilmList T={N} title={sR+'\u2605'} films={selFilms} onClose={function(){sSR(null)}}/>}
-      </div>
 
     </div>}
 
     {/* ===== WHERE ===== */}
     {tab==='where'&&<div className="space-y-6">
+      {/* "In theaters" moved here from Overview — it is a venue question, not a volume one. */}
+      <div className="grid grid-cols-3" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+        <Stat T={N} label="In theaters" value={stats.th} sub={stats.total?Math.round(stats.th/stats.total*100)+'% of films':''} yoy={yoy&&yoy.th!=null?fY(yoy.th,'pp'):null}/>
+        <Stat T={N} label="Platforms" value={platD.length} sub="distinct"/>
+        <Stat T={N} label="Venues" value={venD.length} sub="distinct" noBorder/>
+      </div>
       <div><SectionHead T={N} title="Platforms" aside={<SrtB T={N} val={sorts.pl} onToggle={function(){ts('pl')}}/>}/><CTbl T={N} data={platD} sel={sP} onSel={function(v){sSP(v);sSVe(null)}} sortMode={sorts.pl}/></div>
       <FilmList T={N} title={sP} films={platF} onClose={function(){sSP(null)}}/>
       <div><SectionHead T={N} title="Theaters" aside={<SrtB T={N} val={sorts.ve} onToggle={function(){ts('ve')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={venD} sel={sVe} onSel={function(v){sSVe(v);sSP(null)}} sortMode={sorts.ve}/></div></div>
@@ -714,6 +712,12 @@ export default function Dashboard(){
         <Stat T={N} label="Solo" value={solo.solo} sub={(ef.length?((solo.solo/ef.length)*100).toFixed(0):0)+'%'} yoy={yoy&&fY(-yoy.fr,'pp')}/>
         <Stat T={N} label="With friends" value={solo.social} sub={(ef.length?((solo.social/ef.length)*100).toFixed(0):0)+'%'} yoy={yoy&&fY(yoy.fr,'pp')} noBorder/>
       </div>
+      {/* "Best friend" moved here from Overview. With friends / Solo already lived on
+          this page, so only this one needed a home. */}
+      {compD.length>0&&<div className="grid grid-cols-2" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+        <Stat T={N} label="Best friend" value={compD[0].name} sub={compD[0].Films+' films together'}/>
+        <Stat T={N} label="People seen with" value={compD.length} sub="distinct" noBorder/>
+      </div>}
       <div><SectionHead T={N} title="Companions" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>hover for top films</span>}/><div className="flex justify-end mb-2"><SrtB T={N} val={sorts.co} onToggle={function(){ts('co')}}/></div><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={10} data={compD} sel={sCo} onSel={sSCo} sortMode={sorts.co}/></div></div>
       <FilmList T={N} title={sCo} films={compF} onClose={function(){sSCo(null)}}/>
     </div>}
@@ -735,6 +739,31 @@ export default function Dashboard(){
 
     {/* ===== TASTE ===== */}
     {tab==='taste'&&<div className="space-y-6">
+      {/* Average rating and the distribution moved here from Overview: they answer
+          "was it any good", which is this page's question, not page one's. */}
+      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+        <Stat T={N} label="Avg rating" value={stats.avg+'\u2605'} yoy={yoy&&yoy.avg!=null?fY(yoy.avg,'r'):null}/>
+        <Stat T={N} label="Rated" value={ef.filter(function(e){return e.rating!==null}).length} sub={ef.length?Math.round(ef.filter(function(e){return e.rating!==null}).length/ef.length*100)+'% of films':''}/>
+        <Stat T={N} label="Rewatches" value={stats.rw} sub={ef.length?Math.round(stats.rw/ef.length*100)+'%':''}/>
+        <Stat T={N} label="Runtime" value={dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':'\u2014'} sub={dirStats.avgRun?dirStats.avgRun+'min avg':''} noBorder/>
+      </div>
+      {/* RATING DISTRIBUTION — moved from Overview */}
+      <div>
+        <SectionHead T={N} title="Rating distribution" aside={<span className="text-xs" style={{color:N.muted}}>average <span style={{color:T.primary,fontWeight:500}}>{stats.avg}{'\u2605'}</span></span>}/>
+        <ResponsiveContainer width="100%" height={230}>
+          <BarChart data={rDist}>
+            <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+            <XAxis dataKey="rating" tick={{fill:N.muted,fontSize:11}}/>
+            <YAxis tick={{fill:N.muted,fontSize:10}}/>
+            <Tooltip content={function(p){return <CTooltip {...p} T={N}/>}}/>
+            <Bar dataKey="count" name="Films" radius={[3,3,0,0]} cursor="pointer" onClick={function(d){sSR(function(p){return p===parseFloat(d.rating)?null:parseFloat(d.rating)})}}>
+              {rDist.map(function(d,i){var r=parseFloat(d.rating),a=sR===r;return <Cell key={i} fill={rCT(r)} fillOpacity={sR!==null&&!a?0.2:0.95} stroke={a?N.ink:'none'} strokeWidth={a?1.5:0}/>})}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        {sR!==null&&<FilmList T={N} title={sR+'\u2605'} films={selFilms} onClose={function(){sSR(null)}}/>}
+      </div>
+
       <div><SectionHead T={N} title="Decades" aside={<SrtB T={N} val={sorts.de} onToggle={function(){ts('de')}}/>}/><CTbl T={N} data={decD} sel={sDe} onSel={function(v){sSDe(v);sSTg(null)}} sortMode={sorts.de}/></div>
       <FilmList T={N} title={sDe} films={decF} onClose={function(){sSDe(null)}}/>
       <div><SectionHead T={N} title="Tags" aside={<SrtB T={N} val={sorts.tg} onToggle={function(){ts('tg')}}/>}/><CTbl T={N} cap={8} data={tagD} sel={sTg} onSel={function(v){sSTg(v);sSDe(null)}} sortMode={sorts.tg}/></div>
@@ -752,12 +781,25 @@ export default function Dashboard(){
     {tab==='rankings'&&<div className="space-y-8">
       {top50Evo.years.length>0&&<div>
         <SectionHead T={N} title="Top 50, all time" aside={<span className="text-xs" style={{color:N.mutedSoft}}>{top50Evo.years.join(" → ")}</span>}/>
-        <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th>{top50Evo.years.map(function(y){return <th key={y} className="text-center py-2" style={{width:80,fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>{y}</th>})}</tr></thead><tbody>{top50Evo.films.map(function(fi,i){var yrs2=top50Evo.years;var latestR=fi.ranks[yrs2[yrs2.length-1]];var inLatest=latestR!==undefined;return <tr key={i} style={{borderBottom:'0.5px solid '+N.border,opacity:inLatest?1:0.35}}><td className="py-1.5" style={{color:N.inkSoft}}>{fi.name} <span style={{color:N.muted}}>({fi.year})</span></td>{yrs2.map(function(y,yi){var r=fi.ranks[y];var prev=yi>0?fi.ranks[yrs2[yi-1]]:null;var move=r&&prev?(prev-r):null;var isNew=r&&!prev&&yi>0;var isOut=!r&&prev;return <td key={y} className="py-1.5 text-center"><div className="flex items-center justify-center gap-0.5">{r?<span style={{fontWeight:500,color:N.ink}}>{r}</span>:isOut?<span className="text-xs" style={{color:N.mutedSoft}}>OUT</span>:<span style={{color:N.mutedSoft}}>—</span>}{r&&yi>0&&(isNew?<span className="ml-0.5" style={{fontSize:10,color:T.secondary||T.primary,fontWeight:500}}>NEW</span>:move!==null?<span className="ml-0.5" style={{fontSize:10,color:move>0?T.primary:move<0?T.primary:N.mutedSoft}}>{move>0?"▲"+move:move<0?"▼"+Math.abs(move):"="}</span>:null)}</div></td>})}</tr>})}</tbody></table></div></div>
+        <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th>{top50Evo.years.map(function(y){return <th key={y} className="text-center py-2" style={{width:80,fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>{y}</th>})}</tr></thead><tbody>{top50Evo.films.map(function(fi,i){var yrs2=top50Evo.years;var latestR=fi.ranks[yrs2[yrs2.length-1]];var inLatest=latestR!==undefined;return <tr key={i} style={{borderBottom:'0.5px solid '+N.border,opacity:inLatest?1:0.35}}><td className="py-1.5" style={{color:N.inkSoft}}><span className="flex items-center gap-2"><Poster meta={gMeta(fi)} w={22}/>{fi.name} <span style={{color:N.muted}}>({fi.year})</span></span></td>{yrs2.map(function(y,yi){var r=fi.ranks[y];var prev=yi>0?fi.ranks[yrs2[yi-1]]:null;var move=r&&prev?(prev-r):null;var isNew=r&&!prev&&yi>0;var isOut=!r&&prev;return <td key={y} className="py-1.5 text-center"><div className="flex items-center justify-center gap-0.5">{r?<span style={{fontWeight:500,color:N.ink}}>{r}</span>:isOut?<span className="text-xs" style={{color:N.mutedSoft}}>OUT</span>:<span style={{color:N.mutedSoft}}>—</span>}{r&&yi>0&&(isNew?<span className="ml-0.5" style={{fontSize:10,color:T.secondary||T.primary,fontWeight:500}}>NEW</span>:move!==null?<span className="ml-0.5" style={{fontSize:10,color:move>0?T.primary:move<0?T.primary:N.mutedSoft}}>{move>0?"▲"+move:move<0?"▼"+Math.abs(move):"="}</span>:null)}</div></td>})}</tr>})}</tbody></table></div></div>
       </div>}
-      <div><SectionHead T={N} title="Rewatch candidates"/><div className="text-xs mb-3" style={{color:N.muted}}>Films rated 4★+ sorted by time since last watch</div><div className="max-h-screen overflow-y-auto"><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Rating</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Last watch</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Months</th></tr></thead><tbody>{rwCandidates.slice(0,100).map(function(fi,i){return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}><td className="py-1.5" style={{color:N.inkSoft}}>{fi.name} <span style={{color:N.muted}}>({fi.year})</span></td><td className="py-1.5 text-right" style={{color:NEUTRAL.ink}}>{fi.rating}★</td><td className="py-1.5 text-right" style={{color:N.muted}}>{fi.lastWatch}</td><td className="py-1.5 text-right" style={{color:N.ink,fontWeight:fi.months>24?600:500}}>{fi.months}</td></tr>})}</tbody></table></div></div>
+      <div><SectionHead T={N} title="Rewatch candidates"/><div className="text-xs mb-3" style={{color:N.muted}}>Films rated 4★+ sorted by time since last watch</div><div className="max-h-screen overflow-y-auto"><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Rating</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Last watch</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Months</th></tr></thead><tbody>{rwCandidates.slice(0,100).map(function(fi,i){return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}><td className="py-1.5" style={{color:N.inkSoft}}><span className="flex items-center gap-2"><Poster meta={gMeta(fi)} w={22}/>{fi.name} <span style={{color:N.muted}}>({fi.year})</span></span></td><td className="py-1.5 text-right" style={{color:NEUTRAL.ink}}>{fi.rating}★</td><td className="py-1.5 text-right" style={{color:N.muted}}>{fi.lastWatch}</td><td className="py-1.5 text-right" style={{color:N.ink,fontWeight:fi.months>24?600:500}}>{fi.months}</td></tr>})}</tbody></table></div></div>
+      {/* WATCHLIST — 553 entries that were loaded on every page view and rendered nowhere.
+          Flagging the ones already watched is the useful part: those are stale rows you can
+          clear out of Letterboxd. */}
+      <div><SectionHead T={N} title="Watchlist" count={wlSorted.length} aside={wlWatched>0?<span className="text-xs" style={{color:NEG}}>{wlWatched} already watched</span>:null}/>
+        <div className="text-xs mb-3" style={{color:N.muted}}>Longest-waiting first{wlSorted.length&&wlSorted[0].date?' \u00b7 oldest added '+wlSorted[0].date:''}</div>
+        <div className="max-h-96 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-x-6">
+          {wlSorted.slice(0,120).map(function(f,i){var seen=!!watchedKeys[f.name+'|||'+f.year];return <div key={i} className="flex items-center gap-2 py-1" style={{borderBottom:'0.5px solid '+N.border}}>
+            <Poster meta={gMeta(f)} w={22}/>
+            <span className="text-xs truncate" style={{color:seen?N.mutedSoft:N.inkSoft}}>{f.name} <span style={{color:N.muted}}>({f.year})</span></span>
+            {seen?<span className="text-xs ml-auto whitespace-nowrap" style={{color:NEG}}>seen</span>:(f.date?<span className="text-xs ml-auto whitespace-nowrap" style={{color:N.mutedSoft}}>{f.date}</span>:null)}
+          </div>})}
+        </div>
+        {wlSorted.length>120&&<div className="text-xs mt-2" style={{color:N.mutedSoft}}>Showing the 120 longest-waiting of {wlSorted.length}</div>}
+      </div>
     </div>}
 
-    {/* ===== DIARY ===== */}
     
 
     {/* ===== COSTS ===== */}
