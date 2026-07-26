@@ -619,7 +619,7 @@ export default function Dashboard(){
     {tab==='overview'&&<div className="space-y-10">
 
       {/* HERO */}
-      <div className="relative" style={{background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:4,padding:'16px 22px',border:T.gradient?'0.5px solid '+T.border:'none',overflow:'hidden'}}>
+      <div className="relative" style={{background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:4,padding:'20px 22px',border:T.gradient?'0.5px solid '+T.border:'none',overflow:'hidden'}}>
         {T.bgImage&&<div style={{position:'absolute',inset:0,backgroundImage:'url('+T.bgImage+')',backgroundSize:T.bgImageSize||'cover',backgroundPosition:T.bgImagePosition||'center',backgroundRepeat:T.bgImageRepeat||'no-repeat',opacity:T.bgImageOpacity||0.18,mixBlendMode:T.bgImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
         {T.heroImage&&<div style={{position:'absolute',top:'10%',left:'10%',width:'60%',height:'80%',backgroundImage:'url('+T.heroImage+')',backgroundSize:'contain',backgroundPosition:T.heroImagePosition||'left center',backgroundRepeat:'no-repeat',opacity:T.heroImageOpacity||0.35,mixBlendMode:T.heroImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
         <ThemeOrnament T={T}/>
@@ -628,17 +628,28 @@ export default function Dashboard(){
           <div style={{width:7,height:7,background:T.dots[1],borderRadius:'50%'}}/>
           <div style={{width:5,height:5,background:T.dots[2],borderRadius:'50%'}}/>
         </div>}
-        <div style={{position:'relative',zIndex:1}}>
-          <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?' \u00b7 all time':' \u00b7 '+yr}</div>
-          <div className="flex items-baseline gap-4 flex-wrap">
-            <div style={{fontSize:'clamp(46px, 6.5vw, 76px)',lineHeight:1,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
-            {/* The three volume figures share the figure's baseline. This is what gives a
-                full-width band something to hold — the emptiness was a content problem, not a
-                padding one. Hours and rewatches belong to "how much did I watch" as much as the
-                count does, and rewatches were computed and discarded until now. */}
-            <div style={{fontSize:20,fontWeight:600,color:heroSubC,fontFamily:fontHero,letterSpacing:'-0.01em'}}>{dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':''}</div>
-            {stats.rw>0&&<div style={{fontSize:20,fontWeight:600,color:heroSubC,fontFamily:fontHero,letterSpacing:'-0.01em'}}>{stats.rw}<span style={{fontSize:11,fontWeight:400,marginLeft:4,fontFamily:fontOf('sans')}}>rewatches</span></div>}
-            {yoy&&yoy.films!=null&&<div style={{fontSize:13,color:heroSubC,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
+        <div className="grid md:grid-cols-5 gap-x-8 gap-y-5 items-center" style={{position:'relative',zIndex:1}}>
+          <div className="md:col-span-2">
+            <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?' \u00b7 all time':' \u00b7 '+yr}</div>
+            <div style={{fontSize:'clamp(46px, 6vw, 72px)',lineHeight:1,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+            {yoy&&yoy.films!=null&&<div style={{fontSize:12,color:heroSubC,fontFamily:fontLabel,marginTop:5}}>{copyHeroSuffix}</div>}
+          </div>
+          {/* The supporting figures live INSIDE the frame rather than beside it. Every one
+              answers the same question as the headline — how much, how often, how densely — so
+              the card holds one idea instead of framing a number and some neighbours. This is
+              what stops a full-width card reading as empty; padding never could. */}
+          <div className="md:col-span-3 grid grid-cols-3 gap-x-5 gap-y-4">
+            {[['Hours',dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':'\u2014',''],
+              ['Rewatches',stats.rw||'\u2014',stats.total?Math.round((stats.rw/stats.total)*100)+'% of watches':''],
+              ['Longest binge',binge.streak+' days',binge.range],
+              ['Current streak',streaks.week+' weeks',streaks.wr],
+              ['Most in a day',busiest.count+' films',busiest.fmt],
+              ['Busiest month',bestMo.length?bestMo[0].count+' films':'\u2014',bestMo.length?bestMo[0].label:'']
+            ].map(function(row,i){return <div key={i}>
+              <div style={{fontSize:8.5,letterSpacing:'0.16em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>{row[0]}</div>
+              <div style={{fontSize:17,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontHero}}>{row[1]}</div>
+              {row[2]?<div style={{fontSize:9.5,color:heroSubC,marginTop:2,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}</div>:null}
+            </div>})}
           </div>
         </div>
       </div>
@@ -651,14 +662,7 @@ export default function Dashboard(){
           {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:4,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max);return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?textOn(bgColor):'transparent',borderRadius:4,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
         </div></div>
         {selHM&&<FilmList T={N} title={MF[selHM.mo]+' '+selHM.yr} films={hmFilms} onClose={function(){sSelHM(null)}}/>}
-        {/* Intensity figures sit here rather than at the top: they all describe how densely
-            the viewing is packed, which is exactly what the calendar above shows. */}
-        <div className="grid grid-cols-2 md:grid-cols-4 mt-3" style={{borderTop:'0.5px solid '+N.border}}>
-          <Stat T={N} label="Longest binge" value={binge.streak+' days'} sub={binge.range}/>
-          <Stat T={N} label="Current streak" value={streaks.week+' weeks'} sub={streaks.wr}/>
-          <Stat T={N} label="Most in a day" value={busiest.count+' films'} sub={busiest.fmt}/>
-          <Stat T={N} label="Busiest month" value={bestMo.length?bestMo[0].count+' films':'\u2014'} sub={bestMo.length?bestMo[0].label:''} noBorder/>
-        </div>
+
       </div>
 
       {/* CUMULATIVE */}
