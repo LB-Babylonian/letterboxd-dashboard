@@ -43,7 +43,7 @@ var NEG='#C8806B';
 // Secondary is optional and used for accents (e.g. labels).
 // ============================================================
 var THEMES=[
-  {id:'neutral',name:'Default',dark:true,paper:'#14181C',surface:'#1C2228',surfaceAlt:'#242A31',border:'#2C333B',borderStrong:'#3D4550',ink:'#FFFFFF',inkSoft:'#99AABB',muted:'#667788',mutedSoft:'#4A5560',primary:'#5A9E72',secondary:'#D2924E',chartTextColor:'#14181C',gradient:['#14181C','#181D22','#1C2228'],accentTh:'#5A9E72',accentRt:'#D2924E',accentPct:'#6B9BB8',dots:['#5A9E72','#D2924E','#6B9BB8'],metricColor:'#FFFFFF',descriptorColor:'#667788',subColor:'#99AABB'},
+    {id:'neutral',name:'Default',dark:true,paper:'#14181C',surface:'#1C2228',surfaceAlt:'#242A31',border:'#2C333B',borderStrong:'#3D4550',ink:'#FFFFFF',inkSoft:'#99AABB',muted:'#667788',mutedSoft:'#4A5560',primary:'#3DC25A',secondary:'#F18027',chartTextColor:'#14181C',gradient:['#14181C','#181D22','#1C2228'],accentTh:'#3DC25A',accentRt:'#F18027',accentPct:'#52AAD5',dots:['#3DC25A','#F18027','#52AAD5'],metricColor:'#FFFFFF',descriptorColor:'#667788',subColor:'#99AABB'},
   {id:'matrix',name:'Matrix',dark:true,paper:'#000000',surface:'#050B05',surfaceAlt:'#0B170B',border:'#0B270B',borderStrong:'#0F3A0F',ink:'#00FF55',inkSoft:'#00CC44',muted:'#008833',mutedSoft:'#005522',primary:'#00FF55',secondary:'#FF1A1A',gradient:['#000000','#020602','#000000'],accentTh:'#00FF55',accentRt:'#00FF55',accentPct:'#FF1A1A',dots:['#00FF55','#FF1A1A','#FFFFFF'],glow:'#00FF55',chartTextColor:'#000000'},
   {id:'br2049',name:'Blade Runner 2049',dark:true,paper:'#180F2A',surface:'#221842',surfaceAlt:'#2A1F55',border:'#3A2A6A',borderStrong:'#4A3590',ink:'#F0C79A',inkSoft:'#E0945C',muted:'#A878A0',mutedSoft:'#7050A0',primary:'#3F2A6A',secondary:'#FF8030',gradient:['#10082A','#1A1140','#240F3A'],accentTh:'#E0258A',accentRt:'#E0258A',accentPct:'#FF8030',dots:['#E0258A','#FF8030','#5570B8'],glow:'#E0258A',metricColor:'#E0258A',chartTextColor:'#F5F0E6'},
   {id:'amelie',name:'Amélie',dark:false,paper:'#2A4F2A',surface:'#345A34',surfaceAlt:'#3E6A3E',border:'#3E5F3E',borderStrong:'#5A7A5A',ink:'#E8AC2F',inkSoft:'#D89A1A',muted:'#B0985A',mutedSoft:'#85734A',primary:'#2A4F2A',secondary:'#E8AC2F',gradient:['#2A4F2A','#345A34','#3E6A3E'],accentTh:'#E8AC2F',accentRt:'#E8AC2F',accentPct:'#C42820',dots:['#E8AC2F','#C42820','#2A4F2A'],metricColor:'#C42820',chartTextColor:'#F5E0B8'},
@@ -210,21 +210,23 @@ function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r
 // and contrast. Re-run it if you change a value — do not eyeball it.
 //
 // Three jobs, three encodings:
-//   VIZ_MAGNITUDE  how much / how highly rated  -> one hue, dark->light
+//   VIZ_MARK       table rows / distribution cells -> ONE solid colour
+//   VIZ_HEAT       the calendar, where colour is the only encoding -> one hue ramp
 //   VIZ_ORDINAL    film year / decade           -> one hue, older->newer
 //   VIZ_SERIES     which category (max 3)       -> fixed order, never cycled
 //   polarity                                    -> VIZ_GOOD / NEUTRAL.muted / NEG
 
-// Ratings: one green hue, 5 steps, low->high. Was a red->orange->green rainbow,
-// which invents a meaningless midpoint and is the worst case for red-green
-// colour blindness (~8% of men) — and it appeared in every ranked table here.
-// Validated: monotone lightness, >=0.06 step gaps, 2:1 at the dark end.
-var VIZ_MAGNITUDE=['#365E47','#3F7355','#4C8964','#5AA074','#72BC8D'];
+// Data marks are a SINGLE solid colour, not a graded scale. In a ranked table the
+// bar's length already encodes the count and the rating is printed beside it, so
+// shading by rating restated a number the reader can already see. Letterboxd's own
+// orange (#FF8000, hue 53) at 90% intensity. textOn() puts dark ink on it (6.67:1).
+var VIZ_MARK='#F18027';
 
-// Film year / decade: one blue hue, older -> newer. Was 12 colours indexed by
-// `year % 12`, so 1998, 2010 and 2022 came out identical — asserting a
-// relationship that does not exist. Now a year maps to its POSITION among the
-// years actually present, so it never repeats and reads as a progression.
+// The calendar is the one place colour is the ONLY encoding — there is no length to
+// read — so it keeps a graded ramp, on the same orange hue. Validated as an ordinal
+// ramp: monotone lightness, >=0.06 step gaps, light end clear of the surface.
+var VIZ_HEAT=['#8A4000','#AE5300','#D46500','#EE7D22','#FF9A56'];
+
 var VIZ_ORDINAL=['#35586E','#426A85','#4F7C9C','#5D8FB4','#74A9CE'];
 
 // Categorical identity (monthly spend: subscriptions / tickets / rentals).
@@ -232,22 +234,18 @@ var VIZ_ORDINAL=['#35586E','#426A85','#4F7C9C','#5D8FB4','#74A9CE'];
 // inventing a hue. These three pass every check on the ALL-PAIRS list (worst
 // colour-blind separation 8.6, normal-vision 15.0), so they are safe in any
 // arrangement, not only side by side.
-var VIZ_SERIES=['#4FA575','#C4832E','#4E90C4'];
+var VIZ_SERIES=['#3DC25A','#C4832E','#4E90C4'];
 
 // Positive pole for polarity encodings. Terracotta NEG is the negative pole and
 // NEUTRAL.muted the no-change midpoint.
-var VIZ_GOOD='#5A9E72';
+var VIZ_GOOD='#3DC25A';
 
 // Readable text for a value sitting on a data mark. The ramps span dark to light,
 // so no single fixed ink serves both ends.
 function textOn(hex){var c=hexToRgb(hex);var L=(0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;return L>0.45?'#14181C':'#FFFFFF'}
 
-// Rating -> magnitude step. Unrated stays recessive grey.
-function rCT(r){
-  if(!r||r===0)return NEUTRAL.mutedSoft;
-  var t=(Math.max(1,Math.min(5,r))-1)/4;
-  return VIZ_MAGNITUDE[Math.min(VIZ_MAGNITUDE.length-1,Math.floor(t*VIZ_MAGNITUDE.length))];
-}
+// Mark colour for a table row / distribution cell. Unrated stays recessive grey.
+function rCT(r){return(!r||r===0)?NEUTRAL.mutedSoft:VIZ_MARK}
 
 // Interpolate continuously along a ramp, t in [0,1].
 function lerpRamp(ramp,t){
@@ -278,7 +276,7 @@ function seriesColors(){return VIZ_SERIES.slice()}
 // Calendar heat: sequential, surface -> brightest magnitude step. Empty days sit
 // at the surface. Was blending toward white, which pushed the busiest days to
 // near-white and inverted the "more colour = more films" reading.
-function hmColor(count,max){if(!count)return NEUTRAL.surface;var t=max>0?count/max:0;return blend(NEUTRAL.surface,VIZ_MAGNITUDE[VIZ_MAGNITUDE.length-1],0.25+0.75*t)}
+function hmColor(count,max){if(!count)return NEUTRAL.surface;var t=max>0?count/max:0;return blend(NEUTRAL.surface,VIZ_HEAT[VIZ_HEAT.length-1],0.25+0.75*t)}
 
 // Read-only category styling — keeps using fixed colors for tag admin (rarely used, not worth theming)
 var CI_BASE={
