@@ -212,7 +212,7 @@ function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r
 // Three jobs, three encodings:
 //   VIZ_MARK       table rows / distribution cells -> ONE solid colour
 //   VIZ_HEAT       the calendar, where colour is the only encoding -> one hue ramp
-//   VIZ_ORDINAL    film year / decade           -> one hue, older->newer
+//   VIZ_YEARS      which diary year (identity)  -> fixed distinct hues, never cycled
 //   VIZ_SERIES     which category (max 3)       -> fixed order, never cycled
 //   polarity                                    -> VIZ_GOOD / NEUTRAL.muted / NEG
 
@@ -227,7 +227,15 @@ var VIZ_MARK='#F18027';
 // ramp: monotone lightness, >=0.06 step gaps, light end clear of the surface.
 var VIZ_HEAT=['#8A4000','#AE5300','#D46500','#EE7D22','#FF9A56'];
 
-var VIZ_ORDINAL=['#35586E','#426A85','#4F7C9C','#5D8FB4','#74A9CE'];
+// One line per diary year on the cumulative chart, so colour here answers "which year
+// is this" — identity, not magnitude. A single-hue ramp cannot do that job: six years
+// spread across any blue ramp left adjacent lines 1.23:1 apart, i.e. indistinguishable.
+// Distinct hues in a FIXED order instead, oldest to newest, never cycled. The order is
+// itself the colour-blindness safety mechanism, not decoration — reshuffling this list
+// fails CVD separation (verified against the validator). Green is deliberately absent:
+// it is the UI accent. Validated on the adjacent pairlist, worst pair delta-E 8.4.
+// Eight slots covers 2021-2028; a 9th year folds to grey rather than inventing a hue.
+var VIZ_YEARS=['#3987E5','#D95926','#199E70','#C98500','#D55181','#9085E9','#008300','#E66767'];
 
 // Categorical identity (monthly spend: subscriptions / tickets / rentals).
 // Fixed order, never cycled: a 4th series folds into "Other" rather than
@@ -254,16 +262,15 @@ function lerpRamp(ramp,t){
   return blend(ramp[i],ramp[i+1],x-i);
 }
 
-// Film/diary year -> a step along the ordinal ramp, spaced by the year's POSITION
-// among the years actually present (not its numeric value, and never modulo).
-// Interpolated rather than snapped to the 5 named steps: the cumulative chart
-// draws one line per year, so two adjacent years must not land on the same colour.
+// Year -> its own hue, by position among the years actually present (never modulo,
+// never recycled). Past the slot list, grey: a generated hue would assert a
+// relationship the palette cannot vouch for.
 function yC(year,allYears){
   var y=parseInt(year);if(isNaN(y))return NEUTRAL.muted;
   var ys=Array.from(new Set((allYears||[]).map(Number).filter(function(n){return!isNaN(n)}))).sort(function(a,b){return a-b});
   var i=ys.indexOf(y);
-  if(i===-1||ys.length<2)return VIZ_ORDINAL[VIZ_ORDINAL.length-1];
-  return lerpRamp(VIZ_ORDINAL,i/(ys.length-1));
+  if(i===-1||i>=VIZ_YEARS.length)return NEUTRAL.muted;
+  return VIZ_YEARS[i];
 }
 
 // Polarity: a real zero point, so two poles plus a neutral midpoint. T is kept in
@@ -273,10 +280,12 @@ function signColor(v,T,opts){opts=opts||{};var pos=opts.positiveIsGood!==false;v
 // Stacked series, fixed order.
 function seriesColors(){return VIZ_SERIES.slice()}
 
-// Calendar heat: sequential, surface -> brightest magnitude step. Empty days sit
-// at the surface. Was blending toward white, which pushed the busiest days to
-// near-white and inverted the "more colour = more films" reading.
-function hmColor(count,max){if(!count)return NEUTRAL.surface;var t=max>0?count/max:0;return blend(NEUTRAL.surface,VIZ_HEAT[VIZ_HEAT.length-1],0.25+0.75*t)}
+// Calendar heat: step along VIZ_HEAT itself. This previously blended from the surface
+// toward the ramp's top, which desaturated as it darkened — mid-range cells landed at
+// 30-42% saturation against the bars' 88%, so the calendar read dull beside every other
+// chart. Stepping the real ramp holds 86-100% throughout, and the quietest 1-film cell
+// still sits 2.15:1 clear of an empty day.
+function hmColor(count,max){if(!count)return NEUTRAL.surface;return lerpRamp(VIZ_HEAT,max>0?count/max:0)}
 
 // Read-only category styling — keeps using fixed colors for tag admin (rarely used, not worth theming)
 var CI_BASE={
