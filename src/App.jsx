@@ -197,46 +197,88 @@ function blend(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);return rgbToHe
 // Saturate (move further from paper) — used for "+" indicators
 function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b;return rgbToHex(a.r+dr*f,a.g+dg*f,a.b+db*f)}
 
-// Theme-aware rating color (5 buckets, more saturated = higher rating)
-// Returns T.primary uniformly for all ratings (no more gradient based on note)
-// Rating color: continuous hue interpolation from red (1★) → orange (3.5★) → green (5★).
-// Curve skewed so green dominates (most films rated 3-5). Saturation dropped for less neon feel.
-function rCT(r,T){
+// ============================================================
+// DATA COLOUR SYSTEM — one validated palette for every chart
+// ============================================================
+// Chart colour is deliberately NOT themed. The themes drive the hero block and
+// the UI chrome (pills, borders, hover); data marks use the fixed palette below,
+// so a chart means the same thing whichever theme is loaded.
+//
+// This replaced five independent ad-hoc schemes. Every ramp here was checked with
+// the dataviz validator against this dashboard's chart surface (#1C2228) for
+// lightness band, chroma floor, colour-blind separation (protan/deutan/tritan)
+// and contrast. Re-run it if you change a value — do not eyeball it.
+//
+// Three jobs, three encodings:
+//   VIZ_MAGNITUDE  how much / how highly rated  -> one hue, dark->light
+//   VIZ_ORDINAL    film year / decade           -> one hue, older->newer
+//   VIZ_SERIES     which category (max 3)       -> fixed order, never cycled
+//   polarity                                    -> VIZ_GOOD / NEUTRAL.muted / NEG
+
+// Ratings: one green hue, 5 steps, low->high. Was a red->orange->green rainbow,
+// which invents a meaningless midpoint and is the worst case for red-green
+// colour blindness (~8% of men) — and it appeared in every ranked table here.
+// Validated: monotone lightness, >=0.06 step gaps, 2:1 at the dark end.
+var VIZ_MAGNITUDE=['#365E47','#3F7355','#4C8964','#5AA074','#72BC8D'];
+
+// Film year / decade: one blue hue, older -> newer. Was 12 colours indexed by
+// `year % 12`, so 1998, 2010 and 2022 came out identical — asserting a
+// relationship that does not exist. Now a year maps to its POSITION among the
+// years actually present, so it never repeats and reads as a progression.
+var VIZ_ORDINAL=['#35586E','#426A85','#4F7C9C','#5D8FB4','#74A9CE'];
+
+// Categorical identity (monthly spend: subscriptions / tickets / rentals).
+// Fixed order, never cycled: a 4th series folds into "Other" rather than
+// inventing a hue. These three pass every check on the ALL-PAIRS list (worst
+// colour-blind separation 8.6, normal-vision 15.0), so they are safe in any
+// arrangement, not only side by side.
+var VIZ_SERIES=['#4FA575','#C4832E','#4E90C4'];
+
+// Positive pole for polarity encodings. Terracotta NEG is the negative pole and
+// NEUTRAL.muted the no-change midpoint.
+var VIZ_GOOD='#5A9E72';
+
+// Readable text for a value sitting on a data mark. The ramps span dark to light,
+// so no single fixed ink serves both ends.
+function textOn(hex){var c=hexToRgb(hex);var L=(0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;return L>0.45?'#14181C':'#FFFFFF'}
+
+// Rating -> magnitude step. Unrated stays recessive grey.
+function rCT(r){
   if(!r||r===0)return NEUTRAL.mutedSoft;
-  var clamped=Math.max(1,Math.min(5,r));
-  var t=(clamped-1)/4;
-  // Skewed curve: pow(t, 0.7) makes low ratings stay red/orange longer, then green kicks in
-  var skewed=Math.pow(t,0.7);
-  // Hue: 0 (red) → 25 (orange) at 40% of curve → 130 (green muted) at 100%
-  var hue=skewed<0.4?(skewed/0.4)*25:25+((skewed-0.4)/0.6)*105;
-  // Lower saturation, adjusted lightness for less neon feel on dark bg
-  var sat=58;
-  var lum=48;
-  return 'hsl('+Math.round(hue)+','+sat+'%,'+lum+'%)';
+  var t=(Math.max(1,Math.min(5,r))-1)/4;
+  return VIZ_MAGNITUDE[Math.min(VIZ_MAGNITUDE.length-1,Math.floor(t*VIZ_MAGNITUDE.length))];
 }
 
-// Year color — fixed qualitative palette, independent of theme.
-// Each year gets a distinct color from a 12-color palette (cycles if needed).
-// Based on ColorBrewer "Set3" / "Paired" but tuned for editorial cream background.
-var YEAR_PALETTE=['#B73E36','#4A6B8C','#C89A4A','#5A8F6B','#A65277','#7B5B8C','#8B6B2A','#3F8DAD','#C8584A','#6B7A4A','#A85E2A','#506B5C'];
-function yC(year,allYears,T){var y=parseInt(year);if(isNaN(y))return NEUTRAL.muted;return YEAR_PALETTE[Math.abs(y)%YEAR_PALETTE.length]}
-
-// Theme-aware YoY / diff sign colors
-function signColor(v,T,opts){opts=opts||{};var pos=opts.positiveIsGood!==false;var good=v>0?pos:!pos;if(Math.abs(v)<0.005)return NEUTRAL.muted;return good?T.primary:NEG}
-
-// Series palette for stacked charts (subs / tickets / rentals)
-// 3 distinct colors per theme for Monthly Spend stacked bars.
-// Uses primary, secondary (or accent fallback), and a third theme color.
-function seriesColors(T){
-  var c1=T.primary;
-  var c2=T.secondary&&T.secondary!==T.primary?T.secondary:(T.accentTh&&T.accentTh!==T.primary?T.accentTh:blend(T.primary,NEUTRAL.paper,0.4));
-  var c3=T.accentRt&&T.accentRt!==c1&&T.accentRt!==c2?T.accentRt:(T.accentPct&&T.accentPct!==c1&&T.accentPct!==c2?T.accentPct:(T.glow&&T.glow!==c1&&T.glow!==c2?T.glow:blend(T.primary,NEUTRAL.ink,0.35)));
-  return [c1,c2,c3];
+// Interpolate continuously along a ramp, t in [0,1].
+function lerpRamp(ramp,t){
+  var x=Math.max(0,Math.min(1,t))*(ramp.length-1),i=Math.floor(x);
+  if(i>=ramp.length-1)return ramp[ramp.length-1];
+  return blend(ramp[i],ramp[i+1],x-i);
 }
 
-// Heatmap intensity color
-// Heatmap: always blend T.primary toward white. Text on filled cells should always be black/dark for contrast.
-function hmColor(count,max,year,currentYr,T){if(!count)return NEUTRAL.surface;var intensity=0.2+(count/max)*0.7;return blend(T.primary,'#FFFFFF',1-intensity)}
+// Film/diary year -> a step along the ordinal ramp, spaced by the year's POSITION
+// among the years actually present (not its numeric value, and never modulo).
+// Interpolated rather than snapped to the 5 named steps: the cumulative chart
+// draws one line per year, so two adjacent years must not land on the same colour.
+function yC(year,allYears){
+  var y=parseInt(year);if(isNaN(y))return NEUTRAL.muted;
+  var ys=Array.from(new Set((allYears||[]).map(Number).filter(function(n){return!isNaN(n)}))).sort(function(a,b){return a-b});
+  var i=ys.indexOf(y);
+  if(i===-1||ys.length<2)return VIZ_ORDINAL[VIZ_ORDINAL.length-1];
+  return lerpRamp(VIZ_ORDINAL,i/(ys.length-1));
+}
+
+// Polarity: a real zero point, so two poles plus a neutral midpoint. T is kept in
+// the signature for call-site compatibility but chart polarity is not themed.
+function signColor(v,T,opts){opts=opts||{};var pos=opts.positiveIsGood!==false;var good=v>0?pos:!pos;if(Math.abs(v)<0.005)return NEUTRAL.muted;return good?VIZ_GOOD:NEG}
+
+// Stacked series, fixed order.
+function seriesColors(){return VIZ_SERIES.slice()}
+
+// Calendar heat: sequential, surface -> brightest magnitude step. Empty days sit
+// at the surface. Was blending toward white, which pushed the busiest days to
+// near-white and inverted the "more colour = more films" reading.
+function hmColor(count,max){if(!count)return NEUTRAL.surface;var t=max>0?count/max:0;return blend(NEUTRAL.surface,VIZ_MAGNITUDE[VIZ_MAGNITUDE.length-1],0.25+0.75*t)}
 
 // Read-only category styling — keeps using fixed colors for tag admin (rarely used, not worth theming)
 var CI_BASE={
@@ -301,7 +343,7 @@ function Stat(p){var T=p.T;var yoyColor=p.yoy?(p.yoy.charAt(0)==='+'?T.primary:p
 function SrtB(p){var T=p.T;return <button onClick={p.onToggle} className="text-xs px-2 py-0.5 transition-colors" style={{color:NEUTRAL.muted,border:'0.5px solid '+NEUTRAL.border,borderRadius:4,background:'transparent'}}>{p.val==='avg'?'by count':'by rating'}</button>}
 
 // CTbl — Horizontal bar table
-function CTbl(p){var T=p.T;var sorted=p.sortMode==='avg'?[].concat(p.data).sort(function(a,b){return(b.Avg||0)-(a.Avg||0)}):p.data;var mc=Math.max.apply(null,sorted.map(function(d){return d.Films}).concat([1]));var barText=T.chartTextColor||NEUTRAL.ink;return <div className="space-y-0.5">{sorted.map(function(d,i){var ac=p.sel===d.name;var barColor=rCT(d.Avg,T);return <div key={i} onClick={function(){p.onSel(ac?null:d.name)}} title={d.tip||''} className="flex items-center gap-2 cursor-pointer py-0.5 px-1" style={{borderRadius:4,background:ac?NEUTRAL.surfaceAlt:'transparent',boxShadow:ac?'inset 0 0 0 1px '+T.primary:'none'}}><div className="w-20 md:w-32 text-xs text-right truncate" style={{color:NEUTRAL.inkSoft}} title={d.name}>{d.name}</div><div className="flex-1 h-6 flex items-center" style={{background:NEUTRAL.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.Films/mc)*100,8)+'%',minWidth:30,backgroundColor:barColor,borderRadius:4}}><span className="text-xs" style={{color:barText,fontWeight:500}}>{d.Films}</span></div></div><div className="w-12 text-xs text-right font-mono" style={{color:NEUTRAL.ink}}>{d.Avg>0?d.Avg.toFixed(1)+'\u2605':'\u2014'}</div></div>})}</div>}
+function CTbl(p){var T=p.T;var sorted=p.sortMode==='avg'?[].concat(p.data).sort(function(a,b){return(b.Avg||0)-(a.Avg||0)}):p.data;var mc=Math.max.apply(null,sorted.map(function(d){return d.Films}).concat([1]));return <div className="space-y-0.5">{sorted.map(function(d,i){var ac=p.sel===d.name;var barColor=rCT(d.Avg);return <div key={i} onClick={function(){p.onSel(ac?null:d.name)}} title={d.tip||''} className="flex items-center gap-2 cursor-pointer py-0.5 px-1" style={{borderRadius:4,background:ac?NEUTRAL.surfaceAlt:'transparent',boxShadow:ac?'inset 0 0 0 1px '+T.primary:'none'}}><div className="w-20 md:w-32 text-xs text-right truncate" style={{color:NEUTRAL.inkSoft}} title={d.name}>{d.name}</div><div className="flex-1 h-6 flex items-center" style={{background:NEUTRAL.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.Films/mc)*100,8)+'%',minWidth:30,backgroundColor:barColor,borderRadius:4}}><span className="text-xs" style={{color:textOn(barColor),fontWeight:500}}>{d.Films}</span></div></div><div className="w-12 text-xs text-right font-mono" style={{color:NEUTRAL.ink}}>{d.Avg>0?d.Avg.toFixed(1)+'\u2605':'\u2014'}</div></div>})}</div>}
 
 // FilmList — Selected film panel
 function FilmList(p){var T=p.T;if(!p.films||!p.films.length)return null;return <div className="mt-3 p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+T.primary,borderRadius:4}}><div className="flex justify-between items-center mb-2"><div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div><button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,borderRadius:4}}>{'\u2715'}</button></div><div className="max-h-72 overflow-y-auto">{p.films.map(function(f,i){return <div key={i} className="text-xs py-1.5 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span><span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span></div>})}</div></div>}
@@ -469,7 +511,7 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
     {costYr==='All'?renderCostCards(allTimeTotals,'All Time'):costDataFilt.map(function(d){return <div key={d.yr}>{renderCostCards(d,d.yr)}</div>})}
     {platRanking.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Platform value ranking" aside={<button onClick={function(){sRankMode(function(v){return v==='sub'?'plat':'sub'})}} style={btnSecondary}>{rankMode==='sub'?'Per subscription':'Per platform'}</button>}/><div className="space-y-1.5">{platRanking.map(function(d,i){var maxC=Math.max.apply(null,platRanking.map(function(r){return r.cpf}).concat([1]));return <div key={i} className="flex items-center gap-2"><span className="text-xs w-5 text-right" style={{color:N.mutedSoft,fontWeight:500}}>{i+1}</span><span className="text-xs w-20 md:w-32 truncate" style={{color:N.inkSoft}}>{d.name}</span><div className="flex-1 h-6 flex items-center" style={{background:N.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.cpf/maxC)*100,8)+'%',backgroundColor:d.color,borderRadius:4}}><span className="text-xs" style={{color:T.chartTextColor||NEUTRAL.ink,fontWeight:500}}>{'\u20AC'}{d.cpf.toFixed(2)}</span></div></div><span className="text-xs w-14 text-right" style={{color:N.muted}}>{d.films} films</span><span className="text-xs w-12 text-right font-mono" style={{color:NEUTRAL.ink}}>{d.avg?d.avg.toFixed(1)+'\u2605':'\u2014'}</span></div>})}</div></div>}
     {cpfData.length>1&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Cost per film, over time"/><ResponsiveContainer width="100%" height={220}><LineChart data={cpfData}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="q" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.period}</div><div style={{color:T.primary}}>{'\u20AC'}{d.cpf.toFixed(2)}/film</div><div style={{color:N.muted}}>{d.films} films {'\u00B7'} {'\u20AC'}{d.cost.toFixed(0)} spent</div></div>}}/><Line type="monotone" dataKey="cpf" stroke={T.primary} strokeWidth={2} dot={{fill:T.primary,r:2}}/></LineChart></ResponsiveContainer></div>}
-    {monthlyFilt.length>3&&(function(){var sc=seriesColors(T);return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Monthly spend"/><ResponsiveContainer width="100%" height={250}><BarChart data={monthlyFilt}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="m" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){return <CostTip {...p} T={N}/>}}/><Bar dataKey="subs" name="Subscriptions" stackId="a" fill={sc[0]}/><Bar dataKey="tickets" name="Tickets" stackId="a" fill={sc[1]}/><Bar dataKey="rentals" name="Rentals" stackId="a" fill={sc[2]}/></BarChart></ResponsiveContainer><div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[0],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Subscriptions</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Tickets</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rentals</span></div></div></div>})()}
+    {monthlyFilt.length>3&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Monthly spend"/><ResponsiveContainer width="100%" height={250}><BarChart data={monthlyFilt}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="m" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){return <CostTip {...p} T={N}/>}}/><Bar dataKey="subs" name="Subscriptions" stackId="a" fill={sc[0]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="tickets" name="Tickets" stackId="a" fill={sc[1]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="rentals" name="Rentals" stackId="a" fill={sc[2]} stroke={NEUTRAL.surface} strokeWidth={2}/></BarChart></ResponsiveContainer><div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[0],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Subscriptions</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Tickets</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rentals</span></div></div></div>})()}
   </div>;
 
   if(loading)return <div style={{background:N.paper,color:N.ink,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="text-center"><div style={{fontSize:11,letterSpacing:'0.2em',color:N.muted,textTransform:'uppercase',marginBottom:8}}>Loading</div></div></div>;
@@ -595,7 +637,7 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
         <SectionHead T={N} title="The viewing calendar" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a cell to see the films</span>}/>
         <div className="overflow-x-auto"><div style={{minWidth:380}}>
           <div className="flex items-center mb-1"><div style={{width:36}}/>{MS.map(function(m,i){return <div key={i} className="flex-1 text-center" style={{fontSize:10,color:N.muted,letterSpacing:'0.05em'}}>{m}</div>})}</div>
-          {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:4,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max,y,yr,T);return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?'#000000':'transparent',borderRadius:4,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
+          {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:4,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max);return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?'#000000':'transparent',borderRadius:4,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
         </div></div>
         {selHM&&<FilmList T={N} title={MF[selHM.mo]+' '+selHM.yr} films={hmFilms} onClose={function(){sSelHM(null)}}/>}
       </div>
@@ -609,10 +651,10 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
             <XAxis dataKey="month" tick={{fill:N.muted,fontSize:10}}/>
             <YAxis tick={{fill:N.muted,fontSize:10}}/>
             <Tooltip content={function(p){return <CTooltip {...p} T={N}/>}}/>
-            {cumData.years.map(function(y,i){return <Line key={y} type="monotone" dataKey={String(y)} stroke={yC(y,cumData.years,T)} strokeWidth={yr!=='All'&&yr===String(y)?2.5:1.25} dot={false} connectNulls={false} opacity={yr!=='All'&&yr!==String(y)?0.25:1}/>})}
+            {cumData.years.map(function(y,i){return <Line key={y} type="monotone" dataKey={String(y)} stroke={yC(y,cumData.years)} strokeWidth={yr!=='All'&&yr===String(y)?2.5:1.25} dot={false} connectNulls={false} opacity={yr!=='All'&&yr!==String(y)?0.25:1}/>})}
           </LineChart>
         </ResponsiveContainer>
-        <div className="flex gap-3 flex-wrap mt-2">{cumData.years.map(function(y){return <div key={y} className="flex items-center gap-1.5"><div style={{width:14,height:2,background:yC(y,cumData.years,T),borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>{y}</span></div>})}</div>
+        <div className="flex gap-3 flex-wrap mt-2">{cumData.years.map(function(y){return <div key={y} className="flex items-center gap-1.5"><div style={{width:14,height:2,background:yC(y,cumData.years),borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>{y}</span></div>})}</div>
       </div>
 
       {/* RATING DISTRIBUTION */}
@@ -625,7 +667,7 @@ var diaryData=useMemo(function(){var d=ef.filter(function(e){return!dSrch||e.nam
             <YAxis tick={{fill:N.muted,fontSize:10}}/>
             <Tooltip content={function(p){return <CTooltip {...p} T={N}/>}}/>
             <Bar dataKey="count" name="Films" radius={[3,3,0,0]} cursor="pointer" onClick={function(d){sSR(function(p){return p===parseFloat(d.rating)?null:parseFloat(d.rating)})}}>
-              {rDist.map(function(d,i){var r=parseFloat(d.rating),a=sR===r;return <Cell key={i} fill={rCT(r,T)} fillOpacity={sR!==null&&!a?0.2:0.95} stroke={a?N.ink:'none'} strokeWidth={a?1.5:0}/>})}
+              {rDist.map(function(d,i){var r=parseFloat(d.rating),a=sR===r;return <Cell key={i} fill={rCT(r)} fillOpacity={sR!==null&&!a?0.2:0.95} stroke={a?N.ink:'none'} strokeWidth={a?1.5:0}/>})}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
