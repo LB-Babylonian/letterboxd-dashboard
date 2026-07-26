@@ -604,7 +604,7 @@ export default function Dashboard(){
     {tab==='overview'&&<div className="space-y-10">
 
       {/* HERO */}
-      <div className="grid md:grid-cols-3 gap-8 items-start relative" style={{minHeight:180,background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:4,padding:'24px 22px',border:T.gradient?'0.5px solid '+T.border:'none',overflow:'hidden'}}>
+      <div className="relative" style={{minHeight:150,background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:4,padding:'24px 22px',border:T.gradient?'0.5px solid '+T.border:'none',overflow:'hidden'}}>
         {T.bgImage&&<div style={{position:'absolute',inset:0,backgroundImage:'url('+T.bgImage+')',backgroundSize:T.bgImageSize||'cover',backgroundPosition:T.bgImagePosition||'center',backgroundRepeat:T.bgImageRepeat||'no-repeat',opacity:T.bgImageOpacity||0.18,mixBlendMode:T.bgImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
         {T.heroImage&&<div style={{position:'absolute',top:'10%',left:'10%',width:'60%',height:'80%',backgroundImage:'url('+T.heroImage+')',backgroundSize:'contain',backgroundPosition:T.heroImagePosition||'left center',backgroundRepeat:'no-repeat',opacity:T.heroImageOpacity||0.35,mixBlendMode:T.heroImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
         <ThemeOrnament T={T}/>
@@ -613,50 +613,24 @@ export default function Dashboard(){
           <div style={{width:7,height:7,background:T.dots[1],borderRadius:'50%'}}/>
           <div style={{width:5,height:5,background:T.dots[2],borderRadius:'50%'}}/>
         </div>}
-        <div className="md:col-span-2" style={{position:'relative',zIndex:1}}>
+        <div style={{position:'relative',zIndex:1}}>
           <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:14,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
           <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
           {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:heroSubC,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
         </div>
-        <div className="md:pl-8 grid grid-cols-2 gap-x-4 gap-y-4" style={{borderLeft:'0.5px solid '+T.border,position:'relative',zIndex:1}}>
-          <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>In theaters</div>
-            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.th}<span className="ml-1.5" style={{fontSize:12,color:heroSubC,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.th/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.th!=null&&<div style={{fontSize:10,color:heroSubC,marginTop:2}}>{fY(yoy.th,'pp')}</div>}
-          </div>
-          <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>With friends</div>
-            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.fr}<span className="ml-1.5" style={{fontSize:12,color:heroSubC,fontWeight:500,fontFamily:fontOf('sans')}}>{stats.total?Math.round(stats.fr/stats.total*100)+'%':''}</span></div>
-            {yoy&&yoy.fr!=null&&<div style={{fontSize:10,color:heroSubC,marginTop:2}}>{fY(yoy.fr,'pp')}</div>}
-          </div>
-          <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Best friend</div>
-            <div style={{fontSize:18,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{compD.length?compD[0].name:'\u2014'}</div>
-            {compD.length>0&&<div style={{fontSize:10,color:heroSubC,marginTop:2,fontFamily:fontOf('sans')}}>{compD[0].Films} films</div>}
-          </div>
-          <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Avg rating</div>
-            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{stats.avg}<span className="ml-1" style={{fontSize:15,color:T.primary}}>{'\u2605'}</span></div>
-            {yoy&&yoy.avg!=null&&<div style={{fontSize:10,color:heroSubC,marginTop:2}}>{fY(yoy.avg,'r')}</div>}
-          </div>
-          <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Runtime</div>
-            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}</div>
-          </div>
-          <div>
-            <div style={{fontSize:9,letterSpacing:'0.18em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>Money spent</div>
-            <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',fontFamily:fontHero,lineHeight:1}}>{moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'}</div>
-            {stats.total>0&&moneySpent>0&&<div style={{fontSize:10,color:heroSubC,marginTop:2,fontFamily:fontOf('sans')}}>{'\u20AC'+(moneySpent/stats.total).toFixed(2)}/film</div>}
-          </div>
-        </div>
       </div>
 
-      {/* MINI-STATS STRIP */}
-      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="Longest binge" value={binge.streak+' days'} sub={binge.range}/>
-        <Stat T={N} label="Current streak" value={streaks.week+' weeks'} sub={streaks.wr}/>
-        <Stat T={N} label="Most in a day" value={busiest.count+' films'} sub={busiest.fmt}/>
-        <Stat T={N} label="Busiest month" value={bestMo.length?bestMo[0].count+' films':'—'} sub={bestMo.length?bestMo[0].label:''} noBorder/>
+      {/* KPI ROW — the six stats that used to be crammed into the hero card. They read
+          better as one row in the neutral palette than as a grid competing with the figure
+          for attention inside a themed frame. The streak/binge figures that used to sit
+          here moved down beside the calendar, which is what they actually describe. */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+        <Stat T={N} label="In theaters" value={stats.th} sub={stats.total?Math.round(stats.th/stats.total*100)+'%':''} yoy={yoy&&yoy.th!=null?fY(yoy.th,'pp'):null}/>
+        <Stat T={N} label="With friends" value={stats.fr} sub={stats.total?Math.round(stats.fr/stats.total*100)+'%':''} yoy={yoy&&yoy.fr!=null?fY(yoy.fr,'pp'):null}/>
+        <Stat T={N} label="Best friend" value={compD.length?compD[0].name:'\u2014'} sub={compD.length?compD[0].Films+' films':''}/>
+        <Stat T={N} label="Avg rating" value={stats.avg+'\u2605'} yoy={yoy&&yoy.avg!=null?fY(yoy.avg,'r'):null}/>
+        <Stat T={N} label="Runtime" value={dirStats.totalH>0?dirStats.totalH+'h':'\u2014'}/>
+        <Stat T={N} label="Money spent" value={moneySpent>0?'\u20AC'+Math.round(moneySpent):'\u2014'} sub={stats.total>0&&moneySpent>0?'\u20AC'+(moneySpent/stats.total).toFixed(2)+'/film':''} noBorder/>
       </div>
 
       {/* HEATMAP */}
@@ -664,9 +638,17 @@ export default function Dashboard(){
         <SectionHead T={N} title="The viewing calendar" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a cell to see the films</span>}/>
         <div className="overflow-x-auto"><div style={{minWidth:380}}>
           <div className="flex items-center mb-1"><div style={{width:36}}/>{MS.map(function(m,i){return <div key={i} className="flex-1 text-center" style={{fontSize:10,color:N.muted,letterSpacing:'0.05em'}}>{m}</div>})}</div>
-          {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:4,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max);return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?'#000000':'transparent',borderRadius:4,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
+          {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:4,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max);return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?textOn(bgColor):'transparent',borderRadius:4,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
         </div></div>
         {selHM&&<FilmList T={N} title={MF[selHM.mo]+' '+selHM.yr} films={hmFilms} onClose={function(){sSelHM(null)}}/>}
+        {/* Intensity figures sit here rather than at the top: they all describe how densely
+            the viewing is packed, which is exactly what the calendar above shows. */}
+        <div className="grid grid-cols-2 md:grid-cols-4 mt-3" style={{borderTop:'0.5px solid '+N.border}}>
+          <Stat T={N} label="Longest binge" value={binge.streak+' days'} sub={binge.range}/>
+          <Stat T={N} label="Current streak" value={streaks.week+' weeks'} sub={streaks.wr}/>
+          <Stat T={N} label="Most in a day" value={busiest.count+' films'} sub={busiest.fmt}/>
+          <Stat T={N} label="Busiest month" value={bestMo.length?bestMo[0].count+' films':'\u2014'} sub={bestMo.length?bestMo[0].label:''} noBorder/>
+        </div>
       </div>
 
       {/* CUMULATIVE */}
