@@ -393,7 +393,7 @@ export default function Dashboard(){
   var[sI,sSI]=useState(false);var[csv,sCsv]=useState('');var[iR,sIR]=useState(null);
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);var[dirUniq,sDirUniq]=useState(false);
-  var[sorts,sSorts]=useState({dir:'avg'});var[selHM,sSelHM]=useState(null);
+  var[sorts,sSorts]=useState({dir:'avg'});var[selHM,sSelHM]=useState(null);var[isoYr,sIsoYr]=useState(null);
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
@@ -674,10 +674,10 @@ export default function Dashboard(){
             <XAxis dataKey="month" tick={{fill:N.muted,fontSize:10}}/>
             <YAxis tick={{fill:N.muted,fontSize:10}}/>
             <Tooltip content={function(p){return <CTooltip {...p} T={N}/>}}/>
-            {cumData.years.map(function(y,i){return <Line key={y} type="monotone" dataKey={String(y)} stroke={yC(y,cumData.years)} strokeWidth={yr!=='All'&&yr===String(y)?2.5:1.25} dot={false} connectNulls={false} opacity={yr!=='All'&&yr!==String(y)?0.25:1}/>})}
+            {cumData.years.filter(function(y){return isoYr===null||String(y)===isoYr}).map(function(y){var iso=isoYr===String(y);return <Line key={y} type="monotone" dataKey={String(y)} stroke={yC(y,cumData.years)} strokeWidth={iso||(yr!=='All'&&yr===String(y))?2.5:1.25} dot={false} connectNulls={false} opacity={(!iso&&yr!=='All'&&yr!==String(y))?0.25:1}/>})}
           </LineChart>
         </ResponsiveContainer>
-        <div className="flex gap-3 flex-wrap mt-2">{cumData.years.map(function(y){return <div key={y} className="flex items-center gap-1.5"><div style={{width:14,height:2,background:yC(y,cumData.years),borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>{y}</span></div>})}</div>
+        <div className="flex gap-2 flex-wrap mt-2 items-center">{cumData.years.map(function(y){var ys=String(y);var iso=isoYr===ys;var dim=isoYr!==null&&!iso;return <button key={y} onClick={function(){sIsoYr(iso?null:ys)}} title={iso?'Show all years':'Show only '+ys} className="flex items-center gap-1.5 px-1.5 py-0.5" style={{background:iso?N.surfaceAlt:'transparent',border:'0.5px solid '+(iso?yC(y,cumData.years):'transparent'),borderRadius:4,cursor:'pointer',opacity:dim?0.4:1,transition:'opacity 0.12s'}}><div style={{width:14,height:2,background:yC(y,cumData.years),borderRadius:4}}/><span className="text-xs" style={{color:iso?N.ink:N.muted}}>{y}</span></button>})}{isoYr!==null&&<button onClick={function(){sIsoYr(null)}} className="text-xs px-2 py-0.5" style={{color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,cursor:'pointer'}}>{'\u2715'} All years</button>}</div>
       </div>
 
       {/* RATING DISTRIBUTION */}
