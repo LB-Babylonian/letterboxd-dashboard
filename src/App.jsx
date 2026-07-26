@@ -363,6 +363,18 @@ function CTbl(p){var T=p.T;var[open,sOpen]=useState(false);var sorted=p.sortMode
 // FilmList — Selected film panel
 function FilmList(p){var T=p.T;if(!p.films||!p.films.length)return null;return <div className="mt-3 p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+T.primary,borderRadius:4}}><div className="flex justify-between items-center mb-2"><div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div><button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,borderRadius:4}}>{'\u2715'}</button></div><div className="max-h-72 overflow-y-auto">{p.films.map(function(f,i){return <div key={i} className="text-xs py-1.5 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span><span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span></div>})}</div></div>}
 
+// Profile picture. Drop the file at public/avatar.jpg and it appears; leave it out and
+// this renders nothing at all. Served from public/ rather than hotlinked from
+// Letterboxd's CDN so it cannot break when they reorganise their storage.
+var AVATAR_SRC='/avatar.jpg';
+function Avatar(p){
+  var[ok,sOk]=useState(true);
+  if(!ok||!p.src)return null;
+  return <img src={p.src} alt="" width={p.size} height={p.size} onError={function(){sOk(false)}}
+    style={{width:p.size,height:p.size,borderRadius:'50%',objectFit:'cover',flex:'0 0 auto',
+            border:'1.5px solid '+(p.ring||NEUTRAL.borderStrong),background:NEUTRAL.surfaceAlt}}/>;
+}
+
 // Poster — 772 of 777 metadata rows carry a TMDB thumbnail (w92) that nothing rendered
 // until now. Small and lazy-loaded on purpose: this is for recognising a title at a
 // glance, not decoration. Falls back to an empty slot so rows never jump height.
@@ -629,10 +641,13 @@ export default function Dashboard(){
           <div style={{width:5,height:5,background:T.dots[2],borderRadius:'50%'}}/>
         </div>}
         <div className="grid md:grid-cols-5 gap-x-8 gap-y-5 items-center" style={{position:'relative',zIndex:1}}>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex items-center gap-4">
+            <Avatar src={AVATAR_SRC} size={72} ring={T.primary}/>
+            <div>
             <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?' \u00b7 all time':' \u00b7 '+yr}</div>
             <div style={{fontSize:'clamp(46px, 6vw, 72px)',lineHeight:1,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
             {yoy&&yoy.films!=null&&<div style={{fontSize:12,color:heroSubC,fontFamily:fontLabel,marginTop:5}}>{copyHeroSuffix}</div>}
+            </div>
           </div>
           {/* The supporting figures live INSIDE the frame rather than beside it. Every one
               answers the same question as the headline — how much, how often, how densely — so
