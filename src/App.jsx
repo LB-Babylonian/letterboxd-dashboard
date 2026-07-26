@@ -92,6 +92,12 @@ var FONT_MAP={
 };
 function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
 
+// Face for the small supporting figures in the hero. Deliberately NOT the theme's
+// display font: that one is chosen to carry a 72px headline, and several themes set it
+// to blackletter, script or handwriting, which is unreadable at 20px. Change this one
+// name to restyle every supporting figure at once.
+var KPI_FONT='sans';
+
 var THEME_COPY={
   neutral:{masthead:'\u2014 Issue No. {total} \u00b7 {year} \u2014',title:'A year at the movies',heroLabel:'Films watched',heroSuffix:'{n} since last year',fonts:{hero:'serif',label:'sans',title:'serif'}},
   matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'red.pills.taken',heroSuffix:'[\u0394 {n} from prev cycle]',fonts:{hero:'monoX',label:'mono',title:'mono'}},
@@ -662,9 +668,9 @@ export default function Dashboard(){
               ['Most in a day',busiest.count+' films',busiest.fmt],
               ['Busiest month',bestMo.length?bestMo[0].count+' films':'\u2014',bestMo.length?bestMo[0].label:'']
             ].map(function(row,i){return <div key={i}>
-              <div style={{fontSize:8.5,letterSpacing:'0.16em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:3,fontWeight:500}}>{row[0]}</div>
-              <div style={{fontSize:17,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontHero}}>{row[1]}</div>
-              {row[2]?<div style={{fontSize:9.5,color:heroSubC,marginTop:2,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}</div>:null}
+              <div style={{fontSize:9.5,letterSpacing:'0.14em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>{row[0]}</div>
+              <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontOf(KPI_FONT),fontVariantNumeric:'tabular-nums'}}>{row[1]}</div>
+              {row[2]?<div style={{fontSize:10.5,color:heroSubC,marginTop:3,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}</div>:null}
             </div>})}
           </div>
         </div>
