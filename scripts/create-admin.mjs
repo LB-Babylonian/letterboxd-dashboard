@@ -47,6 +47,23 @@ function ask(question, { mask = false } = {}) {
   });
 }
 
+// Masking the password needs a real terminal. Run through a pipe or a
+// non-interactive shell, readline gets EOF immediately and the await never
+// settles, which surfaces as an unhelpful "unsettled top-level await" warning.
+// Say so plainly instead.
+if (!process.stdin.isTTY) {
+  console.error('\nThis script needs an interactive terminal to hide your password as you type.');
+  console.error('It looks like it was run through a pipe or a non-interactive shell.\n');
+  console.error('Either:');
+  console.error('  1. Open the macOS Terminal app, then:');
+  console.error('       cd ' + process.cwd());
+  console.error('       npm run create-admin\n');
+  console.error('  2. Or create the account in the Supabase dashboard instead:');
+  console.error('       Authentication -> Users -> Add user');
+  console.error('       (tick "Auto Confirm User" so no verification email is needed)\n');
+  process.exit(1);
+}
+
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
