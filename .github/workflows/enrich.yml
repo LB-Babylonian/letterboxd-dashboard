@@ -1,0 +1,49 @@
+name: TMDB enrichment
+
+# Fetches metadata for films that do not have any yet. Safe to run on a schedule:
+# the script skips everything already enriched, so a typical run prints
+# "Nothing to do." and exits in a couple of seconds.
+#
+# New films only appear when a fresh Letterboxd export is imported, so weekly is
+# plenty. Use "Run workflow" on the Actions tab for an immediate run after importing.
+#
+# Requires three repository secrets (Settings > Secrets and variables > Actions):
+#   TMDB_TOKEN            TMDB API Read Access Token
+#   SUPABASE_URL          project URL   (already used by the keepalive workflow)
+#   SUPABASE_SERVICE_KEY  service_role key — needed to write film_metadata
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'   # Mondays, 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never let a manual run collide with the scheduled one.
+concurrency:
+  group: tmdb-enrichment
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Enrich
+        env:
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        # There is no .env on a runner; the script reads these from the environment.
+        # It exits non-zero if any film failed, so a red run means something to look at
+        # rather than a silent partial success.
+        run: npm run enrich
