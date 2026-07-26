@@ -198,7 +198,9 @@ var ANIM_CSS='@keyframes matrixfall{0%{transform:translateY(-30%)}100%{transform
   // Legend chips: a resting border so they look pressable, and a hover lift. The
   // active state is set inline (inline wins over these rules, which is intended).
   +'.yr-chip{display:flex;align-items:center;gap:6px;padding:3px 8px;background:transparent;border:0.5px solid '+NEUTRAL.border+';border-radius:4px;cursor:pointer;transition:background .12s,border-color .12s,opacity .12s}'
-  +'.yr-chip:hover{background:'+NEUTRAL.surfaceAlt+';border-color:'+NEUTRAL.borderStrong+'}';
+  +'.yr-chip:hover{background:'+NEUTRAL.surfaceAlt+';border-color:'+NEUTRAL.borderStrong+'}'
+  +'.lb-link{text-decoration:none;transition:opacity .15s}'
+  +'.lb-link:hover{opacity:0.78}';
 
 
 // hexToRgb / rgbToHex helpers for color manipulation
@@ -650,7 +652,11 @@ export default function Dashboard(){
         </div>}
         <div className="grid md:grid-cols-5 gap-x-8 gap-y-5 items-center" style={{position:'relative',zIndex:1}}>
           <div className="md:col-span-2 flex items-center gap-4">
-            <Avatar src={AVATAR_SRC} size={72} ring={T.primary}/>
+            <a className="lb-link flex flex-col items-center gap-1.5" href="https://letterboxd.com/Rhobz37/"
+               target="_blank" rel="noopener noreferrer" title="Babylonian on Letterboxd" style={{flex:'0 0 auto'}}>
+              <Avatar src={AVATAR_SRC} size={72} ring={T.primary}/>
+              <span style={{fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:heroDescriptorC,fontFamily:fontLabel,whiteSpace:'nowrap'}}>Babylonian</span>
+            </a>
             <div>
             <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?' \u00b7 all time':' \u00b7 '+yr}</div>
             <div style={{fontSize:'clamp(46px, 6vw, 72px)',lineHeight:1,fontWeight:600,color:heroMetricC,letterSpacing:'-0.035em',fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums',textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
