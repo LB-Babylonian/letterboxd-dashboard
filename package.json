@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "enrich": "node --env-file=.env scripts/enrich.mjs"
+    "enrich": "node --env-file=.env scripts/enrich.mjs",
+    "create-admin": "node --env-file=.env scripts/create-admin.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
