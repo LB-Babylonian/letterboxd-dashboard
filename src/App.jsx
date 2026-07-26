@@ -722,16 +722,16 @@ export default function Dashboard(){
 
     {/* ===== WHO ===== */}
     {tab==='people'&&<div className="space-y-6">
-      <div className="grid grid-cols-2" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+      {/* One row of four. These were two separate two-column grids, each carrying its own
+          top and bottom border, so four related figures rendered as two stacked bands.
+          The last two are conditional, so "With friends" takes the no-border slot when
+          there are no companions to show. */}
+      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
         <Stat T={N} label="Solo" value={solo.solo} sub={(ef.length?((solo.solo/ef.length)*100).toFixed(0):0)+'%'} yoy={yoy&&fY(-yoy.fr,'pp')}/>
-        <Stat T={N} label="With friends" value={solo.social} sub={(ef.length?((solo.social/ef.length)*100).toFixed(0):0)+'%'} yoy={yoy&&fY(yoy.fr,'pp')} noBorder/>
+        <Stat T={N} label="With friends" value={solo.social} sub={(ef.length?((solo.social/ef.length)*100).toFixed(0):0)+'%'} yoy={yoy&&fY(yoy.fr,'pp')} noBorder={!compD.length}/>
+        {compD.length>0&&<Stat T={N} label="Best friend" value={compD[0].name} sub={compD[0].Films+' films together'}/>}
+        {compD.length>0&&<Stat T={N} label="People seen with" value={compD.length} sub="distinct" noBorder/>}
       </div>
-      {/* "Best friend" moved here from Overview. With friends / Solo already lived on
-          this page, so only this one needed a home. */}
-      {compD.length>0&&<div className="grid grid-cols-2" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="Best friend" value={compD[0].name} sub={compD[0].Films+' films together'}/>
-        <Stat T={N} label="People seen with" value={compD.length} sub="distinct" noBorder/>
-      </div>}
       <div><SectionHead T={N} title="Companions" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>hover for top films</span>}/><div className="flex justify-end mb-2"><SrtB T={N} val={sorts.co} onToggle={function(){ts('co')}}/></div><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={10} data={compD} sel={sCo} onSel={sSCo} sortMode={sorts.co}/></div></div>
       <FilmList T={N} title={sCo} films={compF} onClose={function(){sSCo(null)}}/>
     </div>}
