@@ -604,7 +604,7 @@ export default function Dashboard(){
     {tab==='overview'&&<div className="space-y-10">
 
       {/* HERO */}
-      <div className="relative" style={{minHeight:150,background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:4,padding:'24px 22px',border:T.gradient?'0.5px solid '+T.border:'none',overflow:'hidden'}}>
+      <div className="relative" style={{background:T.gradient?'linear-gradient(135deg, '+T.gradient[0]+' 0%, '+T.gradient[1]+' 50%, '+T.gradient[2]+' 100%)':'transparent',borderRadius:4,padding:'16px 22px',border:T.gradient?'0.5px solid '+T.border:'none',overflow:'hidden'}}>
         {T.bgImage&&<div style={{position:'absolute',inset:0,backgroundImage:'url('+T.bgImage+')',backgroundSize:T.bgImageSize||'cover',backgroundPosition:T.bgImagePosition||'center',backgroundRepeat:T.bgImageRepeat||'no-repeat',opacity:T.bgImageOpacity||0.18,mixBlendMode:T.bgImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
         {T.heroImage&&<div style={{position:'absolute',top:'10%',left:'10%',width:'60%',height:'80%',backgroundImage:'url('+T.heroImage+')',backgroundSize:'contain',backgroundPosition:T.heroImagePosition||'left center',backgroundRepeat:'no-repeat',opacity:T.heroImageOpacity||0.35,mixBlendMode:T.heroImageBlend||'normal',pointerEvents:'none',zIndex:0}}/>}
         <ThemeOrnament T={T}/>
@@ -614,9 +614,11 @@ export default function Dashboard(){
           <div style={{width:5,height:5,background:T.dots[2],borderRadius:'50%'}}/>
         </div>}
         <div style={{position:'relative',zIndex:1}}>
-          <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:14,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
-          <div style={{fontSize:'clamp(72px, 12vw, 128px)',lineHeight:0.85,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
-          {yoy&&yoy.films!=null&&<div className="mt-3" style={{fontSize:13,color:heroSubC,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
+          <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?'':' · '+yr}</div>
+          <div className="flex items-baseline gap-4 flex-wrap">
+            <div style={{fontSize:'clamp(46px, 6.5vw, 76px)',lineHeight:1,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+            {yoy&&yoy.films!=null&&<div style={{fontSize:13,color:heroSubC,fontFamily:fontLabel}}>{copyHeroSuffix}</div>}
+          </div>
         </div>
       </div>
 
