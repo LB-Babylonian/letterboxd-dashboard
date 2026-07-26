@@ -92,11 +92,13 @@ var FONT_MAP={
 };
 function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
 
-// Face for the small supporting figures in the hero. Deliberately NOT the theme's
-// display font: that one is chosen to carry a 72px headline, and several themes set it
-// to blackletter, script or handwriting, which is unreadable at 20px. Change this one
-// name to restyle every supporting figure at once.
-var KPI_FONT='sans';
+// Face for every numeral in the hero — the headline figure and the six supporting ones.
+// Deliberately NOT the theme's display font: several themes set that to blackletter,
+// script or handwriting, which is unreadable as a number and inconsistent between
+// themes. The theme still speaks through the gradient, ornament, dots, colours and the
+// label typeface; the figures stay constant so they are always readable. One name here
+// restyles all of them.
+var FIGURE_FONT='sans';
 
 var THEME_COPY={
   neutral:{masthead:'\u2014 Issue No. {total} \u00b7 {year} \u2014',title:'A year at the movies',heroLabel:'Films watched',heroSuffix:'{n} since last year',fonts:{hero:'serif',label:'sans',title:'serif'}},
@@ -601,7 +603,6 @@ export default function Dashboard(){
   // ============================================================
   var heroYearLabel=yr==='All'?'All time':yr;
   var copyCtx={year:yr==='All'?String(new Date().getFullYear()):yr,total:stats.total,n:yoy&&yoy.films!=null?fY(yoy.films,'abs')||'':''};
-  var fontHero=fontOf((T.fonts&&T.fonts.hero)||'sans');
   var fontLabel=fontOf((T.fonts&&T.fonts.label)||'sans');
   var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films watched',copyCtx);
   var copyHeroSuffix=applyCopy((T.copy&&T.copy.heroSuffix)||'{n} vs '+(yr==='All'?'':String(parseInt(yr)-1)),copyCtx);
@@ -652,7 +653,7 @@ export default function Dashboard(){
             <Avatar src={AVATAR_SRC} size={72} ring={T.primary}/>
             <div>
             <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?' \u00b7 all time':' \u00b7 '+yr}</div>
-            <div style={{fontSize:'clamp(46px, 6vw, 72px)',lineHeight:1,fontWeight:(T.fonts&&(T.fonts.hero==='handwrite'||T.fonts.hero==='script'||T.fonts.hero==='marker'||T.fonts.hero==='serif'))?700:400,color:heroMetricC,letterSpacing:'-0.04em',fontFamily:fontHero,textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+            <div style={{fontSize:'clamp(46px, 6vw, 72px)',lineHeight:1,fontWeight:600,color:heroMetricC,letterSpacing:'-0.035em',fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums',textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
             {yoy&&yoy.films!=null&&<div style={{fontSize:12,color:heroSubC,fontFamily:fontLabel,marginTop:5}}>{copyHeroSuffix}</div>}
             </div>
           </div>
@@ -669,7 +670,7 @@ export default function Dashboard(){
               ['Busiest month',bestMo.length?bestMo[0].count+' films':'\u2014',bestMo.length?bestMo[0].label:'']
             ].map(function(row,i){return <div key={i}>
               <div style={{fontSize:9.5,letterSpacing:'0.14em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>{row[0]}</div>
-              <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontOf(KPI_FONT),fontVariantNumeric:'tabular-nums'}}>{row[1]}</div>
+              <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums'}}>{row[1]}</div>
               {row[2]?<div style={{fontSize:10.5,color:heroSubC,marginTop:3,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}</div>:null}
             </div>})}
           </div>
