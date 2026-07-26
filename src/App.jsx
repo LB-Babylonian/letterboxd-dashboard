@@ -384,7 +384,7 @@ export default function Dashboard(){
   var[sI,sSI]=useState(false);var[csv,sCsv]=useState('');var[iR,sIR]=useState(null);
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);var[dirUniq,sDirUniq]=useState(false);
-  var[sorts,sSorts]=useState({dir:'avg'});var[sq,sSq]=useState('');var[selHM,sSelHM]=useState(null);
+  var[sorts,sSorts]=useState({dir:'avg'});var[selHM,sSelHM]=useState(null);
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
@@ -440,7 +440,6 @@ export default function Dashboard(){
   var isT=useCallback(function(e){return gP(e.tags,fullReg)==='Theater'||gV(e.tags,fullReg)!==null},[fullReg]);
   var stats=useMemo(function(){var f=ef,rt=f.filter(function(e){return e.rating!==null}),av=rt.length?rt.reduce(function(s,e){return s+e.rating},0)/rt.length:0;return{total:f.length,avg:av.toFixed(2),th:f.filter(isT).length,rw:f.filter(function(e){return e.rewatch}).length,fo:f.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,fr:f.filter(function(e){return gC(e.tags,fullReg).length>0}).length}},[ef,fullReg,isT]);
   var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;var pp=function(cf,pf){return(cf/cN*100)-(pf/pN*100)};var pR=pv.filter(function(e){return e.rating!==null}),cR=ef.filter(function(e){return e.rating!==null});return{films:cN-pN,avg:(pR.length&&cR.length)?(cR.reduce(function(s,e){return s+e.rating},0)/cR.length)-(pR.reduce(function(s,e){return s+e.rating},0)/pR.length):null,th:pp(ef.filter(isT).length,pv.filter(isT).length),rw:iRW?pp(ef.filter(function(e){return e.rewatch}).length,pv.filter(function(e){return e.rewatch}).length):null,fo:pp(ef.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,pv.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length),fr:pp(ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length,pv.filter(function(e){return gC(e.tags,fullReg).length>0}).length)}},[yr,ef,all,iRW,fullReg,isT]);
-  var searchRes=useMemo(function(){if(!sq||sq.length<2)return[];var q=sq.toLowerCase();return all.filter(function(e){return e.name.toLowerCase().indexOf(q)!==-1}).slice(0,12)},[all,sq]);
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
   var busiest=useMemo(function(){var c={};ef.forEach(function(e){c[e.date]=(c[e.date]||0)+1});var en=Object.entries(c).sort(function(a,b){return b[1]-a[1]});if(!en.length)return{count:0,fmt:'N/A',films:[]};var d=en[0][0],n=en[0][1],p=d.split('-').map(Number);return{count:n,fmt:MF[p[1]-1]+' '+p[2]+', '+p[0],films:ef.filter(function(e){return e.date===d}).map(function(e){return e.name})}},[ef]);
   var bestMo=useMemo(function(){var c={};ef.forEach(function(e){var m=e.date.slice(0,7);c[m]=(c[m]||0)+1});return Object.entries(c).sort(function(a,b){return b[1]-a[1]}).slice(0,1).map(function(x){return{label:fmtM(x[0]),count:x[1]}})},[ef]);
@@ -558,39 +557,26 @@ export default function Dashboard(){
   var copyCtx={year:yr==='All'?String(new Date().getFullYear()):yr,total:stats.total,n:yoy&&yoy.films!=null?fY(yoy.films,'abs')||'':''};
   var fontHero=fontOf((T.fonts&&T.fonts.hero)||'sans');
   var fontLabel=fontOf((T.fonts&&T.fonts.label)||'sans');
-  var fontTitle=fontOf((T.fonts&&T.fonts.title)||'sans');
-  var copyMasthead=applyCopy((T.copy&&T.copy.masthead)||"Babylonian's Letterboxd",copyCtx);
-  var copyTitle=applyCopy((T.copy&&T.copy.title)||'A year at the movies',copyCtx);
   var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films watched',copyCtx);
   var copyHeroSuffix=applyCopy((T.copy&&T.copy.heroSuffix)||'{n} vs '+(yr==='All'?'':String(parseInt(yr)-1)),copyCtx);
 
   return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}<div className="max-w-6xl mx-auto">
 
-    {/* MASTHEAD — themed (copy + font + colors per theme) */}
-    <div className="flex justify-between items-baseline mb-8 pb-4" style={{borderBottom:'0.5px solid '+N.border}}>
-      <div>
-        <div style={{fontSize:10,letterSpacing:'0.22em',color:T.muted,textTransform:'uppercase',fontFamily:fontLabel}}>{copyMasthead}</div>
-        <div style={{fontSize:24,fontWeight:500,marginTop:4,color:T.titleColor||T.ink,letterSpacing:'-0.01em',fontFamily:fontTitle}}>{copyTitle}</div>
-        <button onClick={function(){sShowPicker(true)}} className="mt-2 text-xs" style={{background:'transparent',border:'none',color:N.muted,cursor:'pointer',padding:0,letterSpacing:'0.05em',fontStyle:'italic'}}>{'\u25BE '}{T.name}</button>
-      </div>
-      <div className="flex gap-2 items-center">
-        {isAdmin&&<span className="text-xs" style={{color:T.primary,letterSpacing:'0.1em',textTransform:'uppercase'}}>Admin</span>}
-        {isAdmin?<button onClick={doSignOut} style={btnSecondary}>Sign out</button>:<button onClick={function(){sShowPwModal(true)}} style={btnSecondary}>Admin</button>}
-                {isAdmin&&<button onClick={function(){sSI(true)}} style={btnSecondary}>Import</button>}
-        {isAdmin&&<button onClick={doClear} style={btnSecondary}>Clear</button>}
-      </div>
+    {/* HEADER — controls only. The themed masthead and title were removed: they cost
+        two lines plus 48px of padding before any actual content. The theme picker moved
+        in here rather than sitting on its own line under the title. */}
+    <div className="flex justify-end items-center gap-2 mb-5 pb-3" style={{borderBottom:'0.5px solid '+N.border}}>
+      {isAdmin&&<span className="text-xs" style={{color:T.primary,letterSpacing:'0.1em',textTransform:'uppercase'}}>Admin</span>}
+      <button onClick={function(){sShowPicker(true)}} style={btnSecondary}>{'\u25BE '}{T.name}</button>
+      {isAdmin?<button onClick={doSignOut} style={btnSecondary}>Sign out</button>:<button onClick={function(){sShowPwModal(true)}} style={btnSecondary}>Admin</button>}
+      {isAdmin&&<button onClick={function(){sSI(true)}} style={btnSecondary}>Import</button>}
+      {isAdmin&&<button onClick={doClear} style={btnSecondary}>Clear</button>}
     </div>
 
     {unclass>0&&!isAdmin&&<div className="p-3 mb-4 text-xs" style={{background:N.surface,border:'0.5px solid '+T.primary,borderRadius:4,color:T.secondary}}>{unclass} tags unclassified.</div>}
 
-    {/* SEARCH */}
-    <div className="relative mb-4">
-      <input style={Object.assign({},inputStyle,{width:'100%'})} placeholder="Search films..." value={sq} onChange={function(e){sSq(e.target.value)}}/>
-      {searchRes.length>0&&<div className="absolute z-50 w-full mt-1 max-h-72 overflow-y-auto" style={{background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,boxShadow:'0 4px 12px rgba(0,0,0,0.3)'}}>{searchRes.map(function(f,i){return <div key={i} className="px-3 py-2 flex justify-between text-sm" style={{borderBottom:'0.5px solid '+N.border}}><span className="truncate mr-2" style={{color:N.inkSoft}}>{f.name} <span style={{color:N.muted}}>({f.year})</span>{f.rating!==null&&<span style={{color:NEUTRAL.ink}}> {f.rating}{'\u2605'}</span>}</span><span className="text-xs" style={{color:N.muted}}>{f.date}</span></div>})}</div>}
-    </div>
-
     {/* TABS */}
-    <div className="flex gap-0 mb-6 flex-wrap" style={{borderBottom:'0.5px solid '+N.border}}>{TABS.map(function(t){var active=tab===t.id;return <button key={t.id} onClick={function(){sTab(t.id);cls();sSq('')}} style={{padding:'8px 14px',fontSize:12,fontWeight:active?500:400,color:active?T.primary:N.muted,background:'transparent',border:'none',borderBottom:active?'1.5px solid '+T.primary:'1.5px solid transparent',marginBottom:-1,cursor:'pointer',letterSpacing:'0.02em'}}>{t.l}</button>})}</div>
+    <div className="flex gap-0 mb-6 flex-wrap" style={{borderBottom:'0.5px solid '+N.border}}>{TABS.map(function(t){var active=tab===t.id;return <button key={t.id} onClick={function(){sTab(t.id);cls()}} style={{padding:'8px 14px',fontSize:12,fontWeight:active?500:400,color:active?T.primary:N.muted,background:'transparent',border:'none',borderBottom:active?'1.5px solid '+T.primary:'1.5px solid transparent',marginBottom:-1,cursor:'pointer',letterSpacing:'0.02em'}}>{t.l}</button>})}</div>
 
     {/* FILTER BAR */}
     {['overview','ratings','where','who','yesmine','taste','films','rankings','diary'].indexOf(tab)!==-1&&<div className="flex flex-wrap items-center gap-3 mb-6">
