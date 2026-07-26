@@ -602,21 +602,22 @@ export default function Dashboard(){
 
   return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}<div className="max-w-6xl mx-auto">
 
-    {/* HEADER — controls only. The themed masthead and title were removed: they cost
-        two lines plus 48px of padding before any actual content. The theme picker moved
-        in here rather than sitting on its own line under the title. */}
-    <div className="flex justify-end items-center gap-2 mb-5 pb-3" style={{borderBottom:'0.5px solid '+N.border}}>
-      {isAdmin&&<span className="text-xs" style={{color:T.primary,letterSpacing:'0.1em',textTransform:'uppercase'}}>Admin</span>}
-      <button onClick={function(){sShowPicker(true)}} style={btnSecondary}>{'\u25BE '}{T.name}</button>
-      {isAdmin?<button onClick={doSignOut} style={btnSecondary}>Sign out</button>:<button onClick={function(){sShowPwModal(true)}} style={btnSecondary}>Admin</button>}
-      {isAdmin&&<button onClick={function(){sSI(true)}} style={btnSecondary}>Import</button>}
-      {isAdmin&&<button onClick={doClear} style={btnSecondary}>Clear</button>}
+    {/* NAV — tabs and controls share one row. They were two stacked rows with their own
+        borders and margins, costing ~50px before any content for what is a single band of
+        chrome. Tabs sit on the border so their active underline meets it; the controls are
+        pushed right with ml-auto and wrap underneath only on narrow screens. */}
+    <div className="flex items-end gap-2 mb-5 flex-wrap" style={{borderBottom:'0.5px solid '+N.border}}>
+      <div className="flex gap-0 flex-wrap">{TABS.map(function(t){var active=tab===t.id;return <button key={t.id} onClick={function(){sTab(t.id);cls()}} style={{padding:'8px 14px',fontSize:12,fontWeight:active?500:400,color:active?T.primary:N.muted,background:'transparent',border:'none',borderBottom:active?'1.5px solid '+T.primary:'1.5px solid transparent',marginBottom:-1,cursor:'pointer',letterSpacing:'0.02em'}}>{t.l}</button>})}</div>
+      <div className="flex items-center gap-2 ml-auto" style={{paddingBottom:6}}>
+        {isAdmin&&<span className="text-xs" style={{color:T.primary,letterSpacing:'0.1em',textTransform:'uppercase'}}>Admin</span>}
+        <button onClick={function(){sShowPicker(true)}} style={btnSecondary}>{'\u25BE '}{T.name}</button>
+        {isAdmin?<button onClick={doSignOut} style={btnSecondary}>Sign out</button>:<button onClick={function(){sShowPwModal(true)}} style={btnSecondary}>Admin</button>}
+        {isAdmin&&<button onClick={function(){sSI(true)}} style={btnSecondary}>Import</button>}
+        {isAdmin&&<button onClick={doClear} style={btnSecondary}>Clear</button>}
+      </div>
     </div>
 
     {unclass>0&&!isAdmin&&<div className="p-3 mb-4 text-xs" style={{background:N.surface,border:'0.5px solid '+T.primary,borderRadius:4,color:T.secondary}}>{unclass} tags unclassified.</div>}
-
-    {/* TABS */}
-    <div className="flex gap-0 mb-6 flex-wrap" style={{borderBottom:'0.5px solid '+N.border}}>{TABS.map(function(t){var active=tab===t.id;return <button key={t.id} onClick={function(){sTab(t.id);cls()}} style={{padding:'8px 14px',fontSize:12,fontWeight:active?500:400,color:active?T.primary:N.muted,background:'transparent',border:'none',borderBottom:active?'1.5px solid '+T.primary:'1.5px solid transparent',marginBottom:-1,cursor:'pointer',letterSpacing:'0.02em'}}>{t.l}</button>})}</div>
 
     {/* FILTER BAR */}
     {['overview','ratings','where','who','yesmine','taste','films','rankings','diary'].indexOf(tab)!==-1&&<div className="flex flex-wrap items-center gap-3 mb-6">
