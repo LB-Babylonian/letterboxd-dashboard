@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, Component } from "react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList } from "recharts";
 import { createClient } from "@supabase/supabase-js";
 // Supabase config comes from .env (see .env.example). Note that Vite inlines
 // VITE_* values into the production bundle — these are NOT secrets and must not
@@ -336,6 +336,17 @@ var CI={
   meta:{l:'Meta'},
   price:{l:'Price'}
 };
+// The taste map plots one dot per category: how much you watch it against how much you
+// like it. Every set needs a floor, otherwise the chart fills with things seen once whose
+// "average rating" is a single opinion. Directors and cast need a higher floor than genres
+// because the long tail there is enormous (426 of 585 directors appear exactly once).
+var QUAD_SETS=[
+  {id:'genre',l:'Genres',min:2,unit:'genre'},
+  {id:'dir',l:'Directors',min:3,unit:'director'},
+  {id:'cast',l:'Cast',min:3,unit:'actor'},
+  {id:'country',l:'Countries',min:2,unit:'country'},
+  {id:'decade',l:'Decades',min:1,unit:'decade'}
+];
 var MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var MF=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var DSUBS=[{id:'rat',name:'Rat+',platforms:['canal','netflix','hbo','paramount'],periods:[{from:'2021-10',to:'',price:40}]},{id:'disney',name:'Disney+',platforms:['disney'],periods:[{from:'2023-01',to:'',price:9}]},{id:'mubi',name:'Mubi',platforms:['mubi'],periods:[{from:'2021-11',to:'',price:11}]},{id:'prime',name:'Prime Video',platforms:['prime'],periods:[{from:'2022-01',to:'',price:7}]},{id:'theater',name:'Pathé/UGC Pass',platforms:['_theater_sub'],periods:[{from:'2023-07',to:'',price:22}]}];
@@ -440,6 +451,7 @@ export default function Dashboard(){
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);var[dirUniq,sDirUniq]=useState(false);
   var[sorts,sSorts]=useState({dir:'avg'});var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
+  var[quadSet,sQuadSet]=useState('genre');var[dirAsList,sDirAsList]=useState(false);var[dirWallOpen,sDirWallOpen]=useState(false);var[revOpen,sRevOpen]=useState(false);
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
@@ -535,6 +547,102 @@ export default function Dashboard(){
   var yStats=useMemo(function(){if(!yFilms.length)return{count:0,rated:0,myAvg:0,yAvg:0,agree:0,disagree:[]};var myS=0,myC=0,yS=0,yC=0,rated=0;yFilms.forEach(function(f){if(f.rating!==null){myS+=f.rating;myC++}if(typeof f.yRating==="number"){yS+=f.yRating;yC++;rated++}});var sorted=yFilms.filter(function(f){return f.diff!==null}).sort(function(a,b){return b.diff-a.diff});var agree=yFilms.filter(function(f){return f.diff!==null&&f.diff<=0.5}).length;return{count:yFilms.length,rated:rated,myAvg:myC?myS/myC:0,yAvg:yC?yS/yC:0,agree:agree,disagree:sorted.slice(0,10)}},[yFilms]);
   var yMissing=useMemo(function(){return ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf("yesmine")!==-1})&&gYR(e.name,e.year)===undefined}).slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:a.name<b.name?-1:1})},[ef,yRatingsNorm,fullReg])
   var yScatter=useMemo(function(){return yFilms.filter(function(f){return f.rating!==null&&typeof f.yRating==="number"})},[yFilms]);
+
+  // ============================================================
+  // SECOND THOUGHTS — the diary's ratings against ratings.csv
+  // ============================================================
+  // ratings.csv holds your CURRENT score for a film; the diary holds what you gave it on
+  // the night. Three different things live in the gap, and none of them respects the year
+  // filter — a change of mind belongs to the whole history, not to one year:
+  //   drift     two or more rated watches of the same film — a rewatch moved the number
+  //   re-scored the current rating differs from the last one you logged
+  //   preDiary  rated but never logged at all: the films you saw before the diary existed
+  // allRatings was loaded into state and read by nothing until now.
+  var diaryByFilm=useMemo(function(){var m={};all.forEach(function(e){if(e.rating===null)return;var k=normName(e.name)+'|||'+e.year;if(!m[k])m[k]={name:e.name,year:e.year,watches:[]};m[k].watches.push({date:e.date,rating:e.rating})});Object.keys(m).forEach(function(k){m[k].watches.sort(function(a,b){return a.date<b.date?-1:1})});return m},[all]);
+  var currentRatings=useMemo(function(){var m={};allRatings.forEach(function(r){var v=parseFloat(r.rating);if(isNaN(v))return;m[normName(r.name)+'|||'+r.year]={rating:v,date:r.date,name:r.name,year:r.year}});return m},[allRatings]);
+  var revisions=useMemo(function(){
+    var rows=[],drift=[];
+    Object.keys(diaryByFilm).forEach(function(k){
+      var f=diaryByFilm[k],w=f.watches,first=w[0].rating,lastLogged=w[w.length-1].rating;
+      // No row in ratings.csv means nothing was re-scored, so the last logged rating stands.
+      var cur=currentRatings[k]?currentRatings[k].rating:lastLogged;
+      if(w.length>1)drift.push({name:f.name,year:f.year,first:first,last:lastLogged,delta:lastLogged-first,watches:w.length});
+      if(Math.abs(cur-first)>=0.01)rows.push({name:f.name,year:f.year,from:first,to:cur,delta:cur-first,
+        how:(w.length>1&&Math.abs(lastLogged-first)>=0.01)?'rewatched':'re-scored'});
+    });
+    rows.sort(function(a,b){return Math.abs(b.delta)-Math.abs(a.delta)});
+    var up=rows.filter(function(r){return r.delta>0}).sort(function(a,b){return b.delta-a.delta});
+    var down=rows.filter(function(r){return r.delta<0}).sort(function(a,b){return a.delta-b.delta});
+    // Identical (first,last) pairs land on the same pixel, so collapse them and size the
+    // dot by how many films sit there — otherwise the scatter reads as ten dots, not 80.
+    var pairs={};drift.forEach(function(d){var pk=d.first+'|'+d.last;if(!pairs[pk])pairs[pk]={x:d.first,y:d.last,n:0,films:[]};pairs[pk].n++;pairs[pk].films.push(d.name)});
+    var preDiary=Object.keys(currentRatings).filter(function(k){return!diaryByFilm[k]}).map(function(k){return currentRatings[k]});
+    return{rows:rows,up:up,down:down,drift:drift,pairs:Object.keys(pairs).map(function(k){return pairs[k]}),preDiary:preDiary,
+      net:rows.length?rows.reduce(function(s,r){return s+r.delta},0)/rows.length:0,
+      riser:up[0]||null,faller:down[0]||null};
+  },[diaryByFilm,currentRatings]);
+  // Shares rather than counts: the pre-diary shelf is a fraction of the diary's size, so
+  // raw bars would put one distribution flat against the axis.
+  var preDist=useMemo(function(){
+    var buckets=[];for(var r=0.5;r<=5;r+=0.5)buckets.push(r);
+    var dC={},pC={};buckets.forEach(function(r){dC[r]=0;pC[r]=0});
+    var dN=0;Object.keys(diaryByFilm).forEach(function(k){var r=diaryByFilm[k].watches[0].rating;if(dC[r]!==undefined){dC[r]++;dN++}});
+    var pN=0;revisions.preDiary.forEach(function(f){if(pC[f.rating]!==undefined){pC[f.rating]++;pN++}});
+    var dS=0,pS=0;buckets.forEach(function(r){dS+=r*dC[r];pS+=r*pC[r]});
+    return{data:buckets.map(function(r){return{rating:String(r),logged:dN?dC[r]/dN*100:0,pre:pN?pC[r]/pN*100:0}}),
+      diaryN:dN,preN:pN,diaryAvg:dN?dS/dN:0,preAvg:pN?pS/pN:0};
+  },[diaryByFilm,revisions]);
+  // Rolling mean over the last 50 rated watches, in diary order. A per-year average hides
+  // the shape; 50 is wide enough that one generous week does not move the line.
+  var inflation=useMemo(function(){
+    var rated=all.filter(function(e){return e.rating!==null}).slice().sort(function(a,b){return a.date<b.date?-1:1});
+    var W=50;if(rated.length<W+10)return{data:[],mean:0,w:W};
+    var out=[],sum=0;
+    for(var i=0;i<rated.length;i++){sum+=rated[i].rating;if(i>=W)sum-=rated[i-W].rating;if(i>=W-1)out.push({d:rated[i].date.slice(0,7),avg:sum/W})}
+    return{data:out,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
+  },[all]);
+
+  // ============================================================
+  // TASTE MAP / RIBBON / POSTER WALL — the profile numbers, re-shaped
+  // ============================================================
+  var quadCfg=QUAD_SETS.filter(function(q){return q.id===quadSet})[0]||QUAD_SETS[0];
+  var quadSrc=quadSet==='dir'?dirD:quadSet==='cast'?castD:quadSet==='country'?countryD:quadSet==='decade'?decD:genreD;
+  var quad=useMemo(function(){
+    var pts=quadSrc.filter(function(d){return d.Films>=quadCfg.min&&d.Avg>0});
+    if(!pts.length)return{pts:[],plain:[],labeled:[],mx:0,my:0,yDom:[0,5]};
+    // Medians, not means: a couple of huge genres would drag a mean right and leave three
+    // of the four quadrants empty.
+    var med=function(a){var s=a.slice().sort(function(x,y){return x-y});return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
+    var mx=med(pts.map(function(d){return d.Films})),my=med(pts.map(function(d){return d.Avg}));
+    var avgs=pts.map(function(d){return d.Avg});
+    var lo=Math.max(0,Math.floor(Math.min.apply(null,avgs)*4)/4-0.15),hi=Math.min(5,Math.ceil(Math.max.apply(null,avgs)*4)/4+0.15);
+    // Label the extremes, not the top six by count: the biggest categories cluster in the
+    // same crowded band, so six count-ranked labels collided with each other and with their
+    // own dots. The three most-watched plus the best- and worst-rated sit far apart by
+    // construction, which is what keeps the labels legible.
+    var top={};
+    var byA=pts.slice().sort(function(a,b){return b.Avg-a.Avg});
+    pts.slice().sort(function(a,b){return b.Films-a.Films}).slice(0,3).forEach(function(d){top[d.name]=1});
+    top[byA[0].name]=1;top[byA[byA.length-1].name]=1;
+    return{pts:pts,plain:pts.filter(function(d){return!top[d.name]}),labeled:pts.filter(function(d){return top[d.name]}),mx:mx,my:my,yDom:[lo,hi]};
+  },[quadSrc,quadCfg]);
+  var quadPick=function(name){cls();if(quadSet==='genre')sSGenre(name);else if(quadSet==='dir')sSDir(name);else if(quadSet==='cast')sSCast(name);else if(quadSet==='country')sSCountry(name);else if(quadSet==='decade')sSDe(name)};
+  // Every decade from the earliest watched to the latest, present or not: the empty slots
+  // are the point of the ribbon. Width carries the count, so the gaps are visible as gaps.
+  var decRibbon=useMemo(function(){
+    var by={};decD.forEach(function(d){by[parseInt(d.name)]=d});
+    var present=Object.keys(by).map(Number);if(!present.length)return[];
+    var lo=Math.min.apply(null,present),hi=Math.max.apply(null,present),out=[];
+    for(var d=lo;d<=hi;d+=10){var e=by[d];out.push({dec:d,label:d+'s',Films:e?e.Films:0,Avg:e?e.Avg:0})}
+    return out;
+  },[decD]);
+  // A director's poster is their best film's poster — the one you would recognise them by.
+  var dirWall=useMemo(function(){
+    var best={};
+    efMeta.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(', ').forEach(function(dn){if(!dn)return;var c=best[dn];if(!c||(e.rating||0)>(c.rating||0))best[dn]={rating:e.rating,meta:m,film:e.name}})});
+    return dirFav.slice().sort(function(a,b){return sorts.dir==='avg'?((b.Avg-a.Avg)||(b.Films-a.Films)):((b.Films-a.Films)||(b.Avg-a.Avg))})
+      .map(function(d){var b=best[d.name];return Object.assign({},d,{poster:b?b.meta:null,topFilm:b?b.film:''})});
+  },[dirFav,efMeta,filmMeta,sorts.dir]);
   var top50Evo=useMemo(function(){if(!top50s.length)return{years:[],films:[]};var yrs=top50s.map(function(t){return t.year}).sort();var fm={};top50s.forEach(function(t){(t.films||[]).forEach(function(fi){var k=fi.name+"|||"+fi.year;if(!fm[k])fm[k]={name:fi.name,year:fi.year,ranks:{}};fm[k].ranks[t.year]=fi.pos})});var films=Object.values(fm);films.sort(function(a,b){var la=a.ranks[yrs[yrs.length-1]]||999;var lb=b.ranks[yrs[yrs.length-1]]||999;return la-lb});return{years:yrs,films:films}},[top50s]);
   var tagAllSorted=useMemo(function(){return Object.keys(fullReg).sort(function(a,b){return(allTagCounts[b]||0)-(allTagCounts[a]||0)})},[fullReg,allTagCounts]);
   var tagFiltered=useMemo(function(){return tagAllSorted.filter(function(t){return!tagSearch||t.indexOf(tagSearch.toLowerCase())!==-1})},[tagAllSorted,tagSearch]);
@@ -811,25 +919,193 @@ export default function Dashboard(){
         {sR!==null&&<FilmList T={N} title={sR+'\u2605'} films={selFilms} onClose={function(){sSR(null)}}/>}
       </div>
 
-      {/* Six ranked tables two-up: at full width each wasted most of its row. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-6">
-      <div><SectionHead T={N} title="Decades" aside={<SrtB T={N} val={sorts.de} onToggle={function(){ts('de')}}/>}/><CTbl T={N} data={decD} sel={sDe} onSel={function(v){sSDe(v);sSTg(null)}} sortMode={sorts.de}/></div>
-      <FilmList T={N} title={sDe} films={decF} onClose={function(){sSDe(null)}}/>
-      <div><SectionHead T={N} title="Tags" aside={<SrtB T={N} val={sorts.tg} onToggle={function(){ts('tg')}}/>}/><CTbl T={N} cap={8} data={tagD} sel={sTg} onSel={function(v){sSTg(v);sSDe(null)}} sortMode={sorts.tg}/></div>
-      <FilmList T={N} title={sTg} films={tagF} onClose={function(){sSTg(null)}}/>
-      <div><SectionHead T={N} title="Favourite directors" count={dirFav.length} aside={<SrtB T={N} val={sorts.dir} onToggle={function(){ts('dir')}}/>}/><div className="text-xs mb-2" style={{color:N.muted}}>Directors with 3 or more films, best average first. {dirD.length-dirFav.length} seen once or twice are not listed.</div><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={dirFav} sel={sDir} onSel={function(v){sSDir(v)}} sortMode={sorts.dir}/></div></div>
-      <FilmList T={N} title={sDir} films={dirF} onClose={function(){sSDir(null)}}/>
-      <div><SectionHead T={N} title="Cast" aside={<SrtB T={N} val={sorts.cast} onToggle={function(){ts('cast')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={castD} sel={sCast} onSel={function(v){sSCast(v)}} sortMode={sorts.cast}/></div></div>
-      <FilmList T={N} title={sCast} films={castF} onClose={function(){sSCast(null)}}/>
-      
+      {/* THE TASTE MAP — the count-vs-rating pair of bar charts, collapsed into one plot.
+          Reading two ranked lists against each other is work the reader should not have to
+          do: here volume is one axis, verdict is the other, and the median crosshair turns
+          the four corners into four different statements. */}
+      <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+        <SectionHead T={N} title="The taste map" count={quad.pts.length} aside={<div className="flex gap-1 flex-wrap">{QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
+        <div className="text-xs mb-3" style={{color:N.muted}}>How much you watch it against how much you like it{quadCfg.min>1?', for anything seen '+quadCfg.min+' times or more':''}. The dashed crosshair is your median on both axes. Click a dot to pick that one out in the panels below.</div>
+        {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div style={{position:'relative'}}>
+          <ResponsiveContainer width="100%" height={330}>
+            <ScatterChart margin={{top:18,right:24,bottom:24,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              <XAxis type="number" dataKey="Films" tick={{fill:N.muted,fontSize:10}} label={{value:'films watched',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
+              <YAxis type="number" dataKey="Avg" domain={quad.yDom} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'your average',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
+              <ZAxis range={[70,70]}/>
+              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?'Bread and butter':hv?'A habit — lots, lukewarm':hr?'A gem — under-explored':'A dead end';return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
+              <ReferenceLine x={quad.mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <ReferenceLine y={quad.my} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <Scatter data={quad.plain} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}/>
+              <Scatter data={quad.labeled} fill={VIZ_MARK} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
+                <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+          {/* Corner captions rather than a legend: the quadrants ARE the legend. Sat over the
+              plot area's four corners, non-interactive so they never eat a click on a dot. */}
+          {[{t:'Gems · few, loved',s:{top:24,left:64}},{t:'Bread and butter',s:{top:24,right:30}},
+            {t:'Dead ends',s:{bottom:76,left:64}},{t:'Habits · lots, lukewarm',s:{bottom:76,right:30}}
+          ].map(function(c,i){return <div key={i} style={Object.assign({position:'absolute',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft,pointerEvents:'none',zIndex:1},c.s)}>{c.t}</div>})}
+        </div>}
       </div>
+
+      {/* DECADES AS A RIBBON — a bar chart of decades sorts the empty ones out of existence.
+          A continuous strip cannot: every decade from your earliest to your latest gets a
+          slot, width carries the count, and the dashed gaps are the finding. */}
+      <div>
+        <SectionHead T={N} title="A century of film, by how much of it you have seen" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a decade for the films</span>}/>
+        <div className="flex gap-1 items-stretch" style={{height:54}}>
+          {decRibbon.map(function(d){var on=sDe===d.label,empty=d.Films===0;
+            return <div key={d.dec} onClick={function(){if(!empty){sSDe(on?null:d.label);sSTg(null)}}}
+              title={empty?d.label+' — nothing watched':d.label+' — '+d.Films+' films'+(d.Avg?', '+d.Avg.toFixed(2)+'★':'')}
+              style={{flexGrow:d.Films,flexBasis:empty?0:0,minWidth:empty?20:36,cursor:empty?'default':'pointer',
+                background:empty?'transparent':VIZ_MARK,opacity:empty?1:(sDe&&!on?0.3:1),
+                border:empty?'0.5px dashed '+N.borderStrong:'none',borderRadius:4,
+                outline:on?'1.5px solid '+N.ink:'none',
+                display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+              {!empty&&<span style={{fontSize:12,fontWeight:600,lineHeight:1,color:textOn(VIZ_MARK)}}>{d.Films}</span>}
+              {!empty&&d.Avg>0&&<span style={{fontSize:9,marginTop:2,opacity:0.8,color:textOn(VIZ_MARK)}}>{d.Avg.toFixed(1)}{'★'}</span>}
+            </div>})}
+        </div>
+        <div className="flex gap-1 mt-1">{decRibbon.map(function(d){var empty=d.Films===0;return <div key={d.dec} className="text-center" style={{flexGrow:d.Films,flexBasis:0,minWidth:empty?20:36,fontSize:9,color:empty?N.mutedSoft:N.muted,whiteSpace:'nowrap',overflow:'hidden'}}>{empty?'’'+String(d.dec).slice(2):d.label}</div>})}</div>
+      </div>
+      <FilmList T={N} title={sDe} films={decF} onClose={function(){sSDe(null)}}/>
+
+      {/* DIRECTORS AS A POSTER WALL — forty identical bars are forty things to read; a face
+          on a poster is one thing to recognise. The thumbnails come from film_metadata,
+          which was already fetched and only used by the Top 50 table. The ranked table is
+          still one click away, because sorting is the thing a wall cannot do. */}
+      <div>
+        <SectionHead T={N} title="Favourite directors" count={dirFav.length} aside={<div className="flex gap-1"><SrtB T={N} val={sorts.dir} onToggle={function(){ts('dir')}}/><button onClick={function(){sDirAsList(function(v){return!v})}} style={btnSecondary}>{dirAsList?'As posters':'As list'}</button></div>}/>
+        <div className="text-xs mb-3" style={{color:N.muted}}>Three films or more, {sorts.dir==='avg'?'best average first':'most watched first'}. Each poster is that director's best film in your diary. {dirD.length-dirFav.length} directors seen once or twice are not shown.</div>
+        {dirAsList?<div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={dirFav} sel={sDir} onSel={function(v){sSDir(v)}} sortMode={sorts.dir}/></div>:<div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">{dirWall.slice(0,dirWallOpen?dirWall.length:12).map(function(d){var on=sDir===d.name;
+            return <div key={d.name} onClick={function(){sSDir(on?null:d.name)}} className="cursor-pointer" title={d.topFilm?'Best in your diary: '+d.topFilm:d.name}
+              style={{background:N.surface,border:'0.5px solid '+(on?T.primary:N.border),borderRadius:4,padding:8,textAlign:'center',opacity:sDir&&!on?0.55:1}}>
+              <div className="flex justify-center mb-2"><Poster meta={d.poster} w={62}/></div>
+              <div className="text-xs truncate" title={d.name} style={{color:N.ink,fontWeight:500}}>{d.name}</div>
+              <div style={{fontSize:10,color:N.muted,marginTop:2}}>{d.Films} films {'·'} <span style={{color:N.inkSoft}}>{d.Avg.toFixed(1)}{'★'}</span></div>
+            </div>})}</div>
+          {dirWall.length>12&&<button onClick={function(){sDirWallOpen(function(v){return!v})}} className="w-full text-xs py-1.5 mt-3" style={{color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,cursor:'pointer'}}>{dirWallOpen?'Show fewer':'Show all '+dirWall.length}</button>}
+        </div>}
+      </div>
+      <FilmList T={N} title={sDir} films={dirF} onClose={function(){sSDir(null)}}/>
+
+      {/* Tags and Cast keep their ranked tables: both are long lists read for the top few,
+          which is what a table is good at. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-6">
+      <div><SectionHead T={N} title="Tags" aside={<SrtB T={N} val={sorts.tg} onToggle={function(){ts('tg')}}/>}/><CTbl T={N} cap={8} data={tagD} sel={sTg} onSel={function(v){sSTg(v);sSDe(null)}} sortMode={sorts.tg}/></div>
+      <div><SectionHead T={N} title="Cast" aside={<SrtB T={N} val={sorts.cast} onToggle={function(){ts('cast')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={castD} sel={sCast} onSel={function(v){sSCast(v)}} sortMode={sorts.cast}/></div></div>
+      </div>
+      <FilmList T={N} title={sTg} films={tagF} onClose={function(){sSTg(null)}}/>
+      <FilmList T={N} title={sCast} films={castF} onClose={function(){sSCast(null)}}/>
     </div>}
 
     {/* ===== FILMS ===== */}
-    {tab==='taste'&&<div className="space-y-6"><div><SectionHead T={N} title="Genres" aside={<SrtB T={N} val={sorts.genre} onToggle={function(){ts('genre')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} data={genreD} sel={sGenre} onSel={function(v){sSGenre(v)}} sortMode={sorts.genre}/></div></div>
+    {tab==='taste'&&<div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-6">
+        <div><SectionHead T={N} title="Genres" aside={<SrtB T={N} val={sorts.genre} onToggle={function(){ts('genre')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} data={genreD} sel={sGenre} onSel={function(v){sSGenre(v)}} sortMode={sorts.genre}/></div></div>
+        <div><SectionHead T={N} title="Countries" aside={<SrtB T={N} val={sorts.country} onToggle={function(){ts('country')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={countryD} sel={sCountry} onSel={function(v){sSCountry(v)}} sortMode={sorts.country}/></div></div>
+      </div>
       <FilmList T={N} title={sGenre} films={genreF} onClose={function(){sSGenre(null)}}/>
-      <div><SectionHead T={N} title="Countries" aside={<SrtB T={N} val={sorts.country} onToggle={function(){ts('country')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={countryD} sel={sCountry} onSel={function(v){sSCountry(v)}} sortMode={sorts.country}/></div></div>
       <FilmList T={N} title={sCountry} films={countryF} onClose={function(){sSCountry(null)}}/>
+
+      {/* ===== SECOND THOUGHTS =====
+          A different subject from everything above — not what you like, but where your own
+          record disagrees with itself — so it gets a visible break rather than sitting in
+          the same run of panels. Deliberately ignores the year filter: a change of mind
+          belongs to the whole history. */}
+      <div className="pt-5" style={{borderTop:'1px solid '+N.borderStrong}}>
+        <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Second thoughts {'·'} all time</div>
+        <div className="text-xs mt-1" style={{color:N.mutedSoft}}>What you gave a film on the night, against what it stands at today</div>
+      </div>
+
+      {!allRatings.length?<div className="p-4 text-xs" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.muted}}>No ratings export loaded. Import your Letterboxd folder again — <span style={{color:N.inkSoft}}>ratings.csv</span> is what holds your current score for each film, and everything in this section is the gap between it and the diary.</div>:<div className="space-y-6">
+
+        <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+          <Stat T={N} label="Films re-scored" value={revisions.rows.length} sub={revisions.up.length+' up, '+revisions.down.length+' down'}/>
+          <Stat T={N} label="Net drift" value={(revisions.net>0?'+':'')+revisions.net.toFixed(2)} sub="average change" color={revisions.net>0?VIZ_GOOD:revisions.net<0?NEG:N.ink}/>
+          {/* The figure is the value and the title is the caption, not the other way round:
+              a three-line film name in the 20px slot threw the whole row out of alignment. */}
+          <Stat T={N} label="Biggest riser" value={revisions.riser?'+'+revisions.riser.delta.toFixed(1)+'★':'—'} sub={revisions.riser?revisions.riser.name+' ('+revisions.riser.from+'→'+revisions.riser.to+')':''} color={VIZ_GOOD}/>
+          <Stat T={N} label="Biggest faller" value={revisions.faller?revisions.faller.delta.toFixed(1)+'★':'—'} sub={revisions.faller?revisions.faller.name+' ('+revisions.faller.from+'→'+revisions.faller.to+')':''} color={NEG} noBorder/>
+        </div>
+
+        {/* SLOPE CHART — two dots and a line beat two bars: the reader sees direction and
+            distance in one mark, and the rows sort by how much the mind moved. */}
+        {revisions.rows.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+          <SectionHead T={N} title="Films you changed your mind about" count={revisions.rows.length}/>
+          <div className="text-xs mb-3" style={{color:N.muted}}>Each line runs from the first rating you logged to where it stands now. <span style={{color:MOVE_UP}}>Green climbed</span>, <span style={{color:MOVE_DOWN}}>orange fell</span>. The hollow dot is the original.</div>
+          <div className="space-y-1">
+            {revisions.rows.slice(0,revOpen?revisions.rows.length:12).map(function(r,i){
+              var up=r.delta>0,c=up?MOVE_UP:MOVE_DOWN,pc=function(v){return((v-0.5)/4.5)*100};
+              var a=Math.min(pc(r.from),pc(r.to)),b=Math.max(pc(r.from),pc(r.to));
+              return <div key={i} className="flex items-center gap-2">
+                <div className="w-24 md:w-44 text-xs truncate text-right" title={r.name+' ('+r.year+') — '+r.how} style={{color:N.inkSoft}}>{r.name}</div>
+                <div className="flex-1 relative" style={{height:22,background:N.surfaceAlt,borderRadius:4}}>
+                  <div style={{position:'absolute',top:10,left:a+'%',width:(b-a)+'%',height:2,background:c}}/>
+                  <div title={'was '+r.from+'★'} style={{position:'absolute',top:6,left:'calc('+pc(r.from)+'% - 5px)',width:10,height:10,borderRadius:'50%',background:N.surfaceAlt,border:'1.5px solid '+N.borderStrong}}/>
+                  <div title={'now '+r.to+'★'} style={{position:'absolute',top:6,left:'calc('+pc(r.to)+'% - 5px)',width:10,height:10,borderRadius:'50%',background:c}}/>
+                </div>
+                <div className="w-12 text-xs text-right font-mono" style={{color:c,fontWeight:500}}>{(up?'+':'')+r.delta.toFixed(1)}</div>
+                <div className="w-16 text-xs text-right" style={{color:N.mutedSoft}}>{r.how}</div>
+              </div>})}
+          </div>
+          {/* Ticks are placed at their true position on the 0.5-5 track. Spacing them evenly
+              with justify-between put 1★ at 20% of the width when it belongs at 11%, which
+              mislabelled every dot on the scale. */}
+          <div className="flex mt-1"><div className="w-24 md:w-44"/><div className="flex-1 relative" style={{height:12}}>{[0.5,1,2,3,4,5].map(function(v){var l=((v-0.5)/4.5)*100;return <span key={v} style={{position:'absolute',left:l+'%',transform:'translateX('+(v===0.5?'0':v===5?'-100%':'-50%')+')',fontSize:9,color:N.mutedSoft,whiteSpace:'nowrap'}}>{v}{'★'}</span>})}</div><div className="w-12"/><div className="w-16"/></div>
+          {revisions.rows.length>12&&<button onClick={function(){sRevOpen(function(v){return!v})}} className="w-full text-xs py-1.5 mt-3" style={{color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,cursor:'pointer'}}>{revOpen?'Show fewer':'Show all '+revisions.rows.length}</button>}
+        </div>}
+
+        {revisions.pairs.length>2&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+          <SectionHead T={N} title="Does a second viewing help?" count={revisions.drift.length}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>First rating across, most recent up, for every film you have rated more than once. Above the diagonal it grew on you; below it, the shine came off. Bigger dots hold more films.</div>
+          <ResponsiveContainer width="100%" height={280}>
+            <ScatterChart margin={{top:10,right:20,bottom:20,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              <XAxis type="number" dataKey="x" domain={[0,5.5]} ticks={[1,2,3,4,5]} tick={{fill:N.muted,fontSize:10}} label={{value:'first rating',position:'insideBottom',offset:-12,fill:N.mutedSoft,fontSize:10}}/>
+              <YAxis type="number" dataKey="y" domain={[0,5.5]} ticks={[1,2,3,4,5]} width={38} tick={{fill:N.muted,fontSize:10}} label={{value:'latest',angle:-90,position:'insideLeft',offset:14,fill:N.mutedSoft,fontSize:10}}/>
+              <ZAxis dataKey="n" range={[55,420]}/>
+              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>{d.x}{'★'} {'→'} {d.y}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.films.slice(0,4).join(', ')}{d.films.length>4?' +'+(d.films.length-4)+' more':''}</div></div>}}/>
+              <ReferenceLine segment={[{x:0.5,y:0.5},{x:5,y:5}]} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <Scatter data={revisions.pairs} fill={VIZ_MARK} fillOpacity={0.72}/>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>}
+
+        {preDist.preN>0&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+          <SectionHead T={N} title="The shelf before the diary" count={preDist.preN} aside={<span className="text-xs" style={{color:N.muted}}>{preDist.preAvg.toFixed(2)}{'★'} unlogged {'·'} {preDist.diaryAvg.toFixed(2)}{'★'} logged</span>}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all — what you watched before you started logging. Plotted as a share of each set rather than a count, since the two are nowhere near the same size.</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart data={preDist.data}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              <XAxis dataKey="rating" tick={{fill:N.muted,fontSize:11}}/>
+              <YAxis tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return Math.round(v)+'%'}}/>
+              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500,marginBottom:4}}>{p.label}{'★'}</div>{p.payload.map(function(x,i){return <div key={i} style={{color:x.color}}>{x.name}: {x.value.toFixed(1)}%</div>})}</div>}}/>
+              <Bar dataKey="logged" name="Logged in the diary" fill={sc[1]} radius={[3,3,0,0]}/>
+              <Bar dataKey="pre" name="Rated, never logged" fill={sc[2]} radius={[3,3,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Logged in the diary</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rated, never logged</span></div></div>
+        </div>})()}
+
+        {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+          <SectionHead T={N} title="Are you getting more generous?" aside={<span className="text-xs" style={{color:N.muted}}>all-time mean {inflation.mean.toFixed(2)}{'★'}</span>}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of your last {inflation.w} rated watches, in the order you logged them. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line.</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <LineChart data={inflation.data}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              <XAxis dataKey="d" tick={{fill:N.muted,fontSize:9}} interval={Math.max(0,Math.floor(inflation.data.length/8))} angle={-45} textAnchor="end" height={46}/>
+              <YAxis domain={[function(v){return Math.floor(v*10)/10-0.05},function(v){return Math.ceil(v*10)/10+0.05}]} width={40} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}}/>
+              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{p.label}</div><div style={{color:T.primary}}>{p.payload[0].value.toFixed(2)}{'★'} rolling</div></div>}}/>
+              <ReferenceLine y={inflation.mean} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2} dot={false}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>}
+      </div>}
     </div>}
 
     {/* ===== RANKINGS ===== */}
