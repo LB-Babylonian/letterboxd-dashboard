@@ -375,6 +375,8 @@ function isSubCovAt(filmDate,subs){var ym=filmDate.slice(0,7);var now=getNowYM()
 function fY(v,t){if(v==null||isNaN(v))return null;if(t==='abs'){var r=Math.round(v);if(!r)return null;return(r>0?'+':'')+r}if(t==='r'){if(Math.abs(v)<0.005)return null;return(v>0?'+':'')+v.toFixed(2)}if(t==='pp'){var r2=Math.round(v);if(!r2)return null;return(r2>0?'+':'')+r2+'pp'}return null}
 function mBt(f,t){var fp=f.split('-').map(Number),tp=t.split('-').map(Number);return Math.max(0,(tp[0]-fp[0])*12+(tp[1]-fp[1])+1)}
 function subCostForMonth(ym,subs){var t=0;subs.forEach(function(s){s.periods.forEach(function(p){if(!p.from||!p.price)return;var to=p.to||getNowYM();if(ym>=p.from&&ym<=to)t+=p.price})});return t}
+// Minutes as hours and minutes. 115 -> "1h 55m", 60 -> "1h", 45 -> "45m".
+function hm(mins){if(!mins||mins<1)return'';var h=Math.floor(mins/60),m=Math.round(mins%60);return h?(m?h+'h '+m+'m':h+'h'):m+'m'}
 function avgR(films){var r=films.filter(function(e){return e.rating!==null});return r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0}
 function agg(arr,kf){var m={};arr.forEach(function(e){var k=kf(e);if(!m[k])m[k]={c:0,s:0,r:0};m[k].c++;if(e.rating!==null){m[k].s+=e.rating;m[k].r++}});return Object.keys(m).map(function(n){var v=m[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}})}
 // Like agg, but an entry can belong to several buckets at once — a film has three genres and
@@ -893,13 +895,20 @@ export default function Dashboard(){
               the card holds one idea instead of framing a number and some neighbours. This is
               what stops a full-width card reading as empty; padding never could. */}
           <div className="md:col-span-3 grid grid-cols-3 gap-x-5 gap-y-4">
-            {[['Hours',dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':'\u2014',''],
+            {/* Hours carries the average beneath it. Both count every watch, so the total is
+                the average times the number of watches -- a per-film average under a per-watch
+                total would not add up. Films with no runtime in film_metadata sit out of both;
+                the hover note says how many, so a gap in the metadata cannot pass for a
+                shorter film. Right now that is 4 of 843. */}
+            {[['Hours',dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':'\u2014',
+                dirStats.avgRun?hm(dirStats.avgRun)+' average':'',
+                dirStats.rtCount?dirStats.rtCount+' of '+dirStats.rtTotal+' watches have a runtime'+(dirStats.rtTotal>dirStats.rtCount?'; the other '+(dirStats.rtTotal-dirStats.rtCount)+' are left out':''):''],
               ['Rewatches',stats.rw||'\u2014',stats.total?Math.round((stats.rw/stats.total)*100)+'% of watches':''],
               ['Foreign',stats.fo||'\u2014',stats.total?Math.round((stats.fo/stats.total)*100)+'% of films':''],
               ['Longest binge',binge.streak+' days',binge.range],
               ['Current streak',streaks.week+' weeks',streaks.wr],
               ['Most in a day',busiest.count+' films',busiest.fmt]
-            ].map(function(row,i){return <div key={i}>
+            ].map(function(row,i){return <div key={i} title={row[3]||undefined}>
               <div style={{fontSize:9.5,letterSpacing:'0.14em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>{row[0]}</div>
               <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums'}}>{row[1]}</div>
               {row[2]?<div style={{fontSize:10.5,color:heroSubC,marginTop:3,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}</div>:null}
