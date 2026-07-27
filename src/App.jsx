@@ -343,11 +343,12 @@ var CI={
 // `floor` spells the threshold out in the set's own terms — "anything seen twice or more"
 // is wrong for people, and a bare number in the caption told the reader nothing.
 var QUAD_SETS=[
-  {id:'genre',l:'Genres',min:2,floor:'anything seen twice or more'},
+  // ownList: this set has no panel further down the tab, so the map shows the films itself.
+  {id:'genre',l:'Genres',min:2,floor:'anything seen twice or more',ownList:true},
   {id:'dir',l:'Directors',min:3,floor:'directors with 3 films or more'},
-  {id:'cast',l:'Cast',min:3,floor:'actors in 3 films or more'},
-  {id:'friend',l:'Friends',min:3,floor:'anyone you have watched with 3 times or more'},
-  {id:'country',l:'Countries',min:2,floor:'countries with 2 films or more'},
+  {id:'cast',l:'Cast',min:3,floor:'actors in 3 films or more',ownList:true},
+  {id:'friend',l:'Friends',min:3,floor:'anyone you have watched with 3 times or more',ownList:true},
+  {id:'country',l:'Countries',min:2,floor:'countries with 2 films or more',ownList:true},
   {id:'decade',l:'Decades',min:1,floor:null}
 ];
 var MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -596,8 +597,9 @@ export default function Dashboard(){
   var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
   var decF=useMemo(function(){return sDe?efOnce.filter(function(e){return Math.floor(e.year/10)*10===parseInt(sDe)}):[]},[efOnce,sDe]);
   var tasteTags=useMemo(function(){return Object.keys(fullReg).filter(function(t){return fullReg[t].cat==='taste'})},[fullReg]);
-  var tagD=useMemo(function(){return tasteTags.map(function(t){var m=ef.filter(function(e){return e.tags.indexOf(t)!==-1}),r=m.filter(function(e){return e.rating!==null});return{name:getDn(t,fullReg),tag:t,Films:m.length,Avg:r.length?parseFloat((r.reduce(function(s,e){return s+e.rating},0)/r.length).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[ef,tasteTags,fullReg]);
-  var tagF=useMemo(function(){if(!sTg)return[];var entry=tagD.find(function(d){return d.name===sTg});return entry?ef.filter(function(e){return e.tags.indexOf(entry.tag)!==-1}):[]},[ef,sTg,tagD]);
+  // Films, at today's rating, like every other count on this tab.
+  var tagD=useMemo(function(){return tasteTags.map(function(t){var m=efOnce.filter(function(e){return e.tags.indexOf(t)!==-1}),r=m.filter(function(e){return e.rating!==null});return{name:getDn(t,fullReg),tag:t,Films:m.length,Avg:r.length?parseFloat((r.reduce(function(s,e){return s+e.rating},0)/r.length).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,tasteTags,fullReg]);
+  var tagF=useMemo(function(){if(!sTg)return[];var entry=tagD.find(function(d){return d.name===sTg});return entry?efOnce.filter(function(e){return e.tags.indexOf(entry.tag)!==-1}):[]},[efOnce,sTg,tagD]);
   var gMeta=function(e){var k=e.name+"|||"+e.year;if(filmMeta[k])return filmMeta[k];var nk=e.name.replace(/[\u2018\u2019\u0060\u00B4]/g,"'")+"|||"+e.year;if(filmMeta[nk])return filmMeta[nk];for(var key in filmMeta){if(key.split("|||")[1]===String(e.year)&&key.split("|||")[0].replace(/[\u2018\u2019\u0060\u00B4]/g,"'")===nk.split("|||")[0])return filmMeta[key]}return null};
   var dirD=useMemo(function(){var d={},ft={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(", ").forEach(function(dir){if(!dir)return;if(!d[dir])d[dir]={c:0,s:0,r:0};d[dir].c++;if(e.rating!==null){d[dir].s+=e.rating;d[dir].r++}if(!ft[dir])ft[dir]=[];ft[dir].push(e)})});return Object.keys(d).map(function(n){var v=d[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
   // "Favourite" needs a floor: 426 of 585 directors appear exactly once, so a
@@ -608,11 +610,6 @@ export default function Dashboard(){
   // so this counts every watch (ef) while everything else counts every film (efOnce).
   var dirStats=useMemo(function(){var totalR=0,totalH=0,rtCount=0;ef.forEach(function(e){var m=gMeta(e);if(m&&m.runtime){totalR+=m.runtime;rtCount++}});totalH=Math.round(totalR/60);var uDir=new Set();efOnce.forEach(function(e){var m=gMeta(e);if(m&&m.directors)m.directors.split(", ").forEach(function(d){if(d)uDir.add(d)})});return{totalH:totalH,totalR:totalR,uDir:uDir.size,avgRun:rtCount?Math.round(totalR/rtCount):0,rtCount:rtCount,rtTotal:ef.length,rtMissingPct:ef.length?Math.round((ef.length-rtCount)/ef.length*100):0}},[ef,efOnce,filmMeta]);
   var genreD=useMemo(function(){var g={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.genres)return;m.genres.split(", ").forEach(function(gn){if(!gn)return;if(!g[gn])g[gn]={c:0,s:0,r:0};g[gn].c++;if(e.rating!==null){g[gn].s+=e.rating;g[gn].r++}})});return Object.keys(g).map(function(n){var v=g[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
-  var countryD=useMemo(function(){var c={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.countries)return;m.countries.split(", ").forEach(function(cn){if(!cn)return;if(!c[cn])c[cn]={c:0,s:0,r:0};c[cn].c++;if(e.rating!==null){c[cn].s+=e.rating;c[cn].r++}})});return Object.keys(c).map(function(n){var v=c[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
-  var castD=useMemo(function(){var c={},ft={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.cast_members)return;m.cast_members.split(", ").forEach(function(a){if(!a)return;if(!c[a])c[a]={c:0,s:0,r:0};c[a].c++;if(e.rating!==null){c[a].s+=e.rating;c[a].r++}if(!ft[a])ft[a]=[];ft[a].push(e)})});return Object.keys(c).map(function(n){var v=c[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
-  var castF=useMemo(function(){if(!sCast)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.cast_members&&m.cast_members.split(", ").indexOf(sCast)!==-1})},[efOnce,sCast,filmMeta]);
-  var genreF=useMemo(function(){if(!sGenre)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.genres&&m.genres.split(", ").indexOf(sGenre)!==-1})},[efOnce,sGenre,filmMeta]);
-  var countryF=useMemo(function(){if(!sCountry)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.countries&&m.countries.split(", ").indexOf(sCountry)!==-1})},[efOnce,sCountry,filmMeta]);
   var yRatingsNorm=useMemo(function(){var n={};Object.keys(yRatings).sort().forEach(function(k){var p=k.split('|||');var nk=normName(p[0])+'|||'+p[1];if(!(nk in n))n[nk]=yRatings[k]});return n},[yRatings]);
   var gYR=function(name,year){var nk=normName(name)+'|||'+year;return nk in yRatingsNorm?yRatingsNorm[nk]:undefined};
   var yFilms=useMemo(function(){return ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf("yesmine")!==-1})}).map(function(e){var yr=gYR(e.name,e.year);return{name:e.name,year:e.year,date:e.date,rating:e.rating,yRating:yr!==undefined?yr:null,diff:e.rating!==null&&typeof yr==="number"?Math.abs(e.rating-yr):null}})},[ef,yRatingsNorm,fullReg])
@@ -690,8 +687,19 @@ export default function Dashboard(){
     decade:aggMulti(efOnce,function(e){return[Math.floor(e.year/10)*10+'s']})
   }},[efOnce,filmMeta,fullReg]);
   var quadSrc=quadData[quadSet]||quadData.genre;
-  // The map's own companion list, so its film count and its film list agree.
-  var quadFriendF=useMemo(function(){return sCo?efOnce.filter(function(e){return gC(e.tags,fullReg).indexOf(sCo)!==-1}):[]},[efOnce,sCo,fullReg]);
+  // Whatever is selected in the set currently on the map, and the films behind it. Runs off
+  // efOnce so the list length matches the count the dot was plotted at.
+  var quadSelName=quadSet==='dir'?sDir:quadSet==='cast'?sCast:quadSet==='friend'?sCo:quadSet==='country'?sCountry:quadSet==='decade'?sDe:sGenre;
+  var quadFilms=useMemo(function(){
+    if(!quadSelName)return[];
+    return efOnce.filter(function(e){
+      if(quadSet==='friend')return gC(e.tags,fullReg).indexOf(quadSelName)!==-1;
+      if(quadSet==='decade')return Math.floor(e.year/10)*10===parseInt(quadSelName);
+      var m=gMeta(e);if(!m)return false;
+      var f=quadSet==='dir'?m.directors:quadSet==='cast'?m.cast_members:quadSet==='country'?m.countries:m.genres;
+      return !!f&&f.split(', ').indexOf(quadSelName)!==-1;
+    });
+  },[efOnce,quadSet,quadSelName,fullReg,filmMeta]);
   var quad=useMemo(function(){
     var pts=quadSrc.filter(function(d){return d.Films>=quadCfg.min&&d.Avg>0});
     if(!pts.length)return{pts:[],plain:[],labeled:[],mx:0,my:0,yDom:[0,5]};
@@ -1046,10 +1054,11 @@ export default function Dashboard(){
           <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[2]}</span><span>{qw.corners[3]}</span></div>
         </div>}
       </div>
-      {/* Companions are the one set with no ranked panel on this tab — theirs lives under
-          People — so the friend map surfaces its own list. The People copy sits on another
-          tab, so the two can never render at once and duplicate each other. */}
-      {quadSet==='friend'&&<FilmList T={N} title={sCo?sCo+' — watched together':null} films={quadFriendF} onClose={function(){sSCo(null)}}/>}
+      {/* Four of the six sets no longer have a panel further down the tab, so the map carries
+          its own list. Directors and decades are excluded: the poster wall and the ribbon are
+          right there and already show the selection, and two identical lists is worse than one
+          in the wrong place. */}
+      {quadCfg.ownList&&<FilmList T={N} title={quadSelName?quadSelName+(quadSet==='friend'?' — watched together':''):null} films={quadFilms} onClose={function(){cls()}}/>}
 
       {/* DECADES AS A RIBBON — a bar chart of decades sorts the empty ones out of existence.
           A continuous strip cannot: every decade from your earliest to your latest gets a
@@ -1093,24 +1102,11 @@ export default function Dashboard(){
       </div>
       <FilmList T={N} title={sDir} films={dirF} onClose={function(){sSDir(null)}}/>
 
-      {/* Tags and Cast keep their ranked tables: both are long lists read for the top few,
-          which is what a table is good at. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-6">
-      <div><SectionHead T={N} title="Tags" aside={<SrtB T={N} val={sorts.tg} onToggle={function(){ts('tg')}}/>}/><CTbl T={N} cap={8} data={tagD} sel={sTg} onSel={function(v){sSTg(v);sSDe(null)}} sortMode={sorts.tg}/></div>
-      <div><SectionHead T={N} title="Cast" aside={<SrtB T={N} val={sorts.cast} onToggle={function(){ts('cast')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={castD} sel={sCast} onSel={function(v){sSCast(v)}} sortMode={sorts.cast}/></div></div>
-      </div>
+      {/* Genres, Cast and Countries had ranked tables here. The taste map says everything they
+          said and puts it on two axes instead of one, so they were the same numbers twice.
+          Tags keeps its table: it is the one set that is not a partition of the collection. */}
+      <div className="lg:w-1/2"><SectionHead T={N} title="Tags" aside={<SrtB T={N} val={sorts.tg} onToggle={function(){ts('tg')}}/>}/><CTbl T={N} cap={8} data={tagD} sel={sTg} onSel={function(v){sSTg(v);sSDe(null)}} sortMode={sorts.tg}/></div>
       <FilmList T={N} title={sTg} films={tagF} onClose={function(){sSTg(null)}}/>
-      <FilmList T={N} title={sCast} films={castF} onClose={function(){sSCast(null)}}/>
-    </div>}
-
-    {/* ===== FILMS ===== */}
-    {tab==='taste'&&<div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-6">
-        <div><SectionHead T={N} title="Genres" aside={<SrtB T={N} val={sorts.genre} onToggle={function(){ts('genre')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} data={genreD} sel={sGenre} onSel={function(v){sSGenre(v)}} sortMode={sorts.genre}/></div></div>
-        <div><SectionHead T={N} title="Countries" aside={<SrtB T={N} val={sorts.country} onToggle={function(){ts('country')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={countryD} sel={sCountry} onSel={function(v){sSCountry(v)}} sortMode={sorts.country}/></div></div>
-      </div>
-      <FilmList T={N} title={sGenre} films={genreF} onClose={function(){sSGenre(null)}}/>
-      <FilmList T={N} title={sCountry} films={countryF} onClose={function(){sSCountry(null)}}/>
 
       {/* ===== SECOND THOUGHTS =====
           A different subject from everything above — not what you like, but where your own
