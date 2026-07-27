@@ -929,7 +929,7 @@ export default function Dashboard(){
           contributes nothing to the totals, so the spend is understated by whatever those tickets
           cost. Stated on the tab rather than only in the admin panel. */}
       {noPriceCost.length>0&&<button onClick={function(){sShowNoPrice(function(v){return!v})}} className="ml-auto"
-        style={{background:'transparent',border:'0.5px solid '+NEG,borderRadius:999,color:NEG,padding:'3px 10px',fontSize:11,cursor:'pointer'}}
+        style={{background:'transparent',border:'none',color:N.muted,padding:0,fontSize:11,cursor:'pointer',textDecoration:'underline',textUnderlineOffset:3}}
         title="These visits carry no price tag, so they add nothing to the totals below">
         {noPriceCost.length} {noPriceCost.length===1?'theatre visit':'theatre visits'} without a price
       </button>}
@@ -980,7 +980,13 @@ export default function Dashboard(){
         chrome. Tabs sit on the border so their active underline meets it; the controls are
         pushed right with ml-auto and wrap underneath only on narrow screens. */}
     <div className="flex items-end gap-2 mb-5 flex-wrap" style={{borderBottom:'0.5px solid '+N.border}}>
-      <div className="flex gap-0 flex-wrap">{TABS.map(function(t){var active=tab===t.id;return <button key={t.id} onClick={function(){sTab(t.id);cls()}} style={{padding:'8px 14px',fontSize:12,fontWeight:active?500:400,color:active?T.primary:N.muted,background:'transparent',border:'none',borderBottom:active?'1.5px solid '+T.primary:'1.5px solid transparent',marginBottom:-1,cursor:'pointer',letterSpacing:'0.02em'}}>{t.l}</button>})}</div>
+      <div className="flex gap-0 flex-wrap">{TABS.map(function(t){var active=tab===t.id;
+        // A badge on the tab, the way an app signals something waiting. Only Costs carries one,
+        // and only while theatre visits are missing a price -- those contribute nothing to any
+        // total, so the whole tab reads low until they are tagged. Raised to the cap height so
+        // it sits beside the word rather than on it.
+        var badge=t.id==='costs'&&dq.nP.length>0;
+        return <button key={t.id} onClick={function(){sTab(t.id);cls()}} title={badge?dq.nP.length+' theatre visits have no price yet, so the totals there are a floor':undefined} style={{padding:'8px 14px',fontSize:12,fontWeight:active?500:400,color:active?T.primary:N.muted,background:'transparent',border:'none',borderBottom:active?'1.5px solid '+T.primary:'1.5px solid transparent',marginBottom:-1,cursor:'pointer',letterSpacing:'0.02em'}}>{t.l}{badge&&<span style={{display:'inline-block',width:6,height:6,borderRadius:'50%',background:T.primary,marginLeft:5,verticalAlign:'top',marginTop:1}}/>}</button>})}</div>
       <div className="flex items-center gap-2 ml-auto" style={{paddingBottom:6}}>
         {isAdmin&&<span className="text-xs" style={{color:T.primary,letterSpacing:'0.1em',textTransform:'uppercase'}}>Admin</span>}
         <button onClick={function(){sShowPicker(true)}} style={btnSecondary}>{'\u25BE '}{T.name}</button>
