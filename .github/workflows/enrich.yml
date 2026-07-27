@@ -16,6 +16,11 @@ on:
   schedule:
     - cron: '0 4 * * 1'   # Mondays, 04:00 UTC
   workflow_dispatch:
+    inputs:
+      force_one:
+        description: 'Re-fetch one film, to prove TMDB_TOKEN works'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,4 +51,13 @@ jobs:
         # There is no .env on a runner; the script reads these from the environment.
         # It exits non-zero if any film failed, so a red run means something to look at
         # rather than a silent partial success.
-        run: npm run enrich
+        # A normal run exits early when nothing needs metadata, which means it never
+        # calls TMDB — so a green run proves the Supabase secrets and nothing else.
+        # force_one re-fetches a single film so the token is actually exercised. It
+        # rewrites metadata that already exists, so it cannot lose anything.
+        run: |
+          if [ "${{ inputs.force_one }}" = "true" ]; then
+            npm run enrich -- --force --limit 1
+          else
+            npm run enrich
+          fi
