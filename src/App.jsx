@@ -353,7 +353,7 @@ var QUAD_SETS=[
   {id:'genre',l:'Genres',min:2,floor:'anything seen twice or more',ownList:true},
   {id:'dir',l:'Directors',min:3,floor:'directors with 3 films or more',ownList:true},
   {id:'cast',l:'Cast',min:3,floor:'actors in 3 films or more',ownList:true},
-  {id:'friend',l:'Friends',min:3,floor:'anyone you have watched with 3 times or more',ownList:true},
+  {id:'friend',l:'Friends',min:3,floor:'companions on 3 films or more',ownList:true},
   {id:'country',l:'Countries',min:2,floor:'countries with 2 films or more',ownList:true},
   {id:'decade',l:'Decades',min:1,floor:null}
 ];
@@ -728,16 +728,17 @@ export default function Dashboard(){
     top[byA[0].name]=1;top[byA[byA.length-1].name]=1;
     return{pts:pts,plain:pts.filter(function(d){return!top[d.name]}),labeled:pts.filter(function(d){return top[d.name]}),mx:mx,my:my,yDom:[lo,hi]};
   },[quadSrc,quadCfg]);
-  // The quadrant wording is per-set on purpose: "a dead end" is a fair verdict on a genre
-  // and a rude one about your mother. Friends read the same four positions, phrased for
-  // people — and this page is public. corners run top-left, top-right, bottom-left, bottom-right.
+  // The quadrants name a position on the two axes and nothing else. This is also why the
+  // wording no longer varies by set: "a dead end" was a fair verdict on a genre and a rude one
+  // about someone's mother, and a literal label cannot be rude about anybody. A visitor who
+  // does not know whose diary this is can still read it.
+  // corners run top-left, top-right, bottom-left, bottom-right.
   var QUAD_WORDS={
-    friend:{hh:'Your usual company',hl:'Often together, mixed films',lh:'Rare, and well chosen',ll:'Few films, and not the best',
-      corners:['Rare · well chosen','Your usual company','Few, and not the best','Often together, mixed']},
-    _:{hh:'Bread and butter',hl:'A habit — lots, lukewarm',lh:'A gem — under-explored',ll:'A dead end',
-      corners:['Gems · few, loved','Bread and butter','Dead ends','Habits · lots, lukewarm']}
+    hh:'Many films, rated above the median',hl:'Many films, rated below the median',
+    lh:'Few films, rated above the median',ll:'Few films, rated below the median',
+    corners:['Few films \u00B7 rated higher','Many films \u00B7 rated higher','Few films \u00B7 rated lower','Many films \u00B7 rated lower']
   };
-  var qw=QUAD_WORDS[quadSet]||QUAD_WORDS._;
+  var qw=QUAD_WORDS;
   var quadPick=function(name){cls();if(quadSet==='genre')sSGenre(name);else if(quadSet==='dir')sSDir(name);else if(quadSet==='cast')sSCast(name);else if(quadSet==='friend')sSCo(name);else if(quadSet==='country')sSCountry(name);else if(quadSet==='decade')sSDe(name)};
   // Every decade from the earliest watched to the latest, present or not: the empty slots
   // are the point of the ribbon. Width carries the count, so the gaps are visible as gaps.
@@ -982,18 +983,18 @@ export default function Dashboard(){
           person's ratings against mine — so it gets a visible break rather than sitting
           in the same run of panels. */}
       <div className="pt-5" style={{borderTop:'1px solid '+N.borderStrong}}>
-        <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Compared with Yesmine</div>
-        <div className="text-xs mt-1" style={{color:N.mutedSoft}}>Films watched together, and how the two of you scored them</div>
+        <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Babylonian and Yesmine</div>
+        <div className="text-xs mt-1" style={{color:N.mutedSoft}}>Films watched together, and the two sets of ratings</div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
         <Stat T={N} label="Films together" value={yStats.count} color={T.primary}/>
-        <Stat T={N} label="My average" value={yStats.myAvg?yStats.myAvg.toFixed(2):'\u2014'}/>
+        <Stat T={N} label="Babylonian's average" value={yStats.myAvg?yStats.myAvg.toFixed(2):'\u2014'}/>
         <Stat T={N} label="Yesmine's average" value={yStats.yAvg?yStats.yAvg.toFixed(2):'\u2014'} color={T.primary}/>
         <Stat T={N} label="Agree (±0.5)" value={yStats.agree} color={T.primary} noBorder/>
       </div>
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-        <SectionHead T={N} title="Ratings side by side" aside={<div className="flex gap-1 flex-wrap"><button onClick={function(){sYSort(ySort==="dateNew"?"dateOld":"dateNew")}} style={(ySort==="dateNew"||ySort==="dateOld")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="dateOld"?"Newest first":"Oldest first"}</button><button onClick={function(){sYSort(ySort==="agree"?"disagree":"agree")}} style={(ySort==="agree"||ySort==="disagree")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="agree"?"Most divided":"Most aligned"}</button><button onClick={function(){sYSort(ySort==="myHigh"?"myLow":"myHigh")}} style={(ySort==="myHigh"||ySort==="myLow")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="myHigh"?"My least favorites":"My favorites"}</button></div>}/>
-        <div className="max-h-96 overflow-y-auto"><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Me</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Y</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Diff</th></tr></thead><tbody>{yFilms.slice().sort(function(a,b){if(ySort==="dateNew"||ySort==="date")return a.date>b.date?-1:1;if(ySort==="dateOld")return a.date<b.date?-1:1;if(ySort==="agree")return(a.diff===null?99:a.diff)-(b.diff===null?99:b.diff);if(ySort==="disagree")return(b.diff===null?-1:b.diff)-(a.diff===null?-1:a.diff);if(ySort==="myHigh")return(b.rating||0)-(a.rating||0);if(ySort==="myLow")return(a.rating||99)-(b.rating||99);return 0}).map(function(f,i){return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}><td className="py-1.5" style={{color:N.inkSoft}}>{f.name} <span style={{color:N.muted}}>({f.year})</span></td><td className="py-1.5 text-right" style={{color:f.rating!==null?N.ink:N.mutedSoft}}>{f.rating!==null?f.rating+'★':'—'}</td><td className="py-1.5 text-right" style={{color:typeof f.yRating==="number"?N.ink:N.mutedSoft}}>{typeof f.yRating==="number"?f.yRating+'★':(f.yRating||'—')}</td><td className="py-1.5 text-right" style={{color:f.diff!==null?N.ink:N.mutedSoft,fontWeight:f.diff!==null&&(f.diff<=0.5||f.diff>=2)?500:400}}>{f.diff!==null?f.diff.toFixed(1):'—'}</td></tr>})}</tbody></table></div>
+        <SectionHead T={N} title="Ratings side by side" aside={<div className="flex gap-1 flex-wrap"><button onClick={function(){sYSort(ySort==="dateNew"?"dateOld":"dateNew")}} style={(ySort==="dateNew"||ySort==="dateOld")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="dateOld"?"Newest first":"Oldest first"}</button><button onClick={function(){sYSort(ySort==="agree"?"disagree":"agree")}} style={(ySort==="agree"||ySort==="disagree")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="agree"?"Most divided":"Most aligned"}</button><button onClick={function(){sYSort(ySort==="myHigh"?"myLow":"myHigh")}} style={(ySort==="myHigh"||ySort==="myLow")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="myHigh"?"Lowest rated":"Highest rated"}</button></div>}/>
+        <div className="max-h-96 overflow-y-auto"><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Babylonian</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Yesmine</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Diff</th></tr></thead><tbody>{yFilms.slice().sort(function(a,b){if(ySort==="dateNew"||ySort==="date")return a.date>b.date?-1:1;if(ySort==="dateOld")return a.date<b.date?-1:1;if(ySort==="agree")return(a.diff===null?99:a.diff)-(b.diff===null?99:b.diff);if(ySort==="disagree")return(b.diff===null?-1:b.diff)-(a.diff===null?-1:a.diff);if(ySort==="myHigh")return(b.rating||0)-(a.rating||0);if(ySort==="myLow")return(a.rating||99)-(b.rating||99);return 0}).map(function(f,i){return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}><td className="py-1.5" style={{color:N.inkSoft}}>{f.name} <span style={{color:N.muted}}>({f.year})</span></td><td className="py-1.5 text-right" style={{color:f.rating!==null?N.ink:N.mutedSoft}}>{f.rating!==null?f.rating+'★':'—'}</td><td className="py-1.5 text-right" style={{color:typeof f.yRating==="number"?N.ink:N.mutedSoft}}>{typeof f.yRating==="number"?f.yRating+'★':(f.yRating||'—')}</td><td className="py-1.5 text-right" style={{color:f.diff!==null?N.ink:N.mutedSoft,fontWeight:f.diff!==null&&(f.diff<=0.5||f.diff>=2)?500:400}}>{f.diff!==null?f.diff.toFixed(1):'—'}</td></tr>})}</tbody></table></div>
       </div>
       {yMissing.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+T.primary,borderRadius:4}}><div className="mb-2" style={{fontSize:13,fontWeight:500,color:T.secondary}}>Missing Yesmine ratings ({yMissing.length})</div><div className="max-h-48 overflow-y-auto">{yMissing.map(function(e,i){return <div key={i} className="text-xs py-0.5" style={{color:N.muted}}>{e.name} ({e.year}) — {e.date}</div>})}</div></div>}
     </div>}
@@ -1022,48 +1023,11 @@ export default function Dashboard(){
         {sR!==null&&<FilmList T={N} title={sR+'\u2605'} films={selFilms} onClose={function(){sSR(null)}}/>}
       </div>
 
-      {/* THE TASTE MAP — the count-vs-rating pair of bar charts, collapsed into one plot.
-          Reading two ranked lists against each other is work the reader should not have to
-          do: here volume is one axis, verdict is the other, and the median crosshair turns
-          the four corners into four different statements. */}
-      <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-        <SectionHead T={N} title="The taste map" count={quad.pts.length} aside={<div className="flex gap-1 flex-wrap">{QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>How many of them you have seen against how much you liked them{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once however often you rewatched it. The dashed crosshair is your median on both axes. Click a dot to pick that one out in the panels below.</div>
-        {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
-          {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
-              collided with any dot label near a corner — Alya, at three films and two stars,
-              landed exactly on "few, and not the best" and ate half of it. Above-left still
-              reads as up-and-to-the-left, so the mapping survives the move. */}
-          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[0]}</span><span>{qw.corners[1]}</span></div>
-          <ResponsiveContainer width="100%" height={330}>
-            <ScatterChart margin={{top:18,right:24,bottom:24,left:0}}>
-              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
-              <XAxis type="number" dataKey="Films" tick={{fill:N.muted,fontSize:10}} label={{value:'films seen',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
-              <YAxis type="number" dataKey="Avg" domain={quad.yDom} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'your average',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
-              <ZAxis range={[70,70]}/>
-              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?qw.hh:hv?qw.hl:hr?qw.lh:qw.ll;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
-              <ReferenceLine x={quad.mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <ReferenceLine y={quad.my} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <Scatter data={quad.plain} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}/>
-              <Scatter data={quad.labeled} fill={VIZ_MARK} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
-                <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
-              </Scatter>
-            </ScatterChart>
-          </ResponsiveContainer>
-          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[2]}</span><span>{qw.corners[3]}</span></div>
-        </div>}
-      </div>
-      {/* Four of the six sets no longer have a panel further down the tab, so the map carries
-          its own list. Directors and decades are excluded: the poster wall and the ribbon are
-          right there and already show the selection, and two identical lists is worse than one
-          in the wrong place. */}
-      {quadCfg.ownList&&<FilmList T={N} title={quadSelName?quadSelName+(quadSet==='friend'?' — watched together':''):null} films={quadFilms} onClose={function(){cls()}}/>}
-
       {/* DECADES AS A RIBBON — a bar chart of decades sorts the empty ones out of existence.
           A continuous strip cannot: every decade from your earliest to your latest gets a
           slot, width carries the count, and the dashed gaps are the finding. */}
       <div>
-        <SectionHead T={N} title="A century of film, by how much of it you have seen" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a decade for the films</span>}/>
+        <SectionHead T={N} title="Films by release decade" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a decade for the films</span>}/>
         <div className="flex gap-1 items-stretch" style={{height:54}}>
           {decRibbon.map(function(d){var on=sDe===d.label,empty=d.Films===0;
             return <div key={d.dec} onClick={function(){if(!empty){sSDe(on?null:d.label);sSTg(null)}}}
@@ -1085,13 +1049,50 @@ export default function Dashboard(){
           same two numbers, so the wall was a second reading of one dataset -- and clicking a
           dot now opens the films directly, which is what the wall's rows were for. */}
 
+      {/* THE TASTE MAP — the count-vs-rating pair of bar charts, collapsed into one plot.
+          Reading two ranked lists against each other is work the reader should not have to
+          do: here volume is one axis, verdict is the other, and the median crosshair turns
+          the four corners into four different statements. */}
+      <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+        <SectionHead T={N} title="The taste map" count={quad.pts.length} aside={<div className="flex gap-1 flex-wrap">{QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
+        <div className="text-xs mb-3" style={{color:N.muted}}>Films seen against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
+        {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
+          {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
+              collided with any dot label near a corner — Alya, at three films and two stars,
+              landed exactly on "few, and not the best" and ate half of it. Above-left still
+              reads as up-and-to-the-left, so the mapping survives the move. */}
+          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[0]}</span><span>{qw.corners[1]}</span></div>
+          <ResponsiveContainer width="100%" height={330}>
+            <ScatterChart margin={{top:18,right:24,bottom:24,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              <XAxis type="number" dataKey="Films" tick={{fill:N.muted,fontSize:10}} label={{value:'films seen',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
+              <YAxis type="number" dataKey="Avg" domain={quad.yDom} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'average rating',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
+              <ZAxis range={[70,70]}/>
+              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?qw.hh:hv?qw.hl:hr?qw.lh:qw.ll;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
+              <ReferenceLine x={quad.mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <ReferenceLine y={quad.my} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <Scatter data={quad.plain} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}/>
+              <Scatter data={quad.labeled} fill={VIZ_MARK} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
+                <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[2]}</span><span>{qw.corners[3]}</span></div>
+        </div>}
+      </div>
+      {/* Four of the six sets no longer have a panel further down the tab, so the map carries
+          its own list. Directors and decades are excluded: the poster wall and the ribbon are
+          right there and already show the selection, and two identical lists is worse than one
+          in the wrong place. */}
+      {quadCfg.ownList&&<FilmList T={N} title={quadSelName?quadSelName+(quadSet==='friend'?' — watched together':''):null} films={quadFilms} onClose={function(){cls()}}/>}
+
       {/* Genres, Cast and Countries had ranked tables here. The taste map says everything they
           said and puts it on two axes instead of one, so they were the same numbers twice.
           Tags keeps its table: it is the one set that is not a partition of the collection. */}
       <div className="lg:w-2/3 mx-auto space-y-6">
       <div>
-        <SectionHead T={N} title="What each tag is worth" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>How far the films carrying a tag sit from your overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
+        <SectionHead T={N} title="Rating lift by tag" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
+        <div className="text-xs mb-3" style={{color:N.muted}}>How far the films carrying a tag sit from the overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
         <div className="space-y-1">
           {tagLift.rows.map(function(r){
             var pos=r.lift>=0,c=pos?VIZ_GOOD:NEG,w=Math.abs(r.lift)/tagLift.max*50,thin=r.Films<15,on=sTg===r.name;
@@ -1120,8 +1121,8 @@ export default function Dashboard(){
           the same run of panels. Deliberately ignores the year filter: a change of mind
           belongs to the whole history. */}
       <div className="pt-5" style={{borderTop:'1px solid '+N.borderStrong}}>
-        <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Second thoughts {'·'} all time</div>
-        <div className="text-xs mt-1" style={{color:N.mutedSoft}}>What you gave a film on the night, against what it stands at today</div>
+        <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Revised ratings {'·'} all time</div>
+        <div className="text-xs mt-1" style={{color:N.mutedSoft}}>The rating logged on the night, against the rating the film holds today</div>
       </div>
 
       {!allRatings.length?<div className="p-4 text-xs" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.muted}}>No ratings export loaded. Import your Letterboxd folder again — <span style={{color:N.inkSoft}}>ratings.csv</span> is what holds your current score for each film, and everything in this section is the gap between it and the diary.</div>:<div className="space-y-6">
@@ -1138,8 +1139,8 @@ export default function Dashboard(){
         {/* SLOPE CHART — two dots and a line beat two bars: the reader sees direction and
             distance in one mark, and the rows sort by how much the mind moved. */}
         {revisions.rows.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Films you changed your mind about" count={revisions.rows.length}/>
-          <div className="text-xs mb-3" style={{color:N.muted}}>Each line runs from the first rating you logged to where it stands now. <span style={{color:MOVE_UP}}>Green climbed</span>, <span style={{color:MOVE_DOWN}}>orange fell</span>. The hollow dot is the original.</div>
+          <SectionHead T={N} title="Films whose rating changed" count={revisions.rows.length}/>
+          <div className="text-xs mb-3" style={{color:N.muted}}>Each line runs from the first rating logged to the rating held now. <span style={{color:MOVE_UP}}>Green climbed</span>, <span style={{color:MOVE_DOWN}}>orange fell</span>. The hollow dot is the original.</div>
           <div className="space-y-1">
             {revisions.rows.slice(0,revOpen?revisions.rows.length:12).map(function(r,i){
               var up=r.delta>0,c=up?MOVE_UP:MOVE_DOWN,pc=function(v){return((v-0.5)/4.5)*100};
@@ -1163,8 +1164,8 @@ export default function Dashboard(){
         </div>}
 
         {revisions.pairs.length>2&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Does a second viewing help?" count={revisions.drift.length}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>First rating across, most recent up, for every film you have rated more than once. Above the diagonal it grew on you; below it, the shine came off. Bigger dots hold more films.</div>
+          <SectionHead T={N} title="Rewatched films: first rating against latest" count={revisions.drift.length}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>First rating across, most recent up, for every film rated more than once. Above the diagonal the rating rose on a rewatch; below it, it fell. Bigger dots hold more films.</div>
           <ResponsiveContainer width="100%" height={280}>
             <ScatterChart margin={{top:10,right:20,bottom:20,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1179,8 +1180,8 @@ export default function Dashboard(){
         </div>}
 
         {preDist.preN>0&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="The shelf before the diary" count={preDist.preN} aside={<span className="text-xs" style={{color:N.muted}}>{preDist.preAvg.toFixed(2)}{'★'} unlogged {'·'} {preDist.diaryAvg.toFixed(2)}{'★'} logged</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all — what you watched before you started logging. Plotted as a share of each set rather than a count, since the two are nowhere near the same size.</div>
+          <SectionHead T={N} title="Rated but never logged" count={preDist.preN} aside={<span className="text-xs" style={{color:N.muted}}>{preDist.preAvg.toFixed(2)}{'★'} unlogged {'·'} {preDist.diaryAvg.toFixed(2)}{'★'} logged</span>}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all — watched before the diary began. Plotted as a share of each set rather than a count, since the two are nowhere near the same size.</div>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={preDist.data}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1195,8 +1196,8 @@ export default function Dashboard(){
         </div>})()}
 
         {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Are you getting more generous?" aside={<span className="text-xs" style={{color:N.muted}}>all-time mean {inflation.mean.toFixed(2)}{'★'}</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of your last {inflation.w} rated watches, in the order you logged them. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line.</div>
+          <SectionHead T={N} title="Rolling average rating" aside={<span className="text-xs" style={{color:N.muted}}>all-time mean {inflation.mean.toFixed(2)}{'★'}</span>}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} rated watches, in diary order. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line.</div>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={inflation.data}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
