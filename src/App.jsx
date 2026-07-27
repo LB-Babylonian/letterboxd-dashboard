@@ -431,9 +431,14 @@ function Avatar(p){
 function Poster(p){
   var w=p.w||24,h=Math.round(w*1.5);
   var src=p.meta&&p.meta.poster;
-  var base={width:w,height:h,borderRadius:2,flex:'0 0 auto',background:NEUTRAL.surfaceAlt};
+  // fill: take the width of the parent and hold 2:3, for grids where a fixed pixel width would
+  // leave the cell wider than the image -- anything positioned against the cell's edges then
+  // lands in the gutter instead of on the poster.
+  var base=p.fill
+    ? {width:'100%',aspectRatio:'2 / 3',display:'block',borderRadius:2,background:NEUTRAL.surfaceAlt}
+    : {width:w,height:h,borderRadius:2,flex:'0 0 auto',background:NEUTRAL.surfaceAlt};
   if(!src)return <div style={base}/>;
-  return <img src={src} alt="" loading="lazy" width={w} height={h} style={Object.assign({},base,{objectFit:'cover'})}/>;
+  return <img src={src} alt="" loading="lazy" {...(p.fill?{}:{width:w,height:h})} style={Object.assign({},base,{objectFit:'cover'})}/>;
 }
 
 // DQPanel — Data Quality (all colors derived from theme primary via blend)
@@ -1496,22 +1501,27 @@ export default function Dashboard(){
             </div>
             {topAsList
               ? <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs">{head(false)}<tbody>{rows(top50Evo.current)}</tbody></table></div></div>
-              : <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2">
+              : <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-x-3 gap-y-3">
                   {top50Evo.current.map(function(fi){
                     var m=moveOf(fi);
                     return <div key={fi.name+fi.year} title={fi.name+' ('+fi.year+')'+(m.prev?' — was #'+m.prev+' in '+prevYearOf(top50Evo.last):'')}
-                      style={{position:'relative'}}>
-                      <Poster meta={gMeta(fi)} w={72}/>
-                      {/* Rank badge over the corner of the poster, the way a chart position is
-                          printed on a sleeve. */}
+                      style={{position:'relative',lineHeight:0}}>
+                      {/* The poster fills the cell, so a badge pinned to an edge sits on the
+                          image. At a fixed 72px it did not: the cell was wider, and the movement
+                          badge floated in the gutter looking like it belonged to the next film. */}
+                      <Poster meta={gMeta(fi)} fill/>
+                      {/* Rank over the top corner, the way a chart position is printed on a
+                          sleeve. Movement along the foot of the same poster, on a band that runs
+                          the full width so it can never read as the neighbour's. */}
                       <div style={{position:'absolute',top:0,left:0,background:NEUTRAL.paper,color:N.ink,fontSize:10,fontWeight:600,
-                        padding:'1px 4px',borderRadius:'4px 0 4px 0',lineHeight:1.4}}>{m.r}</div>
+                        padding:'1px 5px',borderRadius:'2px 0 4px 0',lineHeight:1.5}}>{m.r}</div>
                       {/* The guard has to be a boolean. `m.isNew||m.move` yields the NUMBER 0 for
-                          a film that held its rank, and React renders a literal 0 next to the
-                          poster. Unmoved now shows the same "=" the table uses. */}
-                      {(m.isNew||m.move!==null)&&<div style={{position:'absolute',top:0,right:0,background:NEUTRAL.paper,
-                        color:m.isNew?MOVE_NEW:m.move>0?MOVE_UP:m.move<0?MOVE_DOWN:N.mutedSoft,fontSize:9,fontWeight:600,padding:'1px 3px',borderRadius:'0 4px 0 4px',lineHeight:1.5}}>
-                        {m.isNew?'NEW':m.move>0?'▲'+m.move:m.move<0?'▼'+Math.abs(m.move):'='}</div>}
+                          a film that held its rank, and React renders a literal 0. */}
+                      {(m.isNew||m.move!==null)&&<div style={{position:'absolute',left:0,right:0,bottom:0,
+                        background:'rgba(20,24,28,0.82)',textAlign:'center',
+                        color:m.isNew?MOVE_NEW:m.move>0?MOVE_UP:m.move<0?MOVE_DOWN:N.mutedSoft,
+                        fontSize:9.5,fontWeight:600,padding:'2px 0',lineHeight:1.4,borderRadius:'0 0 2px 2px'}}>
+                        {m.isNew?'NEW':m.move>0?'▲ '+m.move:m.move<0?'▼ '+Math.abs(m.move):'no change'}</div>}
                     </div>})}
                 </div>}
           </div>
