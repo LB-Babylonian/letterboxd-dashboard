@@ -1499,9 +1499,12 @@ export default function Dashboard(){
               <span>In {top50Evo.last}:</span>
               {summary.map(function(x){return <span key={x.l}><span style={{color:x.c,fontWeight:500}}>{x.n}</span> {x.l}</span>})}
             </div>
+            {/* Ten across, because 50 divides by it: five full rows rather than four and an
+                orphan. The crowding was mostly the gutter, so that doubles while the poster
+                itself only comes down a little. */}
             {topAsList
               ? <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs">{head(false)}<tbody>{rows(top50Evo.current)}</tbody></table></div></div>
-              : <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-x-3 gap-y-3">
+              : <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-x-6 gap-y-7">
                   {top50Evo.current.map(function(fi){
                     var m=moveOf(fi);
                     return <div key={fi.name+fi.year} title={fi.name+' ('+fi.year+')'+(m.prev?' — was #'+m.prev+' in '+prevYearOf(top50Evo.last):'')}
