@@ -1088,7 +1088,8 @@ export default function Dashboard(){
       {/* Genres, Cast and Countries had ranked tables here. The taste map says everything they
           said and puts it on two axes instead of one, so they were the same numbers twice.
           Tags keeps its table: it is the one set that is not a partition of the collection. */}
-      <div className="lg:w-2/3">
+      <div className="lg:w-2/3 mx-auto space-y-6">
+      <div>
         <SectionHead T={N} title="What each tag is worth" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
         <div className="text-xs mb-3" style={{color:N.muted}}>How far the films carrying a tag sit from your overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
         <div className="space-y-1">
@@ -1111,6 +1112,7 @@ export default function Dashboard(){
         <div className="flex mt-1"><div className="w-24 md:w-32"/><div className="w-8"/><div className="flex-1 flex justify-between" style={{fontSize:9,color:N.mutedSoft}}><span>{'\u2212'}{tagLift.max.toFixed(2)}</span><span>{tagLift.base.toFixed(2)}{'\u2605'}</span><span>+{tagLift.max.toFixed(2)}</span></div><div className="w-12"/><div className="w-12"/></div>
       </div>
       <FilmList T={N} title={sTg} films={tagF} onClose={function(){sSTg(null)}}/>
+      </div>
 
       {/* ===== SECOND THOUGHTS =====
           A different subject from everything above — not what you like, but where your own
