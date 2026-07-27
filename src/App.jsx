@@ -571,14 +571,6 @@ export default function Dashboard(){
       avg:r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0,
       five:efOnce.filter(function(e){return e.rating===5}).length};
   },[efOnce]);
-  // Same treatment for last year, so the delta beside the average compares film to film.
-  var avgYoy=useMemo(function(){
-    if(yr==='All'||!statsOnce.rated)return null;
-    var py=String(parseInt(yr)-1);
-    var prev=onceWithCurrent(all.filter(function(e){return e.date.indexOf(py)===0&&(iRW||!e.rewatch)})).filter(function(e){return e.rating!==null});
-    if(!prev.length)return null;
-    return statsOnce.avg-(prev.reduce(function(s,e){return s+e.rating},0)/prev.length);
-  },[yr,all,iRW,onceWithCurrent,statsOnce]);
   var stats=useMemo(function(){var f=ef,rt=f.filter(function(e){return e.rating!==null}),av=rt.length?rt.reduce(function(s,e){return s+e.rating},0)/rt.length:0;return{total:f.length,avg:av.toFixed(2),th:f.filter(isT).length,rw:f.filter(function(e){return e.rewatch}).length,fo:f.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,fr:f.filter(function(e){return gC(e.tags,fullReg).length>0}).length}},[ef,fullReg,isT]);
   var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;var pp=function(cf,pf){return(cf/cN*100)-(pf/pN*100)};var pR=pv.filter(function(e){return e.rating!==null}),cR=ef.filter(function(e){return e.rating!==null});return{films:cN-pN,avg:(pR.length&&cR.length)?(cR.reduce(function(s,e){return s+e.rating},0)/cR.length)-(pR.reduce(function(s,e){return s+e.rating},0)/pR.length):null,th:pp(ef.filter(isT).length,pv.filter(isT).length),rw:iRW?pp(ef.filter(function(e){return e.rewatch}).length,pv.filter(function(e){return e.rewatch}).length):null,fo:pp(ef.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,pv.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length),fr:pp(ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length,pv.filter(function(e){return gC(e.tags,fullReg).length>0}).length)}},[yr,ef,all,iRW,fullReg,isT]);
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
@@ -628,7 +620,6 @@ export default function Dashboard(){
   // Runtime is the exception: hours are hours. You really did sit through Rango five times,
   // so this counts every watch (ef) while everything else counts every film (efOnce).
   var dirStats=useMemo(function(){var totalR=0,totalH=0,rtCount=0;ef.forEach(function(e){var m=gMeta(e);if(m&&m.runtime){totalR+=m.runtime;rtCount++}});totalH=Math.round(totalR/60);var uDir=new Set();efOnce.forEach(function(e){var m=gMeta(e);if(m&&m.directors)m.directors.split(", ").forEach(function(d){if(d)uDir.add(d)})});return{totalH:totalH,totalR:totalR,uDir:uDir.size,avgRun:rtCount?Math.round(totalR/rtCount):0,rtCount:rtCount,rtTotal:ef.length,rtMissingPct:ef.length?Math.round((ef.length-rtCount)/ef.length*100):0}},[ef,efOnce,filmMeta]);
-  var genreD=useMemo(function(){var g={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.genres)return;m.genres.split(", ").forEach(function(gn){if(!gn)return;if(!g[gn])g[gn]={c:0,s:0,r:0};g[gn].c++;if(e.rating!==null){g[gn].s+=e.rating;g[gn].r++}})});return Object.keys(g).map(function(n){var v=g[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
   var yRatingsNorm=useMemo(function(){var n={};Object.keys(yRatings).sort().forEach(function(k){var p=k.split('|||');var nk=normName(p[0])+'|||'+p[1];if(!(nk in n))n[nk]=yRatings[k]});return n},[yRatings]);
   var gYR=function(name,year){var nk=normName(name)+'|||'+year;return nk in yRatingsNorm?yRatingsNorm[nk]:undefined};
   var yFilms=useMemo(function(){return ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf("yesmine")!==-1})}).map(function(e){var yr=gYR(e.name,e.year);return{name:e.name,year:e.year,date:e.date,rating:e.rating,yRating:yr!==undefined?yr:null,diff:e.rating!==null&&typeof yr==="number"?Math.abs(e.rating-yr):null}})},[ef,yRatingsNorm,fullReg])
@@ -770,8 +761,6 @@ export default function Dashboard(){
   var tagFiltered=useMemo(function(){return tagAllSorted.filter(function(t){return!tagSearch||t.indexOf(tagSearch.toLowerCase())!==-1})},[tagAllSorted,tagSearch]);
   var tagSelCount=useMemo(function(){return Object.keys(tagSel).filter(function(k){return tagSel[k]}).length},[tagSel]);
   var tagGrouped=useMemo(function(){var g={_un:[]};CATS.forEach(function(c){g[c]=[]});tagFiltered.forEach(function(t){var c=fullReg[t]&&fullReg[t].cat;if(c&&g[c])g[c].push(t);else g._un.push(t)});return g},[tagFiltered,fullReg]);
-  var topGenre=useMemo(function(){return genreD.slice().sort(function(a,b){return b.Films-a.Films})[0]||null},[genreD]);
-  var topDecade=useMemo(function(){return decD.slice().sort(function(a,b){return b.Films-a.Films})[0]||null},[decD]);
   var costYrs=useMemo(function(){return['All'].concat(Array.from(new Set(all.map(function(e){return e.date.slice(0,4)}))).sort())},[all]);
   var costData=useMemo(function(){var now=getNowYM();return Array.from(new Set(all.map(function(e){return e.date.slice(0,4)}))).sort().map(function(y){
     var films=all.filter(function(e){return e.date.indexOf(y)===0});var st=0,sbk=[];subscriptions.forEach(function(sub){sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var pTo=pr.to||now,yS=y+'-01',yE=y+'-12',eF=pr.from>yS?pr.from:yS,eT=pTo<yE?pTo:yE;if(eF>eT)return;var mo=mBt(eF,eT),co=mo*pr.price;st+=co;sbk.push({name:sub.name,mo:mo,price:pr.price,cost:co})})});
@@ -1012,19 +1001,11 @@ export default function Dashboard(){
 
     {/* ===== TASTE ===== */}
     {tab==='taste'&&<div className="space-y-6">
-      {/* Average rating and the distribution moved here from Overview: they answer
-          "was it any good", which is this page's question, not page one's. */}
-      {/* Rated was near-constant (you rate almost everything), and Rewatches and Runtime
-          both already appear in the Overview hero. These four say something about taste
-          instead: how generous the ratings are, and what the collection is made of. */}
-      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="Avg rating" value={statsOnce.avg.toFixed(2)+'\u2605'} sub={statsOnce.rated+' of '+statsOnce.films+' films rated'} yoy={avgYoy!=null?fY(avgYoy,'r'):null}/>
-        {/* Films at the rating they hold today, so this agrees with the distribution chart
-            below it -- which now also has one bar per film rather than one per rating typed. */}
-        <Stat T={N} label="Five-star films" value={statsOnce.five} sub={statsOnce.films?Math.round(statsOnce.five/statsOnce.films*100)+'% of films':''}/>
-        <Stat T={N} label="Top genre" value={topGenre?topGenre.name:'\u2014'} sub={topGenre?topGenre.Films+' films':''}/>
-        <Stat T={N} label="Top decade" value={topDecade?topDecade.name:'\u2014'} sub={topDecade?topDecade.Films+' films':''} noBorder/>
-      </div>
+      {/* The four summary tiles that used to open this tab are gone. Every one of them was
+          restated within a screen: the average again in the distribution caption and again as
+          the tag baseline, the five-star count as the 5-star bar, the top genre as the map's
+          rightmost labelled dot, the top decade as the ribbon's widest segment. The tab opens
+          on the distribution instead. */}
       {/* RATING DISTRIBUTION — moved from Overview */}
       <div>
         <SectionHead T={N} title="Rating distribution" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span></span>}/>
