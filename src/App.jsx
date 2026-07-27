@@ -556,6 +556,9 @@ export default function Dashboard(){
   // Must stay above its first consumer: as a `var` it is hoisted undefined, so a memo above
   // this line calling agg(efOnce, ...) threw on mount and blanked the page.
   var efOnce=useMemo(function(){return onceWithCurrent(ef)},[ef,onceWithCurrent]);
+  // The same collapse over the WHOLE diary, ignoring the year filter. The Second thoughts
+  // panels are all-time by design and need a like-for-like baseline to compare against.
+  var allOnce=useMemo(function(){return onceWithCurrent(all)},[all,onceWithCurrent]);
 
   // The rating figures every panel on the Taste tab quotes. Films, not watches: 47 five-star
   // diary rows are 33 films that ever got a 5 and 26 that still hold one, because Rango alone
@@ -639,22 +642,29 @@ export default function Dashboard(){
     // Identical (first,last) pairs land on the same pixel, so collapse them and size the
     // dot by how many films sit there — otherwise the scatter reads as ten dots, not 80.
     var pairs={};drift.forEach(function(d){var pk=d.first+'|'+d.last;if(!pairs[pk])pairs[pk]={x:d.first,y:d.last,n:0,films:[]};pairs[pk].n++;pairs[pk].films.push(d.name)});
-    var preDiary=Object.keys(currentRatings).filter(function(k){return!diaryByFilm[k]}).map(function(k){return currentRatings[k]});
+    // Keyed off every diary film, not just the rated ones. diaryByFilm holds only films with a
+    // rating, so four films that were logged and left unrated were counted as never logged --
+    // which is a different claim, and it moved the average.
+    var logged={};all.forEach(function(e){logged[normName(e.name)+'|||'+e.year]=true});
+    var preDiary=Object.keys(currentRatings).filter(function(k){return!logged[k]}).map(function(k){return currentRatings[k]});
     return{rows:rows,up:up,down:down,drift:drift,pairs:Object.keys(pairs).map(function(k){return pairs[k]}),preDiary:preDiary,
       net:rows.length?rows.reduce(function(s,r){return s+r.delta},0)/rows.length:0,
       riser:up[0]||null,faller:down[0]||null};
-  },[diaryByFilm,currentRatings]);
+  },[diaryByFilm,currentRatings,all]);
   // Shares rather than counts: the pre-diary shelf is a fraction of the diary's size, so
   // raw bars would put one distribution flat against the axis.
   var preDist=useMemo(function(){
     var buckets=[];for(var r=0.5;r<=5;r+=0.5)buckets.push(r);
     var dC={},pC={};buckets.forEach(function(r){dC[r]=0;pC[r]=0});
-    var dN=0;Object.keys(diaryByFilm).forEach(function(k){var r=diaryByFilm[k].watches[0].rating;if(dC[r]!==undefined){dC[r]++;dN++}});
+    // The diary side used each film's FIRST logged rating while the unlogged side used the
+    // current one, so the two bars were measuring different things and the gap was overstated
+    // by 0.05. Both are current ratings now, one row per film, all time.
+    var dN=0;allOnce.forEach(function(e){if(e.rating!==null&&dC[e.rating]!==undefined){dC[e.rating]++;dN++}});
     var pN=0;revisions.preDiary.forEach(function(f){if(pC[f.rating]!==undefined){pC[f.rating]++;pN++}});
     var dS=0,pS=0;buckets.forEach(function(r){dS+=r*dC[r];pS+=r*pC[r]});
     return{data:buckets.map(function(r){return{rating:String(r),logged:dN?dC[r]/dN*100:0,pre:pN?pC[r]/pN*100:0}}),
       diaryN:dN,preN:pN,diaryAvg:dN?dS/dN:0,preAvg:pN?pS/pN:0};
-  },[diaryByFilm,revisions]);
+  },[allOnce,revisions]);
   // Rolling mean over the last 50 rated watches, in diary order. A per-year average hides
   // the shape; 50 is wide enough that one generous week does not move the line.
   var inflation=useMemo(function(){
