@@ -473,7 +473,7 @@ export default function Dashboard(){
   var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
   var[quadSet,sQuadSet]=useState('genre');var[revOpen,sRevOpen]=useState(false);
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
-  var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
+  var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
   var[saving,sSaving]=useState(false);var[expYrs,sExpYrs]=useState({});var[rankMode,sRankMode]=useState('sub');
   var[filmMeta,sFilmMeta]=useState({});var[yRatings,sYRatings]=useState({});var[allRatings,sAllRatings]=useState([]);var[top50s,sTop50s]=useState([]);
@@ -939,7 +939,47 @@ export default function Dashboard(){
       <div className="max-h-40 overflow-y-auto">{noPriceCost.map(function(e,i2){return <div key={i2} className="text-xs py-0.5 flex justify-between" style={{color:N.muted}}><span className="truncate mr-2">{e.name} <span style={{color:N.mutedSoft}}>({e.year})</span></span><span className="whitespace-nowrap" style={{color:N.mutedSoft}}>{e.date}</span></div>})}</div>
     </div>}
     {costYr==='All'?renderCostCards(allTimeTotals,'All Time'):costDataFilt.map(function(d){return <div key={d.yr}>{renderCostCards(d,d.yr)}</div>})}
-    {platRanking.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Which platforms pay off" aside={<button onClick={function(){sRankMode(function(v){return v==='sub'?'plat':'sub'})}} style={btnSecondary}>{rankMode==='sub'?'Per subscription':'Per platform'}</button>}/><div className="space-y-1.5">{platRanking.map(function(d,i){var maxC=Math.max.apply(null,platRanking.map(function(r){return r.cpf}).concat([1]));return <div key={i} className="flex items-center gap-2"><span className="text-xs w-5 text-right" style={{color:N.mutedSoft,fontWeight:500}}>{i+1}</span><span className="text-xs w-20 md:w-32 truncate" style={{color:N.inkSoft}}>{d.name}</span><div className="flex-1 h-6 flex items-center" style={{background:N.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.cpf/maxC)*100,8)+'%',backgroundColor:d.color,borderRadius:4}}><span className="text-xs" style={{color:T.chartTextColor||NEUTRAL.ink,fontWeight:500}}>{'\u20AC'}{d.cpf.toFixed(2)}</span></div></div><span className="text-xs w-14 text-right" style={{color:N.muted}}>{d.films} films</span><span className="text-xs w-12 text-right font-mono" style={{color:NEUTRAL.ink}}>{d.avg?d.avg.toFixed(1)+'\u2605':'\u2014'}</span></div>})}</div></div>}
+    {/* PRICE AGAINST QUALITY — the ranked bar could only sort on cost, so the rating printed at
+        the end of each row was a second column the eye had to carry. Both are axes now: cheap
+        and good is the bottom right, and the crosshair is the median of each. */}
+    {platRanking.length>0&&(function(){
+      var pts=platRanking.filter(function(d){return d.cpf>0&&d.avg>0});
+      var med=function(a){var s=a.slice().sort(function(x,y){return x-y});return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
+      var mx=pts.length?med(pts.map(function(d){return d.cpf})):0;
+      var my=pts.length?med(pts.map(function(d){return d.avg})):0;
+      var xs=pts.map(function(d){return d.cpf}),ys=pts.map(function(d){return d.avg});
+      var xhi=pts.length?Math.max.apply(null,xs)*1.12:1;
+      var ylo=pts.length?Math.max(0,Math.floor(Math.min.apply(null,ys)*4)/4-0.2):0;
+      var yhi=pts.length?Math.min(5,Math.ceil(Math.max.apply(null,ys)*4)/4+0.2):5;
+      return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+        <SectionHead T={N} title="Price against quality" count={pts.length} aside={<button onClick={function(){sRankMode(function(v){return v==='sub'?'plat':'sub'})}} style={btnSecondary}>{rankMode==='sub'?'Per subscription':'Per platform'}</button>}/>
+        <div className="text-xs mb-3" style={{color:N.muted}}>What each film cost across, how it was rated up. Bottom right is cheap and good; top left is dear and mediocre. The crosshair is the median of each. Dot size is the number of films.</div>
+        {pts.length<3?<div className="text-xs py-6 text-center" style={{color:N.mutedSoft}}>Not enough priced platforms to plot yet.</div>:<div>
+          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>Cheap · rated higher</span><span>Dear · rated higher</span></div>
+          <ResponsiveContainer width="100%" height={320}>
+            <ScatterChart margin={{top:18,right:24,bottom:24,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              <XAxis type="number" dataKey="cpf" domain={[0,xhi]} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return '€'+v.toFixed(0)}} label={{value:'cost per film',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
+              <YAxis type="number" dataKey="avg" domain={[ylo,yhi]} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'average rating',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
+              <ZAxis dataKey="films" range={[60,420]}/>
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;
+                var cheap=d.cpf<=mx,good=d.avg>=my;
+                return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}>
+                  <div style={{color:N.ink,fontWeight:500}}>{d.name}</div>
+                  <div style={{color:N.inkSoft,marginTop:2}}>{'€'}{d.cpf.toFixed(2)} a film {'·'} {d.avg.toFixed(2)}{'★'} {'·'} {d.films} films</div>
+                  <div style={{color:N.muted,marginTop:2}}>{cheap&&good?'Cheap and good':cheap?'Cheap, and it shows':good?'Dear, but worth it':'Dear and mediocre'}</div>
+                </div>}}/>
+              <ReferenceLine x={mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <ReferenceLine y={my} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <Scatter data={pts} fill={VIZ_MARK} fillOpacity={0.78}>
+                <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>Cheap · rated lower</span><span>Dear · rated lower</span></div>
+        </div>}
+      </div>;
+    })()}
     {cpfData.length>1&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="The price of a film, over time"/><ResponsiveContainer width="100%" height={220}><LineChart data={cpfData}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="q" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.period}</div><div style={{color:T.primary}}>{'\u20AC'}{d.cpf.toFixed(2)}/film</div><div style={{color:N.muted}}>{d.films} films {'\u00B7'} {'\u20AC'}{d.cost.toFixed(0)} spent</div></div>}}/><Line type="monotone" dataKey="cpf" stroke={T.primary} strokeWidth={2} dot={{fill:T.primary,r:2}}/></LineChart></ResponsiveContainer></div>}
     {monthlyFilt.length>3&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Monthly spend"/><ResponsiveContainer width="100%" height={250}><BarChart data={monthlyFilt}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="m" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){return <CostTip {...p} T={N}/>}}/><Bar dataKey="subs" name="Subscriptions" stackId="a" fill={sc[0]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="tickets" name="Tickets" stackId="a" fill={sc[1]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="rentals" name="Rentals" stackId="a" fill={sc[2]} stroke={NEUTRAL.surface} strokeWidth={2}/></BarChart></ResponsiveContainer><div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[0],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Subscriptions</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Tickets</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rentals</span></div></div></div>})()}
   </div>;
@@ -1405,14 +1445,15 @@ export default function Dashboard(){
     {/* ===== RANKINGS ===== */}
     {tab==='rankings'&&<div className="space-y-8">
       {top50Evo.years.length>0&&(function(){
-        // One renderer, two tables. The year columns are identical in both; only the ordering
-        // and what a missing rank means differ.
-        // Chronological for the arithmetic, reversed for the display: the current rank is what
-        // a reader looks for first, so it sits in the first column. Movement still compares a
-        // year against the one BEFORE it in time, not against the column to its left, which
-        // after the reversal is the year after.
+        // Chronological for the arithmetic, reversed for the display: the current rank is what a
+        // reader looks for first, so it sits in the first column. Movement still compares a year
+        // against the one BEFORE it in time, not against the column to its left, which after the
+        // reversal is the year after.
         var yrs2=top50Evo.years;
         var cols=yrs2.slice().reverse();
+        var prevYearOf=function(y){var ci=yrs2.indexOf(y);return ci>0?yrs2[ci-1]:null};
+        var moveOf=function(fi){var py=prevYearOf(top50Evo.last);var r=fi.ranks[top50Evo.last],prev=py!==null?fi.ranks[py]:null;
+          return{r:r,prev:prev,move:r&&prev?(prev-r):null,isNew:!!(r&&!prev&&py!==null)}};
         var rows=function(list){return list.map(function(fi,i){
           var inLatest=fi.ranks[top50Evo.last]!==undefined;
           return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}>
@@ -1422,9 +1463,9 @@ export default function Dashboard(){
               var r=fi.ranks[y],prev=py!==null?fi.ranks[py]:null;
               var move=r&&prev?(prev-r):null,isNew=r&&!prev&&py!==null,isOut=!r&&prev;
               return <td key={y} className="py-1.5 text-center"><div className="flex items-center justify-center gap-0.5">
-                {r?<span style={{fontWeight:500,color:N.ink}}>{r}</span>:isOut?<span className="text-xs" style={{color:MOVE_DOWN}}>OUT</span>:<span style={{color:N.mutedSoft}}>{'\u2014'}</span>}
+                {r?<span style={{fontWeight:500,color:N.ink}}>{r}</span>:isOut?<span className="text-xs" style={{color:MOVE_DOWN}}>OUT</span>:<span style={{color:N.mutedSoft}}>{'—'}</span>}
                 {r&&py!==null&&(isNew?<span className="ml-0.5" style={{fontSize:10,color:MOVE_NEW,fontWeight:500}}>NEW</span>
-                  :move!==null?<span className="ml-0.5" style={{fontSize:10,color:move>0?MOVE_UP:move<0?MOVE_DOWN:N.mutedSoft}}>{move>0?'\u25B2'+move:move<0?'\u25BC'+Math.abs(move):'='}</span>:null)}
+                  :move!==null?<span className="ml-0.5" style={{fontSize:10,color:move>0?MOVE_UP:move<0?MOVE_DOWN:N.mutedSoft}}>{move>0?'▲'+move:move<0?'▼'+Math.abs(move):'='}</span>:null)}
               </div></td>})}
             {!inLatest&&<td className="py-1.5 text-right whitespace-nowrap" style={{color:N.mutedSoft,fontSize:10}}>left at {'#'+fi.lastRank}</td>}
           </tr>})};
@@ -1433,10 +1474,46 @@ export default function Dashboard(){
           {cols.map(function(y){return <th key={y} className="text-center py-2" style={{width:80,fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>{y}</th>})}
           {extra&&<th className="text-right py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Last rank</th>}
         </tr></thead>};
+
+        // What changed this year, as four counts. Fifty rows of arrows is a lot to add up by eye.
+        var moves=top50Evo.current.map(moveOf);
+        var summary=[
+          {l:'climbed',n:moves.filter(function(m){return m.move>0}).length,c:MOVE_UP},
+          {l:'slipped',n:moves.filter(function(m){return m.move<0}).length,c:MOVE_DOWN},
+          {l:'new entries',n:moves.filter(function(m){return m.isNew}).length,c:MOVE_NEW},
+          {l:'unmoved',n:moves.filter(function(m){return m.move===0}).length,c:N.mutedSoft},
+          {l:'dropped out',n:top50Evo.gone.filter(function(f){return f.lastYear===prevYearOf(top50Evo.last)}).length,c:MOVE_DOWN}
+        ];
+
         return <div className="space-y-8">
           <div>
-            <SectionHead T={N} title={'Top 50, all time'} count={top50Evo.current.length} aside={<span className="text-xs" style={{color:N.mutedSoft}}>latest year first</span>}/>
-            <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs">{head(false)}<tbody>{rows(top50Evo.current)}</tbody></table></div></div>
+            <SectionHead T={N} title={'Top 50, all time'} count={top50Evo.current.length} aside={<div className="flex gap-1"><button onClick={function(){sTopAsList(function(v){return!v})}} style={btnSecondary}>{topAsList?'As posters':'As table'}</button></div>}/>
+            {/* The year-on-year churn in one line, so the wall below can be read for pleasure
+                rather than arithmetic. */}
+            <div className="flex flex-wrap gap-x-5 gap-y-1 mb-4 text-xs" style={{color:N.muted}}>
+              <span>In {top50Evo.last}:</span>
+              {summary.map(function(x){return <span key={x.l}><span style={{color:x.c,fontWeight:500}}>{x.n}</span> {x.l}</span>})}
+            </div>
+            {topAsList
+              ? <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs">{head(false)}<tbody>{rows(top50Evo.current)}</tbody></table></div></div>
+              : <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2">
+                  {top50Evo.current.map(function(fi){
+                    var m=moveOf(fi);
+                    return <div key={fi.name+fi.year} title={fi.name+' ('+fi.year+')'+(m.prev?' — was #'+m.prev+' in '+prevYearOf(top50Evo.last):'')}
+                      style={{position:'relative'}}>
+                      <Poster meta={gMeta(fi)} w={72}/>
+                      {/* Rank badge over the corner of the poster, the way a chart position is
+                          printed on a sleeve. */}
+                      <div style={{position:'absolute',top:0,left:0,background:NEUTRAL.paper,color:N.ink,fontSize:10,fontWeight:600,
+                        padding:'1px 4px',borderRadius:'4px 0 4px 0',lineHeight:1.4}}>{m.r}</div>
+                      {/* The guard has to be a boolean. `m.isNew||m.move` yields the NUMBER 0 for
+                          a film that held its rank, and React renders a literal 0 next to the
+                          poster. Unmoved now shows the same "=" the table uses. */}
+                      {(m.isNew||m.move!==null)&&<div style={{position:'absolute',top:0,right:0,background:NEUTRAL.paper,
+                        color:m.isNew?MOVE_NEW:m.move>0?MOVE_UP:m.move<0?MOVE_DOWN:N.mutedSoft,fontSize:9,fontWeight:600,padding:'1px 3px',borderRadius:'0 4px 0 4px',lineHeight:1.5}}>
+                        {m.isNew?'NEW':m.move>0?'▲'+m.move:m.move<0?'▼'+Math.abs(m.move):'='}</div>}
+                    </div>})}
+                </div>}
           </div>
           {top50Evo.gone.length>0&&<div>
             <SectionHead T={N} title="Gone, not forgotten" count={top50Evo.gone.length}/>

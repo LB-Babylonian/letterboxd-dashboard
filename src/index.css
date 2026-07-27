@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+/* The dark surface is painted by a React div inside #root, which left html and body
+   transparent and therefore white. Nothing revealed it until you scrolled hard enough to
+   rubber-band past the end of the content: the overscroll region paints the BODY, so the page
+   appeared to flash white for a frame or two on a fast scroll.
+
+   This is NEUTRAL.paper from src/App.jsx. Safe to hardcode because the dashboard chrome is
+   deliberately theme-independent — only the hero block uses the theme's own palette — but the
+   two need to stay in step if that ever changes. */
+html, body { background: #14181C; }
+
+/* Otherwise scrollbars and form controls render in the light default over a dark page. */
+:root { color-scheme: dark; }
