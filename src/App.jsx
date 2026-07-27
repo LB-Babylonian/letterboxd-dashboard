@@ -340,12 +340,15 @@ var CI={
 // like it. Every set needs a floor, otherwise the chart fills with things seen once whose
 // "average rating" is a single opinion. Directors and cast need a higher floor than genres
 // because the long tail there is enormous (426 of 585 directors appear exactly once).
+// `floor` spells the threshold out in the set's own terms — "anything seen twice or more"
+// is wrong for people, and a bare number in the caption told the reader nothing.
 var QUAD_SETS=[
-  {id:'genre',l:'Genres',min:2,unit:'genre'},
-  {id:'dir',l:'Directors',min:3,unit:'director'},
-  {id:'cast',l:'Cast',min:3,unit:'actor'},
-  {id:'country',l:'Countries',min:2,unit:'country'},
-  {id:'decade',l:'Decades',min:1,unit:'decade'}
+  {id:'genre',l:'Genres',min:2,floor:'anything seen twice or more'},
+  {id:'dir',l:'Directors',min:3,floor:'directors with 3 films or more'},
+  {id:'cast',l:'Cast',min:3,floor:'actors in 3 films or more'},
+  {id:'friend',l:'Friends',min:3,floor:'anyone you have watched with 3 times or more'},
+  {id:'country',l:'Countries',min:2,floor:'countries with 2 films or more'},
+  {id:'decade',l:'Decades',min:1,floor:null}
 ];
 var MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var MF=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -606,7 +609,7 @@ export default function Dashboard(){
   // TASTE MAP / RIBBON / POSTER WALL — the profile numbers, re-shaped
   // ============================================================
   var quadCfg=QUAD_SETS.filter(function(q){return q.id===quadSet})[0]||QUAD_SETS[0];
-  var quadSrc=quadSet==='dir'?dirD:quadSet==='cast'?castD:quadSet==='country'?countryD:quadSet==='decade'?decD:genreD;
+  var quadSrc=quadSet==='dir'?dirD:quadSet==='cast'?castD:quadSet==='friend'?compD:quadSet==='country'?countryD:quadSet==='decade'?decD:genreD;
   var quad=useMemo(function(){
     var pts=quadSrc.filter(function(d){return d.Films>=quadCfg.min&&d.Avg>0});
     if(!pts.length)return{pts:[],plain:[],labeled:[],mx:0,my:0,yDom:[0,5]};
@@ -626,7 +629,17 @@ export default function Dashboard(){
     top[byA[0].name]=1;top[byA[byA.length-1].name]=1;
     return{pts:pts,plain:pts.filter(function(d){return!top[d.name]}),labeled:pts.filter(function(d){return top[d.name]}),mx:mx,my:my,yDom:[lo,hi]};
   },[quadSrc,quadCfg]);
-  var quadPick=function(name){cls();if(quadSet==='genre')sSGenre(name);else if(quadSet==='dir')sSDir(name);else if(quadSet==='cast')sSCast(name);else if(quadSet==='country')sSCountry(name);else if(quadSet==='decade')sSDe(name)};
+  // The quadrant wording is per-set on purpose: "a dead end" is a fair verdict on a genre
+  // and a rude one about your mother. Friends read the same four positions, phrased for
+  // people — and this page is public. corners run top-left, top-right, bottom-left, bottom-right.
+  var QUAD_WORDS={
+    friend:{hh:'Your usual company',hl:'Often together, mixed films',lh:'Rare, and well chosen',ll:'Few films, and not the best',
+      corners:['Rare · well chosen','Your usual company','Few, and not the best','Often together, mixed']},
+    _:{hh:'Bread and butter',hl:'A habit — lots, lukewarm',lh:'A gem — under-explored',ll:'A dead end',
+      corners:['Gems · few, loved','Bread and butter','Dead ends','Habits · lots, lukewarm']}
+  };
+  var qw=QUAD_WORDS[quadSet]||QUAD_WORDS._;
+  var quadPick=function(name){cls();if(quadSet==='genre')sSGenre(name);else if(quadSet==='dir')sSDir(name);else if(quadSet==='cast')sSCast(name);else if(quadSet==='friend')sSCo(name);else if(quadSet==='country')sSCountry(name);else if(quadSet==='decade')sSDe(name)};
   // Every decade from the earliest watched to the latest, present or not: the empty slots
   // are the point of the ribbon. Width carries the count, so the gaps are visible as gaps.
   var decRibbon=useMemo(function(){
@@ -925,15 +938,20 @@ export default function Dashboard(){
           the four corners into four different statements. */}
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
         <SectionHead T={N} title="The taste map" count={quad.pts.length} aside={<div className="flex gap-1 flex-wrap">{QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>How much you watch it against how much you like it{quadCfg.min>1?', for anything seen '+quadCfg.min+' times or more':''}. The dashed crosshair is your median on both axes. Click a dot to pick that one out in the panels below.</div>
-        {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div style={{position:'relative'}}>
+        <div className="text-xs mb-3" style={{color:N.muted}}>How much you watch it against how much you like it{quadCfg.floor?', for '+quadCfg.floor:''}. The dashed crosshair is your median on both axes. Click a dot to pick that one out in the panels below.</div>
+        {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
+          {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
+              collided with any dot label near a corner — Alya, at three films and two stars,
+              landed exactly on "few, and not the best" and ate half of it. Above-left still
+              reads as up-and-to-the-left, so the mapping survives the move. */}
+          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[0]}</span><span>{qw.corners[1]}</span></div>
           <ResponsiveContainer width="100%" height={330}>
             <ScatterChart margin={{top:18,right:24,bottom:24,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
               <XAxis type="number" dataKey="Films" tick={{fill:N.muted,fontSize:10}} label={{value:'films watched',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
               <YAxis type="number" dataKey="Avg" domain={quad.yDom} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'your average',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
               <ZAxis range={[70,70]}/>
-              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?'Bread and butter':hv?'A habit — lots, lukewarm':hr?'A gem — under-explored':'A dead end';return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
+              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?qw.hh:hv?qw.hl:hr?qw.lh:qw.ll;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
               <ReferenceLine x={quad.mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <ReferenceLine y={quad.my} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <Scatter data={quad.plain} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}/>
@@ -942,13 +960,13 @@ export default function Dashboard(){
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
-          {/* Corner captions rather than a legend: the quadrants ARE the legend. Sat over the
-              plot area's four corners, non-interactive so they never eat a click on a dot. */}
-          {[{t:'Gems · few, loved',s:{top:24,left:64}},{t:'Bread and butter',s:{top:24,right:30}},
-            {t:'Dead ends',s:{bottom:76,left:64}},{t:'Habits · lots, lukewarm',s:{bottom:76,right:30}}
-          ].map(function(c,i){return <div key={i} style={Object.assign({position:'absolute',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft,pointerEvents:'none',zIndex:1},c.s)}>{c.t}</div>})}
+          <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[2]}</span><span>{qw.corners[3]}</span></div>
         </div>}
       </div>
+      {/* Companions are the one set with no ranked panel on this tab — theirs lives under
+          People — so the friend map surfaces its own list. The People copy sits on another
+          tab, so the two can never render at once and duplicate each other. */}
+      {quadSet==='friend'&&<FilmList T={N} title={sCo?sCo+' — watched together':null} films={compF} onClose={function(){sSCo(null)}}/>}
 
       {/* DECADES AS A RIBBON — a bar chart of decades sorts the empty ones out of existence.
           A continuous strip cannot: every decade from your earliest to your latest gets a
