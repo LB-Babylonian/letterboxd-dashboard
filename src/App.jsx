@@ -904,7 +904,10 @@ export default function Dashboard(){
 
   var renderTagRow=function(t,showCheck){var e=fullReg[t]||{};return <div key={t} className="flex items-center gap-2 py-1" style={{borderBottom:'0.5px solid '+N.border}}>{showCheck&&<input type="checkbox" checked={!!tagSel[t]} onChange={function(){sTagSel(function(p){var n=Object.assign({},p);n[t]=!n[t];return n})}} style={{accentColor:T.primary}}/>}<div className="flex-1 text-xs truncate min-w-0" title={t} style={{color:N.inkSoft}}>{t}</div><div className="text-xs w-8 text-right shrink-0" style={{color:N.mutedSoft}}>{allTagCounts[t]||0}</div>{isAdmin?<select className="text-xs w-28 shrink-0" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.inkSoft,padding:'2px 4px'}} value={e.cat||''} onChange={function(ev){doSetTag(t,ev.target.value)}}><option value="">—</option>{CATS.map(function(c){return <option key={c} value={c}>{CI[c].l}</option>})}</select>:<div className="text-xs w-28 shrink-0 text-right" style={{color:e.cat?N.inkSoft:N.mutedSoft}}>{e.cat?CI[e.cat].l:'—'}</div>}{isAdmin?<input className="text-xs w-28 shrink-0" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.inkSoft,padding:'2px 4px'}} placeholder="Display name" value={e.dn||''} onChange={function(ev){doSetDn(t,ev.target.value)}}/>:<div className="text-xs w-28 shrink-0 text-right truncate" style={{color:N.muted}}>{e.dn||''}</div>}</div>};
 
-  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Taste'},{id:'rankings',l:'Rankings'},{id:'yesmine',l:'Yesmine'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
+  // Labels are not the ids. 'taste' cannot be renamed to 'ratings' in code without colliding
+  // with the tag CATEGORY of the same name (getCat(t,reg)==='taste'), which is unrelated and
+  // would take the tag registry with it. The id is internal; only the label is read.
+  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Ratings'},{id:'rankings',l:'Top 50'},{id:'yesmine',l:'Yesmine'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
   // Tags is the only fully private tab — it is a raw editing surface with nothing to
   // read. Everything else is public, including Costs: that tab already splits itself,
   // showing the spend cards and graphs to everyone while keeping the subscription
@@ -1492,7 +1495,7 @@ export default function Dashboard(){
 
         return <div className="space-y-8">
           <div>
-            <SectionHead T={N} title={'Top 50, all time'} count={top50Evo.current.length} aside={<div className="flex gap-1"><button onClick={function(){sTopAsList(function(v){return!v})}} style={btnSecondary}>{topAsList?'As posters':'As table'}</button></div>}/>
+            <SectionHead T={N} title={'The current list'} count={top50Evo.current.length} aside={<div className="flex gap-1"><button onClick={function(){sTopAsList(function(v){return!v})}} style={btnSecondary}>{topAsList?'As posters':'As table'}</button></div>}/>
             {/* The year-on-year churn in one line, so the wall below can be read for pleasure
                 rather than arithmetic. */}
             <div className="flex flex-wrap gap-x-5 gap-y-1 mb-4 text-xs" style={{color:N.muted}}>
