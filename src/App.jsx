@@ -520,6 +520,58 @@ export default function Dashboard(){
   var streaks=useMemo(function(){return calcStreaks(ef)},[ef]);
   var wrapped=useMemo(function(){return calcWrapped(ea,fullReg)},[ea,fullReg]);
   var isT=useCallback(function(e){return gP(e.tags,fullReg)==='Theater'||gV(e.tags,fullReg)!==null},[fullReg]);
+
+  // ============================================================
+  // FILM-LEVEL VIEW — one row per film, at the rating it holds today
+  // ============================================================
+  // Your CURRENT score for each film, from ratings.csv. The diary records what you typed on
+  // the night; this records what the film is worth to you now.
+  var currentRatings=useMemo(function(){var m={};allRatings.forEach(function(r){var v=parseFloat(r.rating);if(isNaN(v))return;m[normName(r.name)+'|||'+r.year]={rating:v,date:r.date,name:r.name,year:r.year}});return m},[allRatings]);
+
+  // Collapse any watch list to one row per film, carrying today's rating. A function rather
+  // than a single memo because the year-over-year figure has to do the same thing to LAST
+  // year's watches, and comparing a film average against a watch average would be a fiction.
+  //
+  // Two corrections in one pass. Which watch represents the film: the most recent, because a
+  // first impression is not what you think of it now. And which number it carries: the one in
+  // ratings.csv. Falls back to the diary rating where the export has no row, so nothing loses
+  // a rating it already had.
+  var onceWithCurrent=useCallback(function(list){
+    var key=function(e){return normName(e.name)+'|||'+e.year},pick={};
+    // Diary order, so a later entry wins -- except that a rated watch is never given up for a
+    // later unrated one. That still matters for films ratings.csv does not cover, and it keeps
+    // the date shown in the film lists on the watch the opinion belongs to.
+    list.forEach(function(e){var k=key(e),cur=pick[k];if(!cur||e.rating!==null||cur.rating===null)pick[k]=e});
+    return list.filter(function(e){return pick[key(e)]===e}).map(function(e){
+      var c=currentRatings[key(e)];
+      // A copy, never a mutation. These objects are shared with `all`, which the Second
+      // thoughts memos read to compare the diary's number against this one; writing through
+      // would quietly erase the very thing that section measures.
+      return c?Object.assign({},e,{rating:c.rating}):e;
+    });
+  },[currentRatings]);
+
+  // Must stay above its first consumer: as a `var` it is hoisted undefined, so a memo above
+  // this line calling agg(efOnce, ...) threw on mount and blanked the page.
+  var efOnce=useMemo(function(){return onceWithCurrent(ef)},[ef,onceWithCurrent]);
+
+  // The rating figures every panel on the Taste tab quotes. Films, not watches: 47 five-star
+  // diary rows are 33 films that ever got a 5 and 26 that still hold one, because Rango alone
+  // was logged at five stars five times and nine former favourites have since been marked down.
+  var statsOnce=useMemo(function(){
+    var r=efOnce.filter(function(e){return e.rating!==null});
+    return{films:efOnce.length,rated:r.length,
+      avg:r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0,
+      five:efOnce.filter(function(e){return e.rating===5}).length};
+  },[efOnce]);
+  // Same treatment for last year, so the delta beside the average compares film to film.
+  var avgYoy=useMemo(function(){
+    if(yr==='All'||!statsOnce.rated)return null;
+    var py=String(parseInt(yr)-1);
+    var prev=onceWithCurrent(all.filter(function(e){return e.date.indexOf(py)===0&&(iRW||!e.rewatch)})).filter(function(e){return e.rating!==null});
+    if(!prev.length)return null;
+    return statsOnce.avg-(prev.reduce(function(s,e){return s+e.rating},0)/prev.length);
+  },[yr,all,iRW,onceWithCurrent,statsOnce]);
   var stats=useMemo(function(){var f=ef,rt=f.filter(function(e){return e.rating!==null}),av=rt.length?rt.reduce(function(s,e){return s+e.rating},0)/rt.length:0;return{total:f.length,avg:av.toFixed(2),th:f.filter(isT).length,rw:f.filter(function(e){return e.rewatch}).length,fo:f.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,fr:f.filter(function(e){return gC(e.tags,fullReg).length>0}).length}},[ef,fullReg,isT]);
   var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;var pp=function(cf,pf){return(cf/cN*100)-(pf/pN*100)};var pR=pv.filter(function(e){return e.rating!==null}),cR=ef.filter(function(e){return e.rating!==null});return{films:cN-pN,avg:(pR.length&&cR.length)?(cR.reduce(function(s,e){return s+e.rating},0)/cR.length)-(pR.reduce(function(s,e){return s+e.rating},0)/pR.length):null,th:pp(ef.filter(isT).length,pv.filter(isT).length),rw:iRW?pp(ef.filter(function(e){return e.rewatch}).length,pv.filter(function(e){return e.rewatch}).length):null,fo:pp(ef.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,pv.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length),fr:pp(ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length,pv.filter(function(e){return gC(e.tags,fullReg).length>0}).length)}},[yr,ef,all,iRW,fullReg,isT]);
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
@@ -527,8 +579,11 @@ export default function Dashboard(){
   var hmData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return e.date.slice(0,4)}))).sort(),g={};yy.forEach(function(y){g[y]=Array(12).fill(0)});ea.forEach(function(e){var y=e.date.slice(0,4),m=parseInt(e.date.slice(5,7))-1;if(g[y])g[y][m]++});return{years:yy,grid:g,max:Math.max.apply(null,Object.values(g).map(function(a){return Math.max.apply(null,a)}).concat([1]))}},[ea]);
   var hmFilms=useMemo(function(){if(!selHM)return[];return ea.filter(function(e){return e.date.slice(0,4)===selHM.yr&&parseInt(e.date.slice(5,7))===selHM.mo+1})},[ea,selHM]);
   var cumData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return parseInt(e.date.slice(0,4))}))).sort(function(a,b){return a-b}),last={},first={};ea.forEach(function(e){var y=parseInt(e.date.slice(0,4)),m=parseInt(e.date.slice(5,7));last[y]=Math.max(last[y]||0,m);first[y]=Math.min(first[y]||13,m)});var rows=[];for(var m=1;m<=12;m++){var row={month:MS[m-1]};yy.forEach(function(y){row[y]=m<(first[y]||1)||m>(last[y]||12)?null:ea.filter(function(e){return parseInt(e.date.slice(0,4))===y&&parseInt(e.date.slice(5,7))<=m}).length});rows.push(row)}return{data:rows,years:yy}},[ea]);
-  var rDist=useMemo(function(){var c={};for(var r=0.5;r<=5;r+=0.5)c[r]=0;ef.forEach(function(e){if(e.rating!==null)c[e.rating]=(c[e.rating]||0)+1});return Object.entries(c).sort(function(a,b){return parseFloat(a[0])-parseFloat(b[0])}).map(function(x){return{rating:x[0],count:x[1]}})},[ef]);
-  var selFilms=useMemo(function(){return sR===null?[]:ef.filter(function(e){return e.rating===sR})},[ef,sR]);
+  // One bar per FILM at its current rating, not one per rating you ever typed. Counting rows
+  // put a rewatched favourite in the 5-star bar five times, which is both a wrong count and a
+  // distribution biased towards the films you rewatch -- exactly the ones you already like.
+  var rDist=useMemo(function(){var c={};for(var r=0.5;r<=5;r+=0.5)c[r]=0;efOnce.forEach(function(e){if(e.rating!==null)c[e.rating]=(c[e.rating]||0)+1});return Object.entries(c).sort(function(a,b){return parseFloat(a[0])-parseFloat(b[0])}).map(function(x){return{rating:x[0],count:x[1]}})},[efOnce]);
+  var selFilms=useMemo(function(){return sR===null?[]:efOnce.filter(function(e){return e.rating===sR})},[efOnce,sR]);
   var platD=useMemo(function(){return agg(ef,function(e){return gP(e.tags,fullReg)}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
   var platF=useMemo(function(){return sP?ef.filter(function(e){return gP(e.tags,fullReg)===sP}):[]},[ef,sP,fullReg]);
   var venD=useMemo(function(){var v={};ef.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var dn=getDn(vn,fullReg);if(!v[dn])v[dn]={c:0,s:0,r:0};v[dn].c++;if(e.rating!==null){v[dn].s+=e.rating;v[dn].r++}});return Object.keys(v).map(function(n){var d=v[n];return{name:n,Films:d.c,Avg:d.r?parseFloat((d.s/d.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
@@ -536,48 +591,6 @@ export default function Dashboard(){
   var compD=useMemo(function(){var c={},ft={};ef.forEach(function(e){gC(e.tags,fullReg).forEach(function(n){if(!c[n])c[n]={c:0,s:0,r:0};c[n].c++;if(e.rating!==null){c[n].s+=e.rating;c[n].r++}if(!ft[n])ft[n]=[];ft[n].push(e)})});return Object.keys(c).map(function(n){var v=c[n],t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+' ('+e.rating+'\u2605)'}).join(', ');return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?'Top: '+t3:''}}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
   var compF=useMemo(function(){return sCo?ef.filter(function(e){return gC(e.tags,fullReg).indexOf(sCo)!==-1}):[]},[ef,sCo,fullReg]);
   var solo=useMemo(function(){var s=ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length;return{solo:ef.length-s,social:s}},[ef,fullReg]);
-  // Each film once, whatever the diary says about how often you watched it. "How many of his
-  // films have you seen" is a question about films, and counting watches answered a different
-  // one: Gore Verbinski read as 15 films when he is 5 (Rango five times, three Pirates, one
-  // more), Chazelle as 7 when he is 3. Every per-film aggregate below runs off this.
-  //
-  // Keeps the FIRST occurrence rather than dropping rows flagged as rewatches, which is what
-  // this did before: a film whose only diary entries are all marked rewatch -- seen before you
-  // started logging -- vanished from the counts entirely instead of counting once. Normalised
-  // name, so curly-quote variants of a title collapse together too.
-  //
-  // Your CURRENT score for each film, from ratings.csv. Lives up here, rather than beside the
-  // Second thoughts memos that also use it, because the per-film aggregates below need it and
-  // a `var` read above its assignment is undefined.
-  var currentRatings=useMemo(function(){var m={};allRatings.forEach(function(r){var v=parseFloat(r.rating);if(isNaN(v))return;m[normName(r.name)+'|||'+r.year]={rating:v,date:r.date,name:r.name,year:r.year}});return m},[allRatings]);
-
-  // One row per film, carrying the rating the film holds TODAY.
-  //
-  // Two separate corrections live here. Which watch represents the film: the most recent one,
-  // because a first impression is not what you think of it now. And which number that watch
-  // carries: the one in ratings.csv, which is your current score, rather than whatever you
-  // typed on the night. Both point the same way -- the diary understates. 136 films hold a
-  // different value than their diary row, and four carry a rating the diary never had.
-  //
-  // Falls back to the diary rating when the export has no row for a film, so nothing loses a
-  // rating it already had.
-  //
-  // Must stay above its first consumer: as a `var` it is hoisted undefined, so decD calling
-  // agg(efOnce, ...) from a line above this one threw on mount and blanked the page.
-  var efOnce=useMemo(function(){
-    var key=function(e){return normName(e.name)+'|||'+e.year},pick={};
-    // ef is in diary order, so a later entry wins -- except that a rated watch is never given
-    // up for a later unrated one. That still matters for films ratings.csv does not cover, and
-    // it keeps the date shown in the film lists on the watch the opinion belongs to.
-    ef.forEach(function(e){var k=key(e),cur=pick[k];if(!cur||e.rating!==null||cur.rating===null)pick[k]=e});
-    return ef.filter(function(e){return pick[key(e)]===e}).map(function(e){
-      var c=currentRatings[key(e)];
-      // A copy, never a mutation. These objects are shared with `all`, which the Second
-      // thoughts memos read to compare the diary's number against this one; writing through
-      // would quietly erase the very thing that section measures.
-      return c?Object.assign({},e,{rating:c.rating}):e;
-    });
-  },[ef,currentRatings]);
   // "How much of the 1990s have you seen" is a films question, so the ribbon and the decade
   // tile count films, not watches.
   var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
@@ -978,17 +991,16 @@ export default function Dashboard(){
           both already appear in the Overview hero. These four say something about taste
           instead: how generous the ratings are, and what the collection is made of. */}
       <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="Avg rating" value={stats.avg+'\u2605'} yoy={yoy&&yoy.avg!=null?fY(yoy.avg,'r'):null}/>
-        {/* "Five-star ratings", not films: this counts rating events, so a film you loved on
-            two separate nights is two of them. Left as watches on purpose — it has to agree
-            with the distribution chart directly below, which has one bar per rating given. */}
-        <Stat T={N} label="Five-star ratings" value={ef.filter(function(e){return e.rating===5}).length} sub={ef.length?Math.round(ef.filter(function(e){return e.rating===5}).length/ef.length*100)+'% of watches':''}/>
+        <Stat T={N} label="Avg rating" value={statsOnce.avg.toFixed(2)+'\u2605'} sub={statsOnce.rated+' of '+statsOnce.films+' films rated'} yoy={avgYoy!=null?fY(avgYoy,'r'):null}/>
+        {/* Films at the rating they hold today, so this agrees with the distribution chart
+            below it -- which now also has one bar per film rather than one per rating typed. */}
+        <Stat T={N} label="Five-star films" value={statsOnce.five} sub={statsOnce.films?Math.round(statsOnce.five/statsOnce.films*100)+'% of films':''}/>
         <Stat T={N} label="Top genre" value={topGenre?topGenre.name:'\u2014'} sub={topGenre?topGenre.Films+' films':''}/>
         <Stat T={N} label="Top decade" value={topDecade?topDecade.name:'\u2014'} sub={topDecade?topDecade.Films+' films':''} noBorder/>
       </div>
       {/* RATING DISTRIBUTION — moved from Overview */}
       <div>
-        <SectionHead T={N} title="Rating distribution" aside={<span className="text-xs" style={{color:N.muted}}>average <span style={{color:T.primary,fontWeight:500}}>{stats.avg}{'\u2605'}</span></span>}/>
+        <SectionHead T={N} title="Rating distribution" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span></span>}/>
         <ResponsiveContainer width="100%" height={230}>
           <BarChart data={rDist}>
             <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
