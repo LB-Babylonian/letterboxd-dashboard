@@ -129,6 +129,19 @@ async function main() {
   const unique = new Map();
   for (const f of films) unique.set(`${f.name}|||${f.year}`, f);
 
+  // Top 50 lists show posters in the Rankings tab too, and those films are not
+  // necessarily in the diary (you can rank a film you never logged). Include them
+  // so ranked-but-unlogged titles still get metadata.
+  const { data: top50, error: t50Err } = await sb.from('top50_data').select('data');
+  if (t50Err) throw new Error(`Could not read top50_data: ${t50Err.message}`);
+  for (const row of top50 || []) {
+    for (const fi of row.data || []) {
+      if (!fi || !fi.name || !fi.year) continue;
+      const key = `${fi.name}|||${fi.year}`;
+      if (!unique.has(key)) unique.set(key, { name: fi.name, year: fi.year });
+    }
+  }
+
   const { data: existing, error: metaErr } = await sb.from('film_metadata').select('title,year');
   if (metaErr) throw new Error(`Could not read film_metadata: ${metaErr.message}`);
   const have = new Set((existing || []).map((m) => `${m.title}|||${m.year}`));
