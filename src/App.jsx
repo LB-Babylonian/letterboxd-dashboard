@@ -315,7 +315,7 @@ function hmColor(count,max){if(!count)return NEUTRAL.surface;return lerpRamp(VIZ
 var CI_BASE={
   platform_paid:{l:'Paid platform'},platform_free:{l:'Free platform'},platform_rental:{l:'Rental'},
   sub_venue:{l:'Sub venue'},indie_venue:{l:'Indie venue'},friend:{l:'Friend'},
-  taste:{l:'Taste'},meta:{l:'Meta'},price:{l:'Price'}
+  taste:{l:'Taste'},meta:{l:'Meta'},price:{l:'Price'},hidden:{l:'Hidden'}
 };
 
 function getNowYM(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
@@ -323,7 +323,12 @@ function pCSVL(l){var f=[],c='',q=false;for(var i=0;i<l.length;i++){var ch=l[i];
 function fixEnc(s){if(!s)return'';var r=s;try{var P=[['√©','é'],['√®','è'],['√¨','è'],['√ê','ê'],['√†','à'],['√¢','â'],['√Æ','î'],['√ô','ô'],['√ª','û'],['√´','ë'],['√Ø','ï'],['√á','á'],['√ß','ç'],['√±','ñ'],['√ü','ü'],['√Å','Å'],['¬∞','°'],['‚Äì','–'],['‚Äî','—'],['‚Äú','"'],['‚Äù','"'],['‚Äô',"'"],['‚Äò',"'"],['‚Ä¶','…']];for(var i=0;i<P.length;i++){if(r.indexOf(P[i][0])!==-1)r=r.split(P[i][0]).join(P[i][1])}}catch(e){}return r}
 function csvToPipe(raw){try{var cl=fixEnc(raw).replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');var lines=cl.split('\n').filter(function(l){return l.trim()});if(lines.length<2)return{pipe:'',w:[],e:['No data rows'],count:0};var hdr=pCSVL(lines[0]).map(function(h){return h.trim().replace(/^\uFEFF/,'')});var hi={};hdr.forEach(function(h,i){hi[h]=i;var lc=h.toLowerCase();if(hi[lc]===undefined)hi[lc]=i});var gi=function(c){if(hi[c]!==undefined)return hi[c];var lc=c.toLowerCase();if(hi[lc]!==undefined)return hi[lc];for(var k in hi){if(k.toLowerCase()===lc)return hi[k]}return undefined};var nI=gi('Name'),yI=gi('Year'),wI=gi('Watched Date'),rI=gi('Rating'),rwI=gi('Rewatch'),tI=gi('Tags');if(nI===undefined||yI===undefined||wI===undefined)return{pipe:'',w:[],e:['Missing columns'],count:0};var ent=[];for(var i=1;i<lines.length;i++){var f=pCSVL(lines[i]);var gf=function(idx){return idx!==undefined&&idx<f.length?(f[idx]||'').trim():''};var nm=gf(nI),yr=gf(yI),wd=gf(wI),rt=gf(rI),rw=gf(rwI),tr=gf(tI);if(!nm||!wd)continue;var tg=tr.split(',').map(function(t){return t.trim().toLowerCase()}).filter(Boolean);ent.push({wd:wd,nm:nm,yr:yr,rt:rt,rw:rw==='Yes'?'R':'',tg:tg.join(',')})}ent.sort(function(a,b){return a.wd<b.wd?-1:a.wd>b.wd?1:0});return{pipe:ent.map(function(e){return e.wd+'|'+e.nm+'|'+e.yr+'|'+e.rt+'|'+e.rw+'|'+e.tg}).join('\n'),w:[],e:[],count:ent.length}}catch(err){return{pipe:'',w:[],e:['Error: '+String(err)],count:0}}}
 function parsePipe(raw){if(!raw||!raw.trim())return[];return raw.trim().split('\n').filter(function(l){return l.trim()}).map(function(l){var p=l.split('|');var tags=p[5]?p[5].split(',').map(function(t){return t.trim()}).filter(Boolean):[];var r=p[3]?p[3].trim():'';return{date:p[0],name:p[1],year:parseInt(p[2]),rating:r&&!isNaN(parseFloat(r))?parseFloat(r):null,rewatch:p[4]==='R',tags:tags}}).filter(function(e){return e.tags.indexOf('series')===-1&&e.tags.indexOf('short')===-1})}
-var CATS=['platform_paid','platform_free','platform_rental','sub_venue','indie_venue','friend','taste','meta','price'];
+// `hidden` is a real classification, not an absence of one. A tag with no category at all
+// trips the unclassified banner and the forced "Classify tags" screen, and a tag deleted from
+// the registry comes straight back on the next Letterboxd import because the tag still exists
+// there. This parks a tag out of every panel while leaving it visible -- and reversible -- in
+// the admin list.
+var CATS=['platform_paid','platform_free','platform_rental','sub_venue','indie_venue','friend','taste','meta','price','hidden'];
 // Category styling — neutral, theme-independent (admin pages only, rarely seen)
 var CI={
   platform_paid:{l:'Paid platform'},
@@ -334,7 +339,8 @@ var CI={
   friend:{l:'Friend'},
   taste:{l:'Taste'},
   meta:{l:'Meta'},
-  price:{l:'Price'}
+  price:{l:'Price'},
+  hidden:{l:'Hidden'}
 };
 // The taste map plots one dot per category: how much you watch it against how much you
 // like it. Every set needs a floor, otherwise the chart fills with things seen once whose
@@ -600,6 +606,19 @@ export default function Dashboard(){
   // Films, at today's rating, like every other count on this tab.
   var tagD=useMemo(function(){return tasteTags.map(function(t){var m=efOnce.filter(function(e){return e.tags.indexOf(t)!==-1}),r=m.filter(function(e){return e.rating!==null});return{name:getDn(t,fullReg),tag:t,Films:m.length,Avg:r.length?parseFloat((r.reduce(function(s,e){return s+e.rating},0)/r.length).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,tasteTags,fullReg]);
   var tagF=useMemo(function(){if(!sTg)return[];var entry=tagD.find(function(d){return d.name===sTg});return entry?efOnce.filter(function(e){return e.tags.indexOf(entry.tag)!==-1}):[]},[efOnce,sTg,tagD]);
+  // A tag is a property a film either has or lacks, not a slice of the collection, so the
+  // interesting number is not how many carry it but how far they sit from everything else.
+  // Lift against your own average does that in one figure; a ranked count cannot.
+  var tagLift=useMemo(function(){
+    var base=statsOnce.avg;
+    var rows=tagD.filter(function(d){return d.Films>0&&d.Avg>0}).map(function(d){return Object.assign({},d,{lift:d.Avg-base})});
+    rows.sort(function(a,b){return b.lift-a.lift});
+    // Scale to the widest bar, with a floor so a set of tiny lifts does not get magnified into
+    // looking decisive. THIN marks the tags resting on too few films to trust.
+    var max=Math.max.apply(null,rows.map(function(r){return Math.abs(r.lift)}).concat([0.2]));
+    var tagged=efOnce.filter(function(e){return tasteTags.some(function(t){return e.tags.indexOf(t)!==-1})}).length;
+    return{rows:rows,max:max,base:base,untagged:efOnce.length-tagged};
+  },[tagD,statsOnce,efOnce,tasteTags]);
   var gMeta=function(e){var k=e.name+"|||"+e.year;if(filmMeta[k])return filmMeta[k];var nk=e.name.replace(/[\u2018\u2019\u0060\u00B4]/g,"'")+"|||"+e.year;if(filmMeta[nk])return filmMeta[nk];for(var key in filmMeta){if(key.split("|||")[1]===String(e.year)&&key.split("|||")[0].replace(/[\u2018\u2019\u0060\u00B4]/g,"'")===nk.split("|||")[0])return filmMeta[key]}return null};
   var dirD=useMemo(function(){var d={},ft={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(", ").forEach(function(dir){if(!dir)return;if(!d[dir])d[dir]={c:0,s:0,r:0};d[dir].c++;if(e.rating!==null){d[dir].s+=e.rating;d[dir].r++}if(!ft[dir])ft[dir]=[];ft[dir].push(e)})});return Object.keys(d).map(function(n){var v=d[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
   // "Favourite" needs a floor: 426 of 585 directors appear exactly once, so a
@@ -1105,7 +1124,28 @@ export default function Dashboard(){
       {/* Genres, Cast and Countries had ranked tables here. The taste map says everything they
           said and puts it on two axes instead of one, so they were the same numbers twice.
           Tags keeps its table: it is the one set that is not a partition of the collection. */}
-      <div className="lg:w-1/2"><SectionHead T={N} title="Tags" aside={<SrtB T={N} val={sorts.tg} onToggle={function(){ts('tg')}}/>}/><CTbl T={N} cap={8} data={tagD} sel={sTg} onSel={function(v){sSTg(v);sSDe(null)}} sortMode={sorts.tg}/></div>
+      <div className="lg:w-2/3">
+        <SectionHead T={N} title="What each tag is worth" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
+        <div className="text-xs mb-3" style={{color:N.muted}}>How far the films carrying a tag sit from your overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
+        <div className="space-y-1">
+          {tagLift.rows.map(function(r){
+            var pos=r.lift>=0,c=pos?VIZ_GOOD:NEG,w=Math.abs(r.lift)/tagLift.max*50,thin=r.Films<15,on=sTg===r.name;
+            return <div key={r.tag} onClick={function(){sSTg(on?null:r.name);sSDe(null)}} className="flex items-center gap-2 cursor-pointer py-0.5 px-1"
+              title={thin?r.Films+' films only \u2014 treat this one lightly':r.Films+' films'}
+              style={{borderRadius:4,background:on?N.surfaceAlt:'transparent',boxShadow:on?'inset 0 0 0 1px '+T.primary:'none'}}>
+              <div className="w-24 md:w-32 text-xs text-right truncate" style={{color:N.inkSoft}}>{r.name}</div>
+              <div className="w-8 text-xs text-right" style={{color:N.mutedSoft}}>{r.Films}</div>
+              <div className="flex-1 relative" style={{height:24,background:N.surfaceAlt,borderRadius:4}}>
+                <div style={{position:'absolute',left:'50%',top:0,bottom:0,width:1,background:N.borderStrong}}/>
+                <div style={{position:'absolute',top:5,height:14,borderRadius:2,background:c,opacity:thin?0.55:1,
+                  left:(pos?50:50-w)+'%',width:Math.max(w,0.4)+'%'}}/>
+              </div>
+              <div className="w-12 text-xs text-right font-mono" style={{color:N.ink}}>{r.Avg.toFixed(2)}{'\u2605'}</div>
+              <div className="w-12 text-xs text-right font-mono" style={{color:c,fontWeight:500}}>{(pos?'+':'')+r.lift.toFixed(2)}</div>
+            </div>})}
+        </div>
+        <div className="flex mt-1"><div className="w-24 md:w-32"/><div className="w-8"/><div className="flex-1 flex justify-between" style={{fontSize:9,color:N.mutedSoft}}><span>{'\u2212'}{tagLift.max.toFixed(2)}</span><span>{tagLift.base.toFixed(2)}{'\u2605'}</span><span>+{tagLift.max.toFixed(2)}</span></div><div className="w-12"/><div className="w-12"/></div>
+      </div>
       <FilmList T={N} title={sTg} films={tagF} onClose={function(){sSTg(null)}}/>
 
       {/* ===== SECOND THOUGHTS =====
