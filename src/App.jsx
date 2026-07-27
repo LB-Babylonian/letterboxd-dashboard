@@ -546,9 +546,20 @@ export default function Dashboard(){
   // started logging -- vanished from the counts entirely instead of counting once. Normalised
   // name, so curly-quote variants of a title collapse together too.
   //
+  // Which watch represents the film: the most recent one, so these averages carry what you
+  // think of it now rather than a first impression. Rewatches almost always raise a score,
+  // so keeping the first entry pulled every average down.
+  //
   // Must stay above its first consumer: as a `var` it is hoisted undefined, so decD calling
   // agg(efOnce, ...) from a line above this one threw on mount and blanked the page.
-  var efOnce=useMemo(function(){var seen={};return ef.filter(function(e){var k=normName(e.name)+'|||'+e.year;if(seen[k])return false;seen[k]=true;return true})},[ef]);
+  var efOnce=useMemo(function(){
+    var key=function(e){return normName(e.name)+'|||'+e.year},pick={};
+    // ef is in diary order, so a later entry wins -- except that a rated watch is never given
+    // up for a later unrated one. "No rating" is not a more recent opinion, and treating it as
+    // one would drop the film out of every average it belongs to.
+    ef.forEach(function(e){var k=key(e),cur=pick[k];if(!cur||e.rating!==null||cur.rating===null)pick[k]=e});
+    return ef.filter(function(e){return pick[key(e)]===e});
+  },[ef]);
   // "How much of the 1990s have you seen" is a films question, so the ribbon and the decade
   // tile count films, not watches.
   var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
