@@ -351,7 +351,7 @@ var CI={
 var QUAD_SETS=[
   // ownList: this set has no panel further down the tab, so the map shows the films itself.
   {id:'genre',l:'Genres',min:2,floor:'anything seen twice or more',ownList:true},
-  {id:'dir',l:'Directors',min:3,floor:'directors with 3 films or more'},
+  {id:'dir',l:'Directors',min:3,floor:'directors with 3 films or more',ownList:true},
   {id:'cast',l:'Cast',min:3,floor:'actors in 3 films or more',ownList:true},
   {id:'friend',l:'Friends',min:3,floor:'anyone you have watched with 3 times or more',ownList:true},
   {id:'country',l:'Countries',min:2,floor:'countries with 2 films or more',ownList:true},
@@ -472,8 +472,8 @@ export default function Dashboard(){
   var[sI,sSI]=useState(false);var[csv,sCsv]=useState('');var[iR,sIR]=useState(null);
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);
-  var[sorts,sSorts]=useState({dir:'avg'});var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
-  var[quadSet,sQuadSet]=useState('genre');var[dirAsList,sDirAsList]=useState(false);var[dirWallOpen,sDirWallOpen]=useState(false);var[revOpen,sRevOpen]=useState(false);
+  var[sorts,sSorts]=useState({});var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
+  var[quadSet,sQuadSet]=useState('genre');var[revOpen,sRevOpen]=useState(false);
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
@@ -612,11 +612,8 @@ export default function Dashboard(){
     return{rows:rows,max:max,base:base,untagged:efOnce.length-tagged};
   },[tagD,statsOnce,efOnce,tasteTags]);
   var gMeta=function(e){var k=e.name+"|||"+e.year;if(filmMeta[k])return filmMeta[k];var nk=e.name.replace(/[\u2018\u2019\u0060\u00B4]/g,"'")+"|||"+e.year;if(filmMeta[nk])return filmMeta[nk];for(var key in filmMeta){if(key.split("|||")[1]===String(e.year)&&key.split("|||")[0].replace(/[\u2018\u2019\u0060\u00B4]/g,"'")===nk.split("|||")[0])return filmMeta[key]}return null};
-  var dirD=useMemo(function(){var d={},ft={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(", ").forEach(function(dir){if(!dir)return;if(!d[dir])d[dir]={c:0,s:0,r:0};d[dir].c++;if(e.rating!==null){d[dir].s+=e.rating;d[dir].r++}if(!ft[dir])ft[dir]=[];ft[dir].push(e)})});return Object.keys(d).map(function(n){var v=d[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
   // "Favourite" needs a floor: 426 of 585 directors appear exactly once, so a
   // rating-sorted list without a threshold is topped by single-film flukes.
-  var dirFav=useMemo(function(){return dirD.filter(function(d){return d.Films>=3})},[dirD]);
-  var dirF=useMemo(function(){if(!sDir)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.directors&&m.directors.split(", ").indexOf(sDir)!==-1})},[efOnce,sDir,filmMeta]);
   // Runtime is the exception: hours are hours. You really did sit through Rango five times,
   // so this counts every watch (ef) while everything else counts every film (efOnce).
   var dirStats=useMemo(function(){var totalR=0,totalH=0,rtCount=0;ef.forEach(function(e){var m=gMeta(e);if(m&&m.runtime){totalR+=m.runtime;rtCount++}});totalH=Math.round(totalR/60);var uDir=new Set();efOnce.forEach(function(e){var m=gMeta(e);if(m&&m.directors)m.directors.split(", ").forEach(function(d){if(d)uDir.add(d)})});return{totalH:totalH,totalR:totalR,uDir:uDir.size,avgRun:rtCount?Math.round(totalR/rtCount):0,rtCount:rtCount,rtTotal:ef.length,rtMissingPct:ef.length?Math.round((ef.length-rtCount)/ef.length*100):0}},[ef,efOnce,filmMeta]);
@@ -749,13 +746,6 @@ export default function Dashboard(){
     for(var d=lo;d<=hi;d+=10){var e=by[d];out.push({dec:d,label:d+'s',Films:e?e.Films:0,Avg:e?e.Avg:0})}
     return out;
   },[decD]);
-  // A director's poster is their best film's poster — the one you would recognise them by.
-  var dirWall=useMemo(function(){
-    var best={};
-    efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(', ').forEach(function(dn){if(!dn)return;var c=best[dn];if(!c||(e.rating||0)>(c.rating||0))best[dn]={rating:e.rating,meta:m,film:e.name}})});
-    return dirFav.slice().sort(function(a,b){return sorts.dir==='avg'?((b.Avg-a.Avg)||(b.Films-a.Films)):((b.Films-a.Films)||(b.Avg-a.Avg))})
-      .map(function(d){var b=best[d.name];return Object.assign({},d,{poster:b?b.meta:null,topFilm:b?b.film:''})});
-  },[dirFav,efOnce,filmMeta,sorts.dir]);
   var top50Evo=useMemo(function(){if(!top50s.length)return{years:[],films:[]};var yrs=top50s.map(function(t){return t.year}).sort();var fm={};top50s.forEach(function(t){(t.films||[]).forEach(function(fi){var k=fi.name+"|||"+fi.year;if(!fm[k])fm[k]={name:fi.name,year:fi.year,ranks:{}};fm[k].ranks[t.year]=fi.pos})});var films=Object.values(fm);films.sort(function(a,b){var la=a.ranks[yrs[yrs.length-1]]||999;var lb=b.ranks[yrs[yrs.length-1]]||999;return la-lb});return{years:yrs,films:films}},[top50s]);
   var tagAllSorted=useMemo(function(){return Object.keys(fullReg).sort(function(a,b){return(allTagCounts[b]||0)-(allTagCounts[a]||0)})},[fullReg,allTagCounts]);
   var tagFiltered=useMemo(function(){return tagAllSorted.filter(function(t){return!tagSearch||t.indexOf(tagSearch.toLowerCase())!==-1})},[tagAllSorted,tagSearch]);
@@ -1082,25 +1072,9 @@ export default function Dashboard(){
       </div>
       <FilmList T={N} title={sDe} films={decF} onClose={function(){sSDe(null)}}/>
 
-      {/* DIRECTORS AS A POSTER WALL — forty identical bars are forty things to read; a face
-          on a poster is one thing to recognise. The thumbnails come from film_metadata,
-          which was already fetched and only used by the Top 50 table. The ranked table is
-          still one click away, because sorting is the thing a wall cannot do. */}
-      <div>
-        <SectionHead T={N} title="Favourite directors" count={dirFav.length} aside={<div className="flex gap-1"><SrtB T={N} val={sorts.dir} onToggle={function(){ts('dir')}}/><button onClick={function(){sDirAsList(function(v){return!v})}} style={btnSecondary}>{dirAsList?'As posters':'As list'}</button></div>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>Three films or more, {sorts.dir==='avg'?'best average first':'most watched first'}. Each poster is that director's best film in your diary. {dirD.length-dirFav.length} directors seen once or twice are not shown.</div>
-        {dirAsList?<div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={dirFav} sel={sDir} onSel={function(v){sSDir(v)}} sortMode={sorts.dir}/></div>:<div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">{dirWall.slice(0,dirWallOpen?dirWall.length:12).map(function(d){var on=sDir===d.name;
-            return <div key={d.name} onClick={function(){sSDir(on?null:d.name)}} className="cursor-pointer" title={d.topFilm?'Best in your diary: '+d.topFilm:d.name}
-              style={{background:N.surface,border:'0.5px solid '+(on?T.primary:N.border),borderRadius:4,padding:8,textAlign:'center',opacity:sDir&&!on?0.55:1}}>
-              <div className="flex justify-center mb-2"><Poster meta={d.poster} w={62}/></div>
-              <div className="text-xs truncate" title={d.name} style={{color:N.ink,fontWeight:500}}>{d.name}</div>
-              <div style={{fontSize:10,color:N.muted,marginTop:2}}>{d.Films} films {'·'} <span style={{color:N.inkSoft}}>{d.Avg.toFixed(1)}{'★'}</span></div>
-            </div>})}</div>
-          {dirWall.length>12&&<button onClick={function(){sDirWallOpen(function(v){return!v})}} className="w-full text-xs py-1.5 mt-3" style={{color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,cursor:'pointer'}}>{dirWallOpen?'Show fewer':'Show all '+dirWall.length}</button>}
-        </div>}
-      </div>
-      <FilmList T={N} title={sDir} films={dirF} onClose={function(){sSDir(null)}}/>
+      {/* The poster wall stood here. The map's Directors set holds the same 71 people with the
+          same two numbers, so the wall was a second reading of one dataset -- and clicking a
+          dot now opens the films directly, which is what the wall's rows were for. */}
 
       {/* Genres, Cast and Countries had ranked tables here. The taste map says everything they
           said and puts it on two axes instead of one, so they were the same numbers twice.
