@@ -35,6 +35,7 @@
 do $$
 declare
   t text;
+  pol record;
   tables text[] := array[
     'pipe_data','tag_registry','subscriptions','film_metadata',
     'watchlist_data','review_data','ratings_data','top50_data'
@@ -43,13 +44,23 @@ begin
   foreach t in array tables loop
     execute format('alter table public.%I enable row level security', t);
 
+    -- Drop EVERY existing policy on the table, not just the two created below.
+    -- Postgres combines policies with OR, so one leftover permissive policy -- the
+    -- kind Supabase's UI templates add, e.g. "Enable access for all users" -- keeps
+    -- granting anonymous writes no matter what is added next to it. An earlier
+    -- version of this file dropped only its own two policy names and left those in
+    -- place, so it appeared to succeed while changing nothing.
+    for pol in
+      select policyname from pg_policies where schemaname = 'public' and tablename = t
+    loop
+      execute format('drop policy %I on public.%I', pol.policyname, t);
+    end loop;
+
     -- Read: the dashboard is meant to be publicly viewable.
-    execute format('drop policy if exists "anon read" on public.%I', t);
     execute format(
       'create policy "anon read" on public.%I for select to anon, authenticated using (true)', t);
 
     -- Write: signed-in only. Covers insert/update/delete.
-    execute format('drop policy if exists "authenticated write" on public.%I', t);
     execute format(
       'create policy "authenticated write" on public.%I for all to authenticated using (true) with check (true)', t);
   end loop;
