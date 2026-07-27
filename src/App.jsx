@@ -546,20 +546,38 @@ export default function Dashboard(){
   // started logging -- vanished from the counts entirely instead of counting once. Normalised
   // name, so curly-quote variants of a title collapse together too.
   //
-  // Which watch represents the film: the most recent one, so these averages carry what you
-  // think of it now rather than a first impression. Rewatches almost always raise a score,
-  // so keeping the first entry pulled every average down.
+  // Your CURRENT score for each film, from ratings.csv. Lives up here, rather than beside the
+  // Second thoughts memos that also use it, because the per-film aggregates below need it and
+  // a `var` read above its assignment is undefined.
+  var currentRatings=useMemo(function(){var m={};allRatings.forEach(function(r){var v=parseFloat(r.rating);if(isNaN(v))return;m[normName(r.name)+'|||'+r.year]={rating:v,date:r.date,name:r.name,year:r.year}});return m},[allRatings]);
+
+  // One row per film, carrying the rating the film holds TODAY.
+  //
+  // Two separate corrections live here. Which watch represents the film: the most recent one,
+  // because a first impression is not what you think of it now. And which number that watch
+  // carries: the one in ratings.csv, which is your current score, rather than whatever you
+  // typed on the night. Both point the same way -- the diary understates. 136 films hold a
+  // different value than their diary row, and four carry a rating the diary never had.
+  //
+  // Falls back to the diary rating when the export has no row for a film, so nothing loses a
+  // rating it already had.
   //
   // Must stay above its first consumer: as a `var` it is hoisted undefined, so decD calling
   // agg(efOnce, ...) from a line above this one threw on mount and blanked the page.
   var efOnce=useMemo(function(){
     var key=function(e){return normName(e.name)+'|||'+e.year},pick={};
     // ef is in diary order, so a later entry wins -- except that a rated watch is never given
-    // up for a later unrated one. "No rating" is not a more recent opinion, and treating it as
-    // one would drop the film out of every average it belongs to.
+    // up for a later unrated one. That still matters for films ratings.csv does not cover, and
+    // it keeps the date shown in the film lists on the watch the opinion belongs to.
     ef.forEach(function(e){var k=key(e),cur=pick[k];if(!cur||e.rating!==null||cur.rating===null)pick[k]=e});
-    return ef.filter(function(e){return pick[key(e)]===e});
-  },[ef]);
+    return ef.filter(function(e){return pick[key(e)]===e}).map(function(e){
+      var c=currentRatings[key(e)];
+      // A copy, never a mutation. These objects are shared with `all`, which the Second
+      // thoughts memos read to compare the diary's number against this one; writing through
+      // would quietly erase the very thing that section measures.
+      return c?Object.assign({},e,{rating:c.rating}):e;
+    });
+  },[ef,currentRatings]);
   // "How much of the 1990s have you seen" is a films question, so the ribbon and the decade
   // tile count films, not watches.
   var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
@@ -600,7 +618,6 @@ export default function Dashboard(){
   //   preDiary  rated but never logged at all: the films you saw before the diary existed
   // allRatings was loaded into state and read by nothing until now.
   var diaryByFilm=useMemo(function(){var m={};all.forEach(function(e){if(e.rating===null)return;var k=normName(e.name)+'|||'+e.year;if(!m[k])m[k]={name:e.name,year:e.year,watches:[]};m[k].watches.push({date:e.date,rating:e.rating})});Object.keys(m).forEach(function(k){m[k].watches.sort(function(a,b){return a.date<b.date?-1:1})});return m},[all]);
-  var currentRatings=useMemo(function(){var m={};allRatings.forEach(function(r){var v=parseFloat(r.rating);if(isNaN(v))return;m[normName(r.name)+'|||'+r.year]={rating:v,date:r.date,name:r.name,year:r.year}});return m},[allRatings]);
   var revisions=useMemo(function(){
     var rows=[],drift=[];
     Object.keys(diaryByFilm).forEach(function(k){
