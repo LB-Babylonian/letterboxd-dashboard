@@ -353,6 +353,10 @@ var QUAD_SETS=[
 var MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var MF=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var DSUBS=[{id:'rat',name:'Rat+',platforms:['canal','netflix','hbo','paramount'],periods:[{from:'2021-10',to:'',price:40}]},{id:'disney',name:'Disney+',platforms:['disney'],periods:[{from:'2023-01',to:'',price:9}]},{id:'mubi',name:'Mubi',platforms:['mubi'],periods:[{from:'2021-11',to:'',price:11}]},{id:'prime',name:'Prime Video',platforms:['prime'],periods:[{from:'2022-01',to:'',price:7}]},{id:'theater',name:'Pathé/UGC Pass',platforms:['_theater_sub'],periods:[{from:'2023-07',to:'',price:22}]}];
+// Title key for matching the same film across files and diary rows. Lives at module scope
+// because it is pure and several memos need it before the point it used to be declared —
+// as a `var` inside the component it was still undefined when the first of them ran.
+function normName(s){return(s||'').replace(/[‘’`´]/g,"'").trim().toLowerCase()}
 function getDn(t,reg){var e=reg[t];return(e&&e.dn)?e.dn:t}
 function getCat(t,reg){var e=reg[t];return e?e.cat:null}
 function isPlatform(cat){return cat==='platform_paid'||cat==='platform_free'||cat==='platform_rental'}
@@ -366,6 +370,14 @@ function mBt(f,t){var fp=f.split('-').map(Number),tp=t.split('-').map(Number);re
 function subCostForMonth(ym,subs){var t=0;subs.forEach(function(s){s.periods.forEach(function(p){if(!p.from||!p.price)return;var to=p.to||getNowYM();if(ym>=p.from&&ym<=to)t+=p.price})});return t}
 function avgR(films){var r=films.filter(function(e){return e.rating!==null});return r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0}
 function agg(arr,kf){var m={};arr.forEach(function(e){var k=kf(e);if(!m[k])m[k]={c:0,s:0,r:0};m[k].c++;if(e.rating!==null){m[k].s+=e.rating;m[k].r++}});return Object.keys(m).map(function(n){var v=m[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}})}
+// Like agg, but an entry can belong to several buckets at once — a film has three genres and
+// two directors. One aggregator for all six sets on the taste map, so every set on that chart
+// is counted the same way from the same film list.
+function aggMulti(films,keysOf){
+  var m={};
+  films.forEach(function(e){keysOf(e).forEach(function(k){if(!k)return;if(!m[k])m[k]={c:0,s:0,r:0};m[k].c++;if(e.rating!==null){m[k].s+=e.rating;m[k].r++}})});
+  return Object.keys(m).map(function(n){var v=m[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films});
+}
 function getWeekMon(ds){var d=new Date(ds+'T12:00:00');var day=d.getDay();d.setDate(d.getDate()-(day===0?6:day-1));return d.toISOString().slice(0,10)}
 function calcStreaks(films){var dates=Array.from(new Set(films.map(function(e){return e.date}))).sort();if(!dates.length)return{day:0,week:0,wr:''};var ds=new Set(dates),last=dates[dates.length-1],dayS=0,cd=new Date(last+'T12:00:00');while(ds.has(cd.toISOString().slice(0,10))){dayS++;cd.setDate(cd.getDate()-1)}var weeks=new Set(dates.map(function(d){return getWeekMon(d)})),weekS=0,cm=new Date(getWeekMon(last)+'T12:00:00');while(weeks.has(cm.toISOString().slice(0,10))){weekS++;cm.setDate(cm.getDate()-7)}var ws=new Date(cm);ws.setDate(ws.getDate()+7);var we=new Date(getWeekMon(last)+'T12:00:00');we.setDate(we.getDate()+6);var wr='';if(weekS>0){var a=ws.toISOString().slice(0,10).split('-').map(Number),b=we.toISOString().slice(0,10).split('-').map(Number);wr=MS[a[1]-1]+' '+a[2]+', '+a[0]+' \u2013 '+MS[b[1]-1]+' '+b[2]+', '+b[0]}return{day:dayS,week:weekS,wr:wr}}
 function calcWrapped(all,reg){return Array.from(new Set(all.map(function(e){return e.date.slice(0,4)}))).sort().map(function(yr){var f=all.filter(function(e){return e.date.indexOf(yr)===0}),rated=f.filter(function(e){return e.rating!==null}),avg=rated.length?rated.reduce(function(s,e){return s+e.rating},0)/rated.length:0;var cc={};f.forEach(function(e){gC(e.tags,reg).forEach(function(n){cc[n]=(cc[n]||0)+1})});var topC=null,topCC=0;Object.keys(cc).forEach(function(n){if(cc[n]>topCC){topCC=cc[n];topC=n}});var mc={};f.forEach(function(e){mc[e.date.slice(5,7)]=(mc[e.date.slice(5,7)]||0)+1});var topMo=null,topMC=0;Object.keys(mc).forEach(function(m){if(mc[m]>topMC){topMC=mc[m];topMo=m}});var thN=f.filter(function(e){return gP(e.tags,reg)==='Theater'||gV(e.tags,reg)!==null}).length;return{yr:yr,total:f.length,avg:avg,topC:topC,topCC:topCC,topMo:topMo?MF[parseInt(topMo)-1]:null,topMC:topMC,thPct:f.length?Math.round(thN/f.length*100):0}})}
@@ -452,7 +464,7 @@ export default function Dashboard(){
   var[loading,sLoading]=useState(true);var[pd,sPd]=useState('');var[subscriptions,sSubscriptions]=useState(DSUBS);var[reg,sReg]=useState({});
   var[sI,sSI]=useState(false);var[csv,sCsv]=useState('');var[iR,sIR]=useState(null);
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
-  var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);var[dirUniq,sDirUniq]=useState(false);
+  var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);
   var[sorts,sSorts]=useState({dir:'avg'});var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
   var[quadSet,sQuadSet]=useState('genre');var[dirAsList,sDirAsList]=useState(false);var[dirWallOpen,sDirWallOpen]=useState(false);var[revOpen,sRevOpen]=useState(false);
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
@@ -524,26 +536,41 @@ export default function Dashboard(){
   var compD=useMemo(function(){var c={},ft={};ef.forEach(function(e){gC(e.tags,fullReg).forEach(function(n){if(!c[n])c[n]={c:0,s:0,r:0};c[n].c++;if(e.rating!==null){c[n].s+=e.rating;c[n].r++}if(!ft[n])ft[n]=[];ft[n].push(e)})});return Object.keys(c).map(function(n){var v=c[n],t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+' ('+e.rating+'\u2605)'}).join(', ');return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?'Top: '+t3:''}}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
   var compF=useMemo(function(){return sCo?ef.filter(function(e){return gC(e.tags,fullReg).indexOf(sCo)!==-1}):[]},[ef,sCo,fullReg]);
   var solo=useMemo(function(){var s=ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length;return{solo:ef.length-s,social:s}},[ef,fullReg]);
-  var decD=useMemo(function(){return agg(ef,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[ef]);
-  var decF=useMemo(function(){return sDe?ef.filter(function(e){return Math.floor(e.year/10)*10===parseInt(sDe)}):[]},[ef,sDe]);
+  // Each film once, whatever the diary says about how often you watched it. "How many of his
+  // films have you seen" is a question about films, and counting watches answered a different
+  // one: Gore Verbinski read as 15 films when he is 5 (Rango five times, three Pirates, one
+  // more), Chazelle as 7 when he is 3. Every per-film aggregate below runs off this.
+  //
+  // Keeps the FIRST occurrence rather than dropping rows flagged as rewatches, which is what
+  // this did before: a film whose only diary entries are all marked rewatch -- seen before you
+  // started logging -- vanished from the counts entirely instead of counting once. Normalised
+  // name, so curly-quote variants of a title collapse together too.
+  //
+  // Must stay above its first consumer: as a `var` it is hoisted undefined, so decD calling
+  // agg(efOnce, ...) from a line above this one threw on mount and blanked the page.
+  var efOnce=useMemo(function(){var seen={};return ef.filter(function(e){var k=normName(e.name)+'|||'+e.year;if(seen[k])return false;seen[k]=true;return true})},[ef]);
+  // "How much of the 1990s have you seen" is a films question, so the ribbon and the decade
+  // tile count films, not watches.
+  var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
+  var decF=useMemo(function(){return sDe?efOnce.filter(function(e){return Math.floor(e.year/10)*10===parseInt(sDe)}):[]},[efOnce,sDe]);
   var tasteTags=useMemo(function(){return Object.keys(fullReg).filter(function(t){return fullReg[t].cat==='taste'})},[fullReg]);
   var tagD=useMemo(function(){return tasteTags.map(function(t){var m=ef.filter(function(e){return e.tags.indexOf(t)!==-1}),r=m.filter(function(e){return e.rating!==null});return{name:getDn(t,fullReg),tag:t,Films:m.length,Avg:r.length?parseFloat((r.reduce(function(s,e){return s+e.rating},0)/r.length).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[ef,tasteTags,fullReg]);
   var tagF=useMemo(function(){if(!sTg)return[];var entry=tagD.find(function(d){return d.name===sTg});return entry?ef.filter(function(e){return e.tags.indexOf(entry.tag)!==-1}):[]},[ef,sTg,tagD]);
   var gMeta=function(e){var k=e.name+"|||"+e.year;if(filmMeta[k])return filmMeta[k];var nk=e.name.replace(/[\u2018\u2019\u0060\u00B4]/g,"'")+"|||"+e.year;if(filmMeta[nk])return filmMeta[nk];for(var key in filmMeta){if(key.split("|||")[1]===String(e.year)&&key.split("|||")[0].replace(/[\u2018\u2019\u0060\u00B4]/g,"'")===nk.split("|||")[0])return filmMeta[key]}return null};
-  var efMeta=useMemo(function(){if(!dirUniq)return ef;var seen={};return ef.filter(function(e){if(e.rewatch)return false;var k=e.name+"|||"+e.year;if(seen[k])return false;seen[k]=true;return true})},[ef,dirUniq]);
-  var dirD=useMemo(function(){var d={},ft={};efMeta.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(", ").forEach(function(dir){if(!dir)return;if(!d[dir])d[dir]={c:0,s:0,r:0};d[dir].c++;if(e.rating!==null){d[dir].s+=e.rating;d[dir].r++}if(!ft[dir])ft[dir]=[];ft[dir].push(e)})});return Object.keys(d).map(function(n){var v=d[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efMeta,filmMeta]);
+  var dirD=useMemo(function(){var d={},ft={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(", ").forEach(function(dir){if(!dir)return;if(!d[dir])d[dir]={c:0,s:0,r:0};d[dir].c++;if(e.rating!==null){d[dir].s+=e.rating;d[dir].r++}if(!ft[dir])ft[dir]=[];ft[dir].push(e)})});return Object.keys(d).map(function(n){var v=d[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
   // "Favourite" needs a floor: 426 of 585 directors appear exactly once, so a
   // rating-sorted list without a threshold is topped by single-film flukes.
   var dirFav=useMemo(function(){return dirD.filter(function(d){return d.Films>=3})},[dirD]);
-  var dirF=useMemo(function(){if(!sDir)return[];return efMeta.filter(function(e){var m=gMeta(e);return m&&m.directors&&m.directors.split(", ").indexOf(sDir)!==-1})},[efMeta,sDir,filmMeta]);
-  var dirStats=useMemo(function(){var totalR=0,totalH=0,rtCount=0;efMeta.forEach(function(e){var m=gMeta(e);if(m&&m.runtime){totalR+=m.runtime;rtCount++}});totalH=Math.round(totalR/60);var uDir=new Set();efMeta.forEach(function(e){var m=gMeta(e);if(m&&m.directors)m.directors.split(", ").forEach(function(d){if(d)uDir.add(d)})});return{totalH:totalH,totalR:totalR,uDir:uDir.size,avgRun:rtCount?Math.round(totalR/rtCount):0,rtCount:rtCount,rtTotal:efMeta.length,rtMissingPct:efMeta.length?Math.round((efMeta.length-rtCount)/efMeta.length*100):0}},[efMeta,filmMeta]);
-  var genreD=useMemo(function(){var g={};efMeta.forEach(function(e){var m=gMeta(e);if(!m||!m.genres)return;m.genres.split(", ").forEach(function(gn){if(!gn)return;if(!g[gn])g[gn]={c:0,s:0,r:0};g[gn].c++;if(e.rating!==null){g[gn].s+=e.rating;g[gn].r++}})});return Object.keys(g).map(function(n){var v=g[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efMeta,filmMeta]);
-  var countryD=useMemo(function(){var c={};efMeta.forEach(function(e){var m=gMeta(e);if(!m||!m.countries)return;m.countries.split(", ").forEach(function(cn){if(!cn)return;if(!c[cn])c[cn]={c:0,s:0,r:0};c[cn].c++;if(e.rating!==null){c[cn].s+=e.rating;c[cn].r++}})});return Object.keys(c).map(function(n){var v=c[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efMeta,filmMeta]);
-  var castD=useMemo(function(){var c={},ft={};efMeta.forEach(function(e){var m=gMeta(e);if(!m||!m.cast_members)return;m.cast_members.split(", ").forEach(function(a){if(!a)return;if(!c[a])c[a]={c:0,s:0,r:0};c[a].c++;if(e.rating!==null){c[a].s+=e.rating;c[a].r++}if(!ft[a])ft[a]=[];ft[a].push(e)})});return Object.keys(c).map(function(n){var v=c[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efMeta,filmMeta]);
-  var castF=useMemo(function(){if(!sCast)return[];return efMeta.filter(function(e){var m=gMeta(e);return m&&m.cast_members&&m.cast_members.split(", ").indexOf(sCast)!==-1})},[efMeta,sCast,filmMeta]);
-  var genreF=useMemo(function(){if(!sGenre)return[];return efMeta.filter(function(e){var m=gMeta(e);return m&&m.genres&&m.genres.split(", ").indexOf(sGenre)!==-1})},[efMeta,sGenre,filmMeta]);
-  var countryF=useMemo(function(){if(!sCountry)return[];return efMeta.filter(function(e){var m=gMeta(e);return m&&m.countries&&m.countries.split(", ").indexOf(sCountry)!==-1})},[efMeta,sCountry,filmMeta]);
-  var normName=function(s){return(s||'').replace(/[\u2018\u2019\u0060\u00B4]/g,"'").trim().toLowerCase()};
+  var dirF=useMemo(function(){if(!sDir)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.directors&&m.directors.split(", ").indexOf(sDir)!==-1})},[efOnce,sDir,filmMeta]);
+  // Runtime is the exception: hours are hours. You really did sit through Rango five times,
+  // so this counts every watch (ef) while everything else counts every film (efOnce).
+  var dirStats=useMemo(function(){var totalR=0,totalH=0,rtCount=0;ef.forEach(function(e){var m=gMeta(e);if(m&&m.runtime){totalR+=m.runtime;rtCount++}});totalH=Math.round(totalR/60);var uDir=new Set();efOnce.forEach(function(e){var m=gMeta(e);if(m&&m.directors)m.directors.split(", ").forEach(function(d){if(d)uDir.add(d)})});return{totalH:totalH,totalR:totalR,uDir:uDir.size,avgRun:rtCount?Math.round(totalR/rtCount):0,rtCount:rtCount,rtTotal:ef.length,rtMissingPct:ef.length?Math.round((ef.length-rtCount)/ef.length*100):0}},[ef,efOnce,filmMeta]);
+  var genreD=useMemo(function(){var g={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.genres)return;m.genres.split(", ").forEach(function(gn){if(!gn)return;if(!g[gn])g[gn]={c:0,s:0,r:0};g[gn].c++;if(e.rating!==null){g[gn].s+=e.rating;g[gn].r++}})});return Object.keys(g).map(function(n){var v=g[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
+  var countryD=useMemo(function(){var c={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.countries)return;m.countries.split(", ").forEach(function(cn){if(!cn)return;if(!c[cn])c[cn]={c:0,s:0,r:0};c[cn].c++;if(e.rating!==null){c[cn].s+=e.rating;c[cn].r++}})});return Object.keys(c).map(function(n){var v=c[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
+  var castD=useMemo(function(){var c={},ft={};efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.cast_members)return;m.cast_members.split(", ").forEach(function(a){if(!a)return;if(!c[a])c[a]={c:0,s:0,r:0};c[a].c++;if(e.rating!==null){c[a].s+=e.rating;c[a].r++}if(!ft[a])ft[a]=[];ft[a].push(e)})});return Object.keys(c).map(function(n){var v=c[n];var t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+" ("+e.rating+"\u2605)"}).join(", ");return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?"Top: "+t3:""}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,filmMeta]);
+  var castF=useMemo(function(){if(!sCast)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.cast_members&&m.cast_members.split(", ").indexOf(sCast)!==-1})},[efOnce,sCast,filmMeta]);
+  var genreF=useMemo(function(){if(!sGenre)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.genres&&m.genres.split(", ").indexOf(sGenre)!==-1})},[efOnce,sGenre,filmMeta]);
+  var countryF=useMemo(function(){if(!sCountry)return[];return efOnce.filter(function(e){var m=gMeta(e);return m&&m.countries&&m.countries.split(", ").indexOf(sCountry)!==-1})},[efOnce,sCountry,filmMeta]);
   var yRatingsNorm=useMemo(function(){var n={};Object.keys(yRatings).sort().forEach(function(k){var p=k.split('|||');var nk=normName(p[0])+'|||'+p[1];if(!(nk in n))n[nk]=yRatings[k]});return n},[yRatings]);
   var gYR=function(name,year){var nk=normName(name)+'|||'+year;return nk in yRatingsNorm?yRatingsNorm[nk]:undefined};
   var yFilms=useMemo(function(){return ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf("yesmine")!==-1})}).map(function(e){var yr=gYR(e.name,e.year);return{name:e.name,year:e.year,date:e.date,rating:e.rating,yRating:yr!==undefined?yr:null,diff:e.rating!==null&&typeof yr==="number"?Math.abs(e.rating-yr):null}})},[ef,yRatingsNorm,fullReg])
@@ -609,7 +636,21 @@ export default function Dashboard(){
   // TASTE MAP / RIBBON / POSTER WALL — the profile numbers, re-shaped
   // ============================================================
   var quadCfg=QUAD_SETS.filter(function(q){return q.id===quadSet})[0]||QUAD_SETS[0];
-  var quadSrc=quadSet==='dir'?dirD:quadSet==='cast'?castD:quadSet==='friend'?compD:quadSet==='country'?countryD:quadSet==='decade'?decD:genreD;
+  // Built from efOnce for every set, including friends: on one chart with one axis labelled
+  // "films watched", a set that counted watches would be plotting a different quantity from
+  // the set beside it. compD and the People tab keep counting shared viewings, which is the
+  // right unit for the question they ask.
+  var quadData=useMemo(function(){return{
+    genre:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.genres?m.genres.split(', '):[]}),
+    dir:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.directors?m.directors.split(', '):[]}),
+    cast:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.cast_members?m.cast_members.split(', '):[]}),
+    friend:aggMulti(efOnce,function(e){return gC(e.tags,fullReg)}),
+    country:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.countries?m.countries.split(', '):[]}),
+    decade:aggMulti(efOnce,function(e){return[Math.floor(e.year/10)*10+'s']})
+  }},[efOnce,filmMeta,fullReg]);
+  var quadSrc=quadData[quadSet]||quadData.genre;
+  // The map's own companion list, so its film count and its film list agree.
+  var quadFriendF=useMemo(function(){return sCo?efOnce.filter(function(e){return gC(e.tags,fullReg).indexOf(sCo)!==-1}):[]},[efOnce,sCo,fullReg]);
   var quad=useMemo(function(){
     var pts=quadSrc.filter(function(d){return d.Films>=quadCfg.min&&d.Avg>0});
     if(!pts.length)return{pts:[],plain:[],labeled:[],mx:0,my:0,yDom:[0,5]};
@@ -652,10 +693,10 @@ export default function Dashboard(){
   // A director's poster is their best film's poster — the one you would recognise them by.
   var dirWall=useMemo(function(){
     var best={};
-    efMeta.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(', ').forEach(function(dn){if(!dn)return;var c=best[dn];if(!c||(e.rating||0)>(c.rating||0))best[dn]={rating:e.rating,meta:m,film:e.name}})});
+    efOnce.forEach(function(e){var m=gMeta(e);if(!m||!m.directors)return;m.directors.split(', ').forEach(function(dn){if(!dn)return;var c=best[dn];if(!c||(e.rating||0)>(c.rating||0))best[dn]={rating:e.rating,meta:m,film:e.name}})});
     return dirFav.slice().sort(function(a,b){return sorts.dir==='avg'?((b.Avg-a.Avg)||(b.Films-a.Films)):((b.Films-a.Films)||(b.Avg-a.Avg))})
       .map(function(d){var b=best[d.name];return Object.assign({},d,{poster:b?b.meta:null,topFilm:b?b.film:''})});
-  },[dirFav,efMeta,filmMeta,sorts.dir]);
+  },[dirFav,efOnce,filmMeta,sorts.dir]);
   var top50Evo=useMemo(function(){if(!top50s.length)return{years:[],films:[]};var yrs=top50s.map(function(t){return t.year}).sort();var fm={};top50s.forEach(function(t){(t.films||[]).forEach(function(fi){var k=fi.name+"|||"+fi.year;if(!fm[k])fm[k]={name:fi.name,year:fi.year,ranks:{}};fm[k].ranks[t.year]=fi.pos})});var films=Object.values(fm);films.sort(function(a,b){var la=a.ranks[yrs[yrs.length-1]]||999;var lb=b.ranks[yrs[yrs.length-1]]||999;return la-lb});return{years:yrs,films:films}},[top50s]);
   var tagAllSorted=useMemo(function(){return Object.keys(fullReg).sort(function(a,b){return(allTagCounts[b]||0)-(allTagCounts[a]||0)})},[fullReg,allTagCounts]);
   var tagFiltered=useMemo(function(){return tagAllSorted.filter(function(t){return!tagSearch||t.indexOf(tagSearch.toLowerCase())!==-1})},[tagAllSorted,tagSearch]);
@@ -771,7 +812,6 @@ export default function Dashboard(){
       <div className="flex gap-1 flex-wrap">{yrs.map(function(y){var active=yr===y;return <button key={y} onClick={function(){sYr(y);cls()}} style={active?{padding:'4px 10px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'4px 10px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{y}</button>})}</div>
       <button onClick={function(){sIRW(function(v){return!v});cls()}} style={iRW?{padding:'4px 10px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}:{padding:'4px 10px',fontSize:11,fontWeight:500,color:N.paper,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}}>{iRW?'Excl. rewatches':'Incl. rewatches'}</button>
       <div className="flex items-center gap-1"><input type="date" style={Object.assign({},inputStyle,{fontSize:11,padding:'4px 6px'})} value={dateFrom} onChange={function(e){sDateFrom(e.target.value)}}/><span className="text-xs" style={{color:N.mutedSoft}}>{"\u2192"}</span><input type="date" style={Object.assign({},inputStyle,{fontSize:11,padding:'4px 6px'})} value={dateTo} onChange={function(e){sDateTo(e.target.value)}}/>{(dateFrom||dateTo)&&<button onClick={function(){sDateFrom('');sDateTo('')}} className="text-xs" style={{color:N.muted}}>{"\u2715"}</button>}</div>
-      {tab==='taste'&&<button onClick={function(){sDirUniq(function(v){return!v})}} style={dirUniq?{padding:'4px 10px',fontSize:11,fontWeight:500,color:N.paper,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'4px 10px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{dirUniq?'All watches':'Unique films only'}</button>}
     </div>}
 
     <TabErrorBoundary key={tab}>
@@ -911,7 +951,10 @@ export default function Dashboard(){
           instead: how generous the ratings are, and what the collection is made of. */}
       <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
         <Stat T={N} label="Avg rating" value={stats.avg+'\u2605'} yoy={yoy&&yoy.avg!=null?fY(yoy.avg,'r'):null}/>
-        <Stat T={N} label="Five-star films" value={ef.filter(function(e){return e.rating===5}).length} sub={ef.length?Math.round(ef.filter(function(e){return e.rating===5}).length/ef.length*100)+'% of watches':''}/>
+        {/* "Five-star ratings", not films: this counts rating events, so a film you loved on
+            two separate nights is two of them. Left as watches on purpose — it has to agree
+            with the distribution chart directly below, which has one bar per rating given. */}
+        <Stat T={N} label="Five-star ratings" value={ef.filter(function(e){return e.rating===5}).length} sub={ef.length?Math.round(ef.filter(function(e){return e.rating===5}).length/ef.length*100)+'% of watches':''}/>
         <Stat T={N} label="Top genre" value={topGenre?topGenre.name:'\u2014'} sub={topGenre?topGenre.Films+' films':''}/>
         <Stat T={N} label="Top decade" value={topDecade?topDecade.name:'\u2014'} sub={topDecade?topDecade.Films+' films':''} noBorder/>
       </div>
@@ -938,7 +981,7 @@ export default function Dashboard(){
           the four corners into four different statements. */}
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
         <SectionHead T={N} title="The taste map" count={quad.pts.length} aside={<div className="flex gap-1 flex-wrap">{QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>How much you watch it against how much you like it{quadCfg.floor?', for '+quadCfg.floor:''}. The dashed crosshair is your median on both axes. Click a dot to pick that one out in the panels below.</div>
+        <div className="text-xs mb-3" style={{color:N.muted}}>How many of them you have seen against how much you liked them{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once however often you rewatched it. The dashed crosshair is your median on both axes. Click a dot to pick that one out in the panels below.</div>
         {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
           {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
               collided with any dot label near a corner — Alya, at three films and two stars,
@@ -948,7 +991,7 @@ export default function Dashboard(){
           <ResponsiveContainer width="100%" height={330}>
             <ScatterChart margin={{top:18,right:24,bottom:24,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
-              <XAxis type="number" dataKey="Films" tick={{fill:N.muted,fontSize:10}} label={{value:'films watched',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
+              <XAxis type="number" dataKey="Films" tick={{fill:N.muted,fontSize:10}} label={{value:'films seen',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
               <YAxis type="number" dataKey="Avg" domain={quad.yDom} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'your average',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
               <ZAxis range={[70,70]}/>
               <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?qw.hh:hv?qw.hl:hr?qw.lh:qw.ll;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
@@ -966,7 +1009,7 @@ export default function Dashboard(){
       {/* Companions are the one set with no ranked panel on this tab — theirs lives under
           People — so the friend map surfaces its own list. The People copy sits on another
           tab, so the two can never render at once and duplicate each other. */}
-      {quadSet==='friend'&&<FilmList T={N} title={sCo?sCo+' — watched together':null} films={compF} onClose={function(){sSCo(null)}}/>}
+      {quadSet==='friend'&&<FilmList T={N} title={sCo?sCo+' — watched together':null} films={quadFriendF} onClose={function(){sSCo(null)}}/>}
 
       {/* DECADES AS A RIBBON — a bar chart of decades sorts the empty ones out of existence.
           A continuous strip cannot: every decade from your earliest to your latest gets a
