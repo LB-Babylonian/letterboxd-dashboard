@@ -610,10 +610,73 @@ export default function Dashboard(){
   var dirStats=useMemo(function(){var totalR=0,totalH=0,rtCount=0;ef.forEach(function(e){var m=gMeta(e);if(m&&m.runtime){totalR+=m.runtime;rtCount++}});totalH=Math.round(totalR/60);var uDir=new Set();efOnce.forEach(function(e){var m=gMeta(e);if(m&&m.directors)m.directors.split(", ").forEach(function(d){if(d)uDir.add(d)})});return{totalH:totalH,totalR:totalR,uDir:uDir.size,avgRun:rtCount?Math.round(totalR/rtCount):0,rtCount:rtCount,rtTotal:ef.length,rtMissingPct:ef.length?Math.round((ef.length-rtCount)/ef.length*100):0}},[ef,efOnce,filmMeta]);
   var yRatingsNorm=useMemo(function(){var n={};Object.keys(yRatings).sort().forEach(function(k){var p=k.split('|||');var nk=normName(p[0])+'|||'+p[1];if(!(nk in n))n[nk]=yRatings[k]});return n},[yRatings]);
   var gYR=function(name,year){var nk=normName(name)+'|||'+year;return nk in yRatingsNorm?yRatingsNorm[nk]:undefined};
-  var yFilms=useMemo(function(){return ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf("yesmine")!==-1})}).map(function(e){var yr=gYR(e.name,e.year);return{name:e.name,year:e.year,date:e.date,rating:e.rating,yRating:yr!==undefined?yr:null,diff:e.rating!==null&&typeof yr==="number"?Math.abs(e.rating-yr):null}})},[ef,yRatingsNorm,fullReg])
-  var yStats=useMemo(function(){if(!yFilms.length)return{count:0,rated:0,myAvg:0,yAvg:0,agree:0,disagree:[]};var myS=0,myC=0,yS=0,yC=0,rated=0;yFilms.forEach(function(f){if(f.rating!==null){myS+=f.rating;myC++}if(typeof f.yRating==="number"){yS+=f.yRating;yC++;rated++}});var sorted=yFilms.filter(function(f){return f.diff!==null}).sort(function(a,b){return b.diff-a.diff});var agree=yFilms.filter(function(f){return f.diff!==null&&f.diff<=0.5}).length;return{count:yFilms.length,rated:rated,myAvg:myC?myS/myC:0,yAvg:yC?yS/yC:0,agree:agree,disagree:sorted.slice(0,10)}},[yFilms]);
-  var yMissing=useMemo(function(){return ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf("yesmine")!==-1})&&gYR(e.name,e.year)===undefined}).slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:a.name<b.name?-1:1})},[ef,yRatingsNorm,fullReg])
-  var yScatter=useMemo(function(){return yFilms.filter(function(f){return f.rating!==null&&typeof f.yRating==="number"})},[yFilms]);
+  // One row per FILM, not per shared watch: Yesmine's rating is a single verdict per film, so
+  // pairing it with two viewings would count the same opinion twice. Keeps the first shared
+  // watch, which is the one her review was written about.
+  //
+  // And her side keeps its DIARY rating rather than today's value from ratings.csv -- the
+  // opposite of the shelf panel, for the same reason. There, one side had only a current
+  // rating, so both had to be current. Here both numbers are verdicts from the night, and
+  // swapping one for a 2026 revision would manufacture disagreement that never happened.
+  var yFilms=useMemo(function(){
+    var seen={},out=[];
+    ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf('yesmine')!==-1})})
+      .forEach(function(e){
+        var k=normName(e.name)+'|||'+e.year;if(seen[k])return;seen[k]=true;
+        var yr=gYR(e.name,e.year);
+        out.push({name:e.name,year:e.year,date:e.date,rating:e.rating,yRating:yr!==undefined?yr:null,
+          diff:e.rating!==null&&typeof yr==='number'?Math.abs(e.rating-yr):null,
+          signed:e.rating!==null&&typeof yr==='number'?yr-e.rating:null});
+      });
+    return out;
+  },[ef,yRatingsNorm,fullReg]);
+  var yStats=useMemo(function(){
+    if(!yFilms.length)return{count:0,rated:0,myAvg:0,yAvg:0,agree:0,disagree:[]};
+    var myS=0,myC=0,yS=0,yC=0;
+    yFilms.forEach(function(f){if(f.rating!==null){myS+=f.rating;myC++}if(typeof f.yRating==='number'){yS+=f.yRating;yC++}});
+    var sorted=yFilms.filter(function(f){return f.diff!==null}).sort(function(a,b){return b.diff-a.diff});
+    return{count:yFilms.length,rated:yC,myAvg:myC?myS/myC:0,yAvg:yC?yS/yC:0,
+      agree:yFilms.filter(function(f){return f.diff!==null&&f.diff<=0.5}).length,disagree:sorted.slice(0,10)};
+  },[yFilms]);
+  // Films seen together that Yesmine has not rated. Derived from yFilms so it inherits the
+  // one-row-per-film collapse; it used to re-filter the diary and could list the same film
+  // twice. Newest first -- the recent ones are the ones worth chasing.
+  var yMissing=useMemo(function(){return yFilms.filter(function(f){return f.yRating===null}).slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:a.name<b.name?-1:1})},[yFilms]);
+  // Everything that needs both numbers present. r is Pearson: 1 would mean the two of them
+  // rank films identically, 0 that one says nothing about the other. Bias is the mean signed
+  // gap, which r deliberately ignores -- two people can agree perfectly on order while one
+  // marks a half-star lower throughout.
+  var yAnalysis=useMemo(function(){
+    var pairs=yFilms.filter(function(f){return f.signed!==null});
+    var slept=yFilms.filter(function(f){return typeof f.yRating==='string'}).length;
+    var unrated=yFilms.filter(function(f){return f.yRating===null}).length;
+    if(pairs.length<3)return{pairs:[],n:0,r:null,bias:0,within:0,yHigher:0,bHigher:0,same:0,dist:[],cells:[],genres:[],slept:slept,unrated:unrated};
+    var b=pairs.map(function(f){return f.rating}),y=pairs.map(function(f){return f.yRating});
+    var mean=function(a){return a.reduce(function(s,v){return s+v},0)/a.length};
+    var mb=mean(b),my=mean(y);
+    var cov=0,vb=0,vy=0;
+    pairs.forEach(function(_,i){cov+=(b[i]-mb)*(y[i]-my);vb+=Math.pow(b[i]-mb,2);vy+=Math.pow(y[i]-my,2)});
+    var r=(vb&&vy)?cov/Math.sqrt(vb*vy):null;
+    // Identical (x,y) pairs stack on one pixel, so collapse and size the dot by how many.
+    var cells={};pairs.forEach(function(f){var k=f.rating+'|'+f.yRating;if(!cells[k])cells[k]={x:f.rating,y:f.yRating,n:0,films:[]};cells[k].n++;cells[k].films.push(f.name)});
+    var buckets={};pairs.forEach(function(f){buckets[f.signed]=(buckets[f.signed]||0)+1});
+    var dist=Object.keys(buckets).map(Number).sort(function(a,c){return a-c}).map(function(d){return{d:d,label:(d>0?'+':'')+d.toFixed(1),count:buckets[d]}});
+    // Where the two of them part company. A floor of 5 shared films, because one thriller
+    // neither liked is not a pattern.
+    var g={};pairs.forEach(function(f){var m=gMeta(f);if(!m||!m.genres)return;m.genres.split(', ').forEach(function(x){if(x){if(!g[x])g[x]=[];g[x].push(f.signed)}})});
+    var genres=Object.keys(g).filter(function(k){return g[k].length>=5}).map(function(k){return{name:k,n:g[k].length,gap:mean(g[k])}}).sort(function(a,c){return c.gap-a.gap});
+    return{pairs:pairs,n:pairs.length,r:r,bias:mean(pairs.map(function(f){return f.signed})),
+      // Averaged over the paired films only, both of them. Taking his across all 127 shared
+      // films while hers came from the 114 she scored numerically put two averages side by
+      // side that were measuring different sets -- and made the difference between them
+      // disagree with the bias tile two columns over. Now 3.41 minus 3.21 is the -0.20.
+      bAvg:mb,yAvg:my,
+      within:pairs.filter(function(f){return Math.abs(f.signed)<=0.5}).length,
+      yHigher:pairs.filter(function(f){return f.signed>0}).length,
+      bHigher:pairs.filter(function(f){return f.signed<0}).length,
+      same:pairs.filter(function(f){return f.signed===0}).length,
+      dist:dist,cells:Object.keys(cells).map(function(k){return cells[k]}),genres:genres,slept:slept,unrated:unrated};
+  },[yFilms,filmMeta]);
 
   // ============================================================
   // SECOND THOUGHTS — the diary's ratings against ratings.csv
@@ -977,12 +1040,89 @@ export default function Dashboard(){
         <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Babylonian and Yesmine</div>
         <div className="text-xs mt-1" style={{color:N.mutedSoft}}>Films watched together, and the two sets of ratings</div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="Films together" value={yStats.count} color={T.primary}/>
-        <Stat T={N} label="Babylonian's average" value={yStats.myAvg?yStats.myAvg.toFixed(2):'\u2014'}/>
-        <Stat T={N} label="Yesmine's average" value={yStats.yAvg?yStats.yAvg.toFixed(2):'\u2014'} color={T.primary}/>
-        <Stat T={N} label="Agree (±0.5)" value={yStats.agree} color={T.primary} noBorder/>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+        <Stat T={N} label="Films together" value={yStats.count} sub={yAnalysis.n+' with both ratings'}/>
+        <Stat T={N} label="Babylonian's average" value={yAnalysis.n?yAnalysis.bAvg.toFixed(2)+'★':'—'} sub="on the paired films"/>
+        <Stat T={N} label="Yesmine's average" value={yAnalysis.n?yAnalysis.yAvg.toFixed(2)+'★':'—'} sub="on the paired films"/>
+        {/* r says whether the two rank films the same way; bias says whether one sits lower
+            throughout. Both are needed — perfect agreement on order with a constant offset
+            gives an r near 1 and a bias that is not zero. */}
+        <Stat T={N} label="Correlation" value={yAnalysis.r!=null?yAnalysis.r.toFixed(2):'—'} sub={yAnalysis.r!=null?(yAnalysis.r>0.7?'strong agreement':yAnalysis.r>0.4?'moderate agreement':'weak agreement'):''}/>
+        <Stat T={N} label="Bias" value={yAnalysis.n?(yAnalysis.bias>0?'+':'')+yAnalysis.bias.toFixed(2):'—'} sub={yAnalysis.n?(yAnalysis.bias<0?'Yesmine rates lower':'Yesmine rates higher'):''} color={Math.abs(yAnalysis.bias)>=0.1?NEG:N.ink}/>
+        <Stat T={N} label="Within ½★" value={yAnalysis.n?Math.round(yAnalysis.within/yAnalysis.n*100)+'%':'—'} sub={yAnalysis.within+' of '+yAnalysis.n+' films'} noBorder/>
       </div>
+      {(yAnalysis.slept>0||yAnalysis.unrated>0)&&<div className="text-xs" style={{color:N.mutedSoft}}>
+        {yAnalysis.slept>0?yAnalysis.slept+' films carry "sleep" or "memory" instead of a number and sit out of every figure here. ':''}
+        {yAnalysis.unrated>0?yAnalysis.unrated+' have no rating from Yesmine yet.':''}
+      </div>}
+
+      {yAnalysis.n>=3&&<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* THE AGREEMENT PLOT — one dot per film. The diagonal is unanimity; distance from it is
+            the size of the argument and the side says who liked it more. */}
+        <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+          <SectionHead T={N} title="Two verdicts, one film" count={yAnalysis.n}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>Babylonian across, Yesmine up. On the dashed line the two agreed exactly; above it Yesmine liked it more, below it Babylonian did. Bigger dots hold more films.</div>
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart margin={{top:10,right:18,bottom:22,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              <XAxis type="number" dataKey="x" domain={[0,5.5]} ticks={[1,2,3,4,5]} tick={{fill:N.muted,fontSize:10}} label={{value:'Babylonian',position:'insideBottom',offset:-12,fill:N.mutedSoft,fontSize:10}}/>
+              <YAxis type="number" dataKey="y" domain={[0,5.5]} ticks={[1,2,3,4,5]} width={38} tick={{fill:N.muted,fontSize:10}} label={{value:'Yesmine',angle:-90,position:'insideLeft',offset:14,fill:N.mutedSoft,fontSize:10}}/>
+              <ZAxis dataKey="n" range={[55,420]}/>
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>Babylonian {d.x}★ · Yesmine {d.y}★</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.films.slice(0,4).join(', ')}{d.films.length>4?' +'+(d.films.length-4)+' more':''}</div></div>}}/>
+              <ReferenceLine segment={[{x:0.5,y:0.5},{x:5,y:5}]} stroke={N.borderStrong} strokeDasharray="4 4"/>
+              <Scatter data={yAnalysis.cells} fill={VIZ_MARK} fillOpacity={0.72}/>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* THE SHAPE OF THE DISAGREEMENT — a mean gap of −0.20 could be everyone half a star
+            apart or a handful of blazing rows. This says which. */}
+        <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+          <SectionHead T={N} title="Size of the disagreement" aside={<span className="text-xs" style={{color:N.muted}}>{yAnalysis.same} exact ties</span>}/>
+          <div className="text-xs mb-2" style={{color:N.muted}}>Yesmine's rating minus Babylonian's. Bars left of zero are films Babylonian rated higher ({yAnalysis.bHigher}), right are Yesmine ({yAnalysis.yHigher}).</div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={yAnalysis.dist}>
+              <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
+              {/* No axis title: it landed on top of the legend, and the caption above already
+                  says the bars are Yesmine's rating minus Babylonian's. */}
+              <XAxis dataKey="label" tick={{fill:N.muted,fontSize:10}} height={28}/>
+              <YAxis tick={{fill:N.muted,fontSize:10}} width={34}/>
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.count} {d.count===1?'film':'films'}</div><div style={{color:N.muted}}>{d.d===0?'rated identically':Math.abs(d.d)+'★ apart, '+(d.d>0?'Yesmine higher':'Babylonian higher')}</div></div>}}/>
+              <Bar dataKey="count" radius={[3,3,0,0]}>
+                {yAnalysis.dist.map(function(d,i){return <Cell key={i} fill={d.d===0?NEUTRAL.mutedSoft:d.d>0?VIZ_SERIES[2]:VIZ_MARK}/>})}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex gap-4 mt-1 justify-center flex-wrap">
+            <div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:VIZ_MARK,borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Babylonian higher</span></div>
+            <div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:NEUTRAL.mutedSoft,borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>tied</span></div>
+            <div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:VIZ_SERIES[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Yesmine higher</span></div>
+          </div>
+        </div>
+      </div>}
+
+      {/* WHERE THE TWO PART COMPANY — the bias broken out by genre, in the same diverging-bar
+          form as the tag panel, because it answers the same shape of question. */}
+      {yAnalysis.genres.length>0&&(function(){
+        var gmax=Math.max.apply(null,yAnalysis.genres.map(function(g){return Math.abs(g.gap)}).concat([0.2]));
+        return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+          <SectionHead T={N} title="Where the two part company" count={yAnalysis.genres.length} aside={<span className="text-xs" style={{color:N.muted}}>overall {(yAnalysis.bias>0?'+':'')+yAnalysis.bias.toFixed(2)}</span>}/>
+          <div className="text-xs mb-3" style={{color:N.muted}}>Average gap by genre, Yesmine minus Babylonian, for genres with five or more shared films. Right of the line Yesmine is the more generous of the two.</div>
+          <div className="space-y-1">
+            {yAnalysis.genres.map(function(g){
+              var pos=g.gap>=0,c=pos?VIZ_SERIES[2]:VIZ_MARK,w=Math.abs(g.gap)/gmax*50;
+              return <div key={g.name} className="flex items-center gap-2" title={g.n+' shared films'}>
+                <div className="w-24 md:w-32 text-xs text-right truncate" style={{color:N.inkSoft}}>{g.name}</div>
+                <div className="w-8 text-xs text-right" style={{color:N.mutedSoft}}>{g.n}</div>
+                <div className="flex-1 relative" style={{height:22,background:N.surfaceAlt,borderRadius:4}}>
+                  <div style={{position:'absolute',left:'50%',top:0,bottom:0,width:1,background:N.borderStrong}}/>
+                  <div style={{position:'absolute',top:5,height:12,borderRadius:2,background:c,left:(pos?50:50-w)+'%',width:Math.max(w,0.4)+'%'}}/>
+                </div>
+                <div className="w-12 text-xs text-right font-mono" style={{color:c,fontWeight:500}}>{(pos?'+':'')+g.gap.toFixed(2)}</div>
+              </div>})}
+          </div>
+        </div>;
+      })()}
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
         <SectionHead T={N} title="Ratings side by side" aside={<div className="flex gap-1 flex-wrap"><button onClick={function(){sYSort(ySort==="dateNew"?"dateOld":"dateNew")}} style={(ySort==="dateNew"||ySort==="dateOld")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="dateOld"?"Newest first":"Oldest first"}</button><button onClick={function(){sYSort(ySort==="agree"?"disagree":"agree")}} style={(ySort==="agree"||ySort==="disagree")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="agree"?"Most divided":"Most aligned"}</button><button onClick={function(){sYSort(ySort==="myHigh"?"myLow":"myHigh")}} style={(ySort==="myHigh"||ySort==="myLow")?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{ySort==="myHigh"?"Lowest rated":"Highest rated"}</button></div>}/>
         <div className="max-h-96 overflow-y-auto"><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Babylonian</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Yesmine</th><th className="text-right py-1.5" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Diff</th></tr></thead><tbody>{yFilms.slice().sort(function(a,b){if(ySort==="dateNew"||ySort==="date")return a.date>b.date?-1:1;if(ySort==="dateOld")return a.date<b.date?-1:1;if(ySort==="agree")return(a.diff===null?99:a.diff)-(b.diff===null?99:b.diff);if(ySort==="disagree")return(b.diff===null?-1:b.diff)-(a.diff===null?-1:a.diff);if(ySort==="myHigh")return(b.rating||0)-(a.rating||0);if(ySort==="myLow")return(a.rating||99)-(b.rating||99);return 0}).map(function(f,i){return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}><td className="py-1.5" style={{color:N.inkSoft}}>{f.name} <span style={{color:N.muted}}>({f.year})</span></td><td className="py-1.5 text-right" style={{color:f.rating!==null?N.ink:N.mutedSoft}}>{f.rating!==null?f.rating+'★':'—'}</td><td className="py-1.5 text-right" style={{color:typeof f.yRating==="number"?N.ink:N.mutedSoft}}>{typeof f.yRating==="number"?f.yRating+'★':(f.yRating||'—')}</td><td className="py-1.5 text-right" style={{color:f.diff!==null?N.ink:N.mutedSoft,fontWeight:f.diff!==null&&(f.diff<=0.5||f.diff>=2)?500:400}}>{f.diff!==null?f.diff.toFixed(1):'—'}</td></tr>})}</tbody></table></div>
