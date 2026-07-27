@@ -354,6 +354,8 @@ var QUAD_SETS=[
   {id:'dir',l:'Directors',min:3,floor:'directors with 3 films or more',ownList:true},
   {id:'cast',l:'Cast',min:3,floor:'actors in 3 films or more',ownList:true},
   {id:'friend',l:'Friends',min:3,floor:'companions on 3 films or more',ownList:true},
+  {id:'plat',l:'Platforms',min:3,floor:'platforms with 3 films or more',ownList:true},
+  {id:'venue',l:'Theaters',min:3,floor:'venues with 3 films or more',ownList:true},
   {id:'country',l:'Countries',min:2,floor:'countries with 2 films or more',ownList:true},
   {id:'decade',l:'Decades',min:1,floor:null}
 ];
@@ -404,15 +406,7 @@ function SectionHead(p){var T=p.T;return <div className="flex items-baseline jus
 // Stat — Editorial label / large number / optional sub.
 function Stat(p){var T=p.T;var yoyColor=p.yoy?(p.yoy.charAt(0)==='+'?T.primary:p.yoy.charAt(0)==='-'?NEG:NEUTRAL.muted):NEUTRAL.muted;return <div className="px-4 py-3" style={{borderRight:p.noBorder?'none':'0.5px solid '+NEUTRAL.border}}><div className="mb-1.5" style={{fontSize:9,letterSpacing:'0.15em',color:NEUTRAL.muted,textTransform:'uppercase'}}>{p.label}</div><div style={{fontSize:p.large?28:20,fontWeight:500,lineHeight:1,color:p.color||NEUTRAL.ink}}>{p.value}</div>{(p.sub||p.yoy)&&<div className="mt-1.5 flex items-baseline gap-2">{p.sub&&<span style={{fontSize:11,color:NEUTRAL.muted}}>{p.sub}</span>}{p.yoy&&<span style={{fontSize:11,color:yoyColor,fontWeight:500}}>{p.yoy}</span>}</div>}</div>}
 
-// SrtB — Sort toggle pill
-function SrtB(p){var T=p.T;return <button onClick={p.onToggle} className="text-xs px-2 py-0.5 transition-colors" style={{color:NEUTRAL.muted,border:'0.5px solid '+NEUTRAL.border,borderRadius:4,background:'transparent'}}>{p.val==='avg'?'by count':'by rating'}</button>}
 
-// CTbl — Horizontal bar table
-// CTbl — horizontal bar table. `cap` shows only the top N rows behind a "show all"
-// toggle; omit it for short tables that should stay open. Several of these lists are
-// very long-tailed (2706 cast members, 585 directors, three quarters of them seen
-// exactly once), so the tail is noise rather than information.
-function CTbl(p){var T=p.T;var[open,sOpen]=useState(false);var sorted=p.sortMode==='avg'?[].concat(p.data).sort(function(a,b){return(b.Avg||0)-(a.Avg||0)}):p.data;var cap=p.cap||0;var collapsible=cap>0&&sorted.length>cap;var rows=(collapsible&&!open)?sorted.slice(0,cap):sorted;var mc=Math.max.apply(null,sorted.map(function(d){return d.Films}).concat([1]));return <div className="space-y-0.5">{rows.map(function(d,i){var ac=p.sel===d.name;var barColor=rCT(d.Avg);return <div key={i} onClick={function(){p.onSel(ac?null:d.name)}} title={d.tip||''} className="flex items-center gap-2 cursor-pointer py-0.5 px-1" style={{borderRadius:4,background:ac?NEUTRAL.surfaceAlt:'transparent',boxShadow:ac?'inset 0 0 0 1px '+T.primary:'none'}}><div className="w-20 md:w-32 text-xs text-right truncate" style={{color:NEUTRAL.inkSoft}} title={d.name}>{d.name}</div><div className="flex-1 h-6 flex items-center" style={{background:NEUTRAL.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.Films/mc)*100,8)+'%',minWidth:30,backgroundColor:barColor,borderRadius:4}}><span className="text-xs" style={{color:textOn(barColor),fontWeight:500}}>{d.Films}</span></div></div><div className="w-12 text-xs text-right font-mono" style={{color:NEUTRAL.ink}}>{d.Avg>0?d.Avg.toFixed(1)+'\u2605':'\u2014'}</div></div>})}{collapsible&&<button onClick={function(){sOpen(!open)}} className="w-full text-xs py-1.5 mt-1" style={{color:NEUTRAL.muted,background:'transparent',border:'0.5px solid '+NEUTRAL.border,borderRadius:4,cursor:'pointer'}}>{open?'Show fewer':'Show all '+sorted.length}</button>}</div>}
 
 // FilmList — Selected film panel
 function FilmList(p){var T=p.T;if(!p.films||!p.films.length)return null;return <div className="mt-3 p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+T.primary,borderRadius:4}}><div className="flex justify-between items-center mb-2"><div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div><button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,borderRadius:4}}>{'\u2715'}</button></div><div className="max-h-72 overflow-y-auto">{p.films.map(function(f,i){return <div key={i} className="text-xs py-1.5 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span><span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span></div>})}</div></div>}
@@ -474,7 +468,7 @@ export default function Dashboard(){
   var[sI,sSI]=useState(false);var[csv,sCsv]=useState('');var[iR,sIR]=useState(null);
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);
-  var[sorts,sSorts]=useState({});var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
+  var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
   var[quadSet,sQuadSet]=useState('genre');var[revOpen,sRevOpen]=useState(false);
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
@@ -492,7 +486,6 @@ export default function Dashboard(){
   // N = neutral editorial palette + T.primary as accent + chartTextColor (so shared components can use it for text on theme-colored bars)
   var N=Object.assign({},NEUTRAL,{primary:T.primary,secondary:T.primary,glow:T.glow,id:T.id,name:T.name,fonts:{},copy:{},chartTextColor:T.chartTextColor});
   var pickTheme=useCallback(function(id){try{localStorage.setItem('dashboard_theme_explicit',id)}catch(e){}sThemeId(id);sShowPicker(false)},[themeId]);
-  var ts=function(k){sSorts(function(p){var u={};u[k]=p[k]==='avg'?'vol':'avg';return Object.assign({},p,u)})};
   var cls=function(){sSR(null);sSP(null);sSVe(null);sSCo(null);sSDe(null);sSTg(null);sSelHM(null);sSDir(null);sSGenre(null);sSCountry(null);sSCast(null)};
   useEffect(function(){if(CONFIG_ERROR){sLoading(false);return}Promise.all([sb.from('pipe_data').select('data').eq('id',1).single(),sb.from('tag_registry').select('data').eq('id',1).single(),sb.from('subscriptions').select('data').eq('id',1).single(),sb.from('film_metadata').select('*'),sb.from('review_data').select('data').eq('id',1).single(),sb.from('ratings_data').select('data').eq('id',1).single(),sb.from('top50_data').select('*')]).then(function(r){if(r[0].data&&r[0].data.data)sPd(r[0].data.data);if(r[1].data&&r[1].data.data)sReg(r[1].data.data);if(r[2].data&&r[2].data.data&&Array.isArray(r[2].data.data))sSubscriptions(r[2].data.data);if(r[3].data){var fm={};r[3].data.forEach(function(m){fm[m.title+'|||'+m.year]=m});sFilmMeta(fm)}if(r[4].data&&r[4].data.data){var revd=r[4].data.data;if(Array.isArray(revd)){var yr={};revd.forEach(function(x){yr[x.name+'|||'+x.year]=x.yRating});sYRatings(yr)}}if(r[5].data&&r[5].data.data){try{var rd=typeof r[5].data.data==='string'?JSON.parse(r[5].data.data):r[5].data.data;if(Array.isArray(rd))sAllRatings(rd)}catch(e){}}if(r[6].data){sTop50s(r[6].data.map(function(x){return{year:x.list_year,films:x.data}}).sort(function(a,b){return a.year-b.year}))}sLoading(false)}).catch(function(){sLoading(false)})},[]);
 
@@ -586,12 +579,7 @@ export default function Dashboard(){
   var rDist=useMemo(function(){var c={};for(var r=0.5;r<=5;r+=0.5)c[r]=0;efOnce.forEach(function(e){if(e.rating!==null)c[e.rating]=(c[e.rating]||0)+1});return Object.entries(c).sort(function(a,b){return parseFloat(a[0])-parseFloat(b[0])}).map(function(x){return{rating:x[0],count:x[1]}})},[efOnce]);
   var selFilms=useMemo(function(){return sR===null?[]:efOnce.filter(function(e){return e.rating===sR})},[efOnce,sR]);
   var platD=useMemo(function(){return agg(ef,function(e){return gP(e.tags,fullReg)}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
-  var platF=useMemo(function(){return sP?ef.filter(function(e){return gP(e.tags,fullReg)===sP}):[]},[ef,sP,fullReg]);
   var venD=useMemo(function(){var v={};ef.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var dn=getDn(vn,fullReg);if(!v[dn])v[dn]={c:0,s:0,r:0};v[dn].c++;if(e.rating!==null){v[dn].s+=e.rating;v[dn].r++}});return Object.keys(v).map(function(n){var d=v[n];return{name:n,Films:d.c,Avg:d.r?parseFloat((d.s/d.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
-  var venF=useMemo(function(){return sVe?ef.filter(function(e){var vn=gV(e.tags,fullReg);return vn&&getDn(vn,fullReg)===sVe}):[]},[ef,sVe,fullReg]);
-  var compD=useMemo(function(){var c={},ft={};ef.forEach(function(e){gC(e.tags,fullReg).forEach(function(n){if(!c[n])c[n]={c:0,s:0,r:0};c[n].c++;if(e.rating!==null){c[n].s+=e.rating;c[n].r++}if(!ft[n])ft[n]=[];ft[n].push(e)})});return Object.keys(c).map(function(n){var v=c[n],t3=(ft[n]||[]).filter(function(e){return e.rating!==null}).sort(function(a,b){return b.rating-a.rating}).slice(0,3).map(function(e){return e.name+' ('+e.rating+'\u2605)'}).join(', ');return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0,tip:t3?'Top: '+t3:''}}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
-  var compF=useMemo(function(){return sCo?ef.filter(function(e){return gC(e.tags,fullReg).indexOf(sCo)!==-1}):[]},[ef,sCo,fullReg]);
-  var solo=useMemo(function(){var s=ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length;return{solo:ef.length-s,social:s}},[ef,fullReg]);
   // "How much of the 1990s have you seen" is a films question, so the ribbon and the decade
   // tile count films, not watches.
   var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
@@ -683,26 +671,30 @@ export default function Dashboard(){
   // TASTE MAP / RIBBON / POSTER WALL — the profile numbers, re-shaped
   // ============================================================
   var quadCfg=QUAD_SETS.filter(function(q){return q.id===quadSet})[0]||QUAD_SETS[0];
-  // Built from efOnce for every set, including friends: on one chart with one axis labelled
-  // "films watched", a set that counted watches would be plotting a different quantity from
-  // the set beside it. compD and the People tab keep counting shared viewings, which is the
-  // right unit for the question they ask.
+  // Built from efOnce for every set: on one chart with one axis labelled "films seen", a set
+  // that counted watches would be plotting a different quantity from the set beside it.
   var quadData=useMemo(function(){return{
     genre:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.genres?m.genres.split(', '):[]}),
     dir:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.directors?m.directors.split(', '):[]}),
     cast:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.cast_members?m.cast_members.split(', '):[]}),
     friend:aggMulti(efOnce,function(e){return gC(e.tags,fullReg)}),
+    // gP folds every cinema watch into one "Theater" bucket, which is the right grain here:
+    // the platform question is how a film reached you, and the venue set answers which room.
+    plat:aggMulti(efOnce,function(e){return[gP(e.tags,fullReg)]}),
+    venue:aggMulti(efOnce,function(e){var v=gV(e.tags,fullReg);return v?[getDn(v,fullReg)]:[]}),
     country:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.countries?m.countries.split(', '):[]}),
     decade:aggMulti(efOnce,function(e){return[Math.floor(e.year/10)*10+'s']})
   }},[efOnce,filmMeta,fullReg]);
   var quadSrc=quadData[quadSet]||quadData.genre;
   // Whatever is selected in the set currently on the map, and the films behind it. Runs off
   // efOnce so the list length matches the count the dot was plotted at.
-  var quadSelName=quadSet==='dir'?sDir:quadSet==='cast'?sCast:quadSet==='friend'?sCo:quadSet==='country'?sCountry:quadSet==='decade'?sDe:sGenre;
+  var quadSelName=quadSet==='dir'?sDir:quadSet==='cast'?sCast:quadSet==='friend'?sCo:quadSet==='country'?sCountry:quadSet==='decade'?sDe:quadSet==='plat'?sP:quadSet==='venue'?sVe:sGenre;
   var quadFilms=useMemo(function(){
     if(!quadSelName)return[];
     return efOnce.filter(function(e){
       if(quadSet==='friend')return gC(e.tags,fullReg).indexOf(quadSelName)!==-1;
+      if(quadSet==='plat')return gP(e.tags,fullReg)===quadSelName;
+      if(quadSet==='venue'){var v=gV(e.tags,fullReg);return !!v&&getDn(v,fullReg)===quadSelName}
       if(quadSet==='decade')return Math.floor(e.year/10)*10===parseInt(quadSelName);
       var m=gMeta(e);if(!m)return false;
       var f=quadSet==='dir'?m.directors:quadSet==='cast'?m.cast_members:quadSet==='country'?m.countries:m.genres;
@@ -739,7 +731,7 @@ export default function Dashboard(){
     corners:['Few films \u00B7 rated higher','Many films \u00B7 rated higher','Few films \u00B7 rated lower','Many films \u00B7 rated lower']
   };
   var qw=QUAD_WORDS;
-  var quadPick=function(name){cls();if(quadSet==='genre')sSGenre(name);else if(quadSet==='dir')sSDir(name);else if(quadSet==='cast')sSCast(name);else if(quadSet==='friend')sSCo(name);else if(quadSet==='country')sSCountry(name);else if(quadSet==='decade')sSDe(name)};
+  var quadPick=function(name){cls();if(quadSet==='genre')sSGenre(name);else if(quadSet==='dir')sSDir(name);else if(quadSet==='cast')sSCast(name);else if(quadSet==='friend')sSCo(name);else if(quadSet==='plat')sSP(name);else if(quadSet==='venue')sSVe(name);else if(quadSet==='country')sSCountry(name);else if(quadSet==='decade')sSDe(name)};
   // Every decade from the earliest watched to the latest, present or not: the empty slots
   // are the point of the ribbon. Width carries the count, so the gaps are visible as gaps.
   var decRibbon=useMemo(function(){
@@ -749,7 +741,25 @@ export default function Dashboard(){
     for(var d=lo;d<=hi;d+=10){var e=by[d];out.push({dec:d,label:d+'s',Films:e?e.Films:0,Avg:e?e.Avg:0})}
     return out;
   },[decD]);
-  var top50Evo=useMemo(function(){if(!top50s.length)return{years:[],films:[]};var yrs=top50s.map(function(t){return t.year}).sort();var fm={};top50s.forEach(function(t){(t.films||[]).forEach(function(fi){var k=fi.name+"|||"+fi.year;if(!fm[k])fm[k]={name:fi.name,year:fi.year,ranks:{}};fm[k].ranks[t.year]=fi.pos})});var films=Object.values(fm);films.sort(function(a,b){var la=a.ranks[yrs[yrs.length-1]]||999;var lb=b.ranks[yrs[yrs.length-1]]||999;return la-lb});return{years:yrs,films:films}},[top50s]);
+  // The list is a snapshot per year, so a film is either on the current one or it fell off.
+  // Those are two different things to look at and they now get two tables: the list as it
+  // stands, and everything that was on it once. Ordering the departed by when they left, then
+  // by the rank they left from, reads as a history rather than an alphabet.
+  var top50Evo=useMemo(function(){
+    if(!top50s.length)return{years:[],last:null,current:[],gone:[]};
+    var yrs=top50s.map(function(t){return t.year}).sort();
+    var last=yrs[yrs.length-1];
+    var fm={};
+    top50s.forEach(function(t){(t.films||[]).forEach(function(fi){var k=fi.name+'|||'+fi.year;if(!fm[k])fm[k]={name:fi.name,year:fi.year,ranks:{}};fm[k].ranks[t.year]=fi.pos})});
+    var films=Object.keys(fm).map(function(k){return fm[k]});
+    var current=films.filter(function(f){return f.ranks[last]!==undefined}).sort(function(a,b){return a.ranks[last]-b.ranks[last]});
+    var gone=films.filter(function(f){return f.ranks[last]===undefined}).map(function(f){
+      var present=yrs.filter(function(y){return f.ranks[y]!==undefined});
+      var ly=present[present.length-1];
+      return Object.assign({},f,{lastYear:ly,lastRank:f.ranks[ly]});
+    }).sort(function(a,b){return(b.lastYear-a.lastYear)||(a.lastRank-b.lastRank)});
+    return{years:yrs,last:last,current:current,gone:gone};
+  },[top50s]);
   var tagAllSorted=useMemo(function(){return Object.keys(fullReg).sort(function(a,b){return(allTagCounts[b]||0)-(allTagCounts[a]||0)})},[fullReg,allTagCounts]);
   var tagFiltered=useMemo(function(){return tagAllSorted.filter(function(t){return!tagSearch||t.indexOf(tagSearch.toLowerCase())!==-1})},[tagAllSorted,tagSearch]);
   var tagSelCount=useMemo(function(){return Object.keys(tagSel).filter(function(k){return tagSel[k]}).length},[tagSel]);
@@ -780,7 +790,7 @@ export default function Dashboard(){
 
   var renderTagRow=function(t,showCheck){var e=fullReg[t]||{};return <div key={t} className="flex items-center gap-2 py-1" style={{borderBottom:'0.5px solid '+N.border}}>{showCheck&&<input type="checkbox" checked={!!tagSel[t]} onChange={function(){sTagSel(function(p){var n=Object.assign({},p);n[t]=!n[t];return n})}} style={{accentColor:T.primary}}/>}<div className="flex-1 text-xs truncate min-w-0" title={t} style={{color:N.inkSoft}}>{t}</div><div className="text-xs w-8 text-right shrink-0" style={{color:N.mutedSoft}}>{allTagCounts[t]||0}</div>{isAdmin?<select className="text-xs w-28 shrink-0" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.inkSoft,padding:'2px 4px'}} value={e.cat||''} onChange={function(ev){doSetTag(t,ev.target.value)}}><option value="">—</option>{CATS.map(function(c){return <option key={c} value={c}>{CI[c].l}</option>})}</select>:<div className="text-xs w-28 shrink-0 text-right" style={{color:e.cat?N.inkSoft:N.mutedSoft}}>{e.cat?CI[e.cat].l:'—'}</div>}{isAdmin?<input className="text-xs w-28 shrink-0" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.inkSoft,padding:'2px 4px'}} placeholder="Display name" value={e.dn||''} onChange={function(ev){doSetDn(t,ev.target.value)}}/>:<div className="text-xs w-28 shrink-0 text-right truncate" style={{color:N.muted}}>{e.dn||''}</div>}</div>};
 
-  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Taste'},{id:'rankings',l:'Rankings'},{id:'people',l:'People'},{id:'where',l:'Where'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
+  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Taste'},{id:'rankings',l:'Rankings'},{id:'yesmine',l:'Yesmine'},{id:'where',l:'Where'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
   // Tags is the only fully private tab — it is a raw editing surface with nothing to
   // read. Everything else is public, including Costs: that tab already splits itself,
   // showing the spend cards and graphs to everyone while keeping the subscription
@@ -955,34 +965,19 @@ export default function Dashboard(){
         <Stat T={N} label="Platforms" value={platD.length} sub="distinct"/>
         <Stat T={N} label="Venues" value={venD.length} sub="distinct" noBorder/>
       </div>
-      <div><SectionHead T={N} title="Platforms" aside={<SrtB T={N} val={sorts.pl} onToggle={function(){ts('pl')}}/>}/><CTbl T={N} data={platD} sel={sP} onSel={function(v){sSP(v);sSVe(null)}} sortMode={sorts.pl}/></div>
-      <FilmList T={N} title={sP} films={platF} onClose={function(){sSP(null)}}/>
-      <div><SectionHead T={N} title="Theaters" aside={<SrtB T={N} val={sorts.ve} onToggle={function(){ts('ve')}}/>}/><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={8} data={venD} sel={sVe} onSel={function(v){sSVe(v);sSP(null)}} sortMode={sorts.ve}/></div></div>
-      <FilmList T={N} title={sVe} films={venF} onClose={function(){sSVe(null)}}/>
-    </div>}
-
-    {/* ===== WHO ===== */}
-    {tab==='people'&&<div className="space-y-6">
-      {/* One row of four. These were two separate two-column grids, each carrying its own
-          top and bottom border, so four related figures rendered as two stacked bands.
-          The last two are conditional, so "With friends" takes the no-border slot when
-          there are no companions to show. */}
-      <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="Solo" value={solo.solo} sub={(ef.length?((solo.solo/ef.length)*100).toFixed(0):0)+'%'} yoy={yoy&&fY(-yoy.fr,'pp')}/>
-        <Stat T={N} label="With friends" value={solo.social} sub={(ef.length?((solo.social/ef.length)*100).toFixed(0):0)+'%'} yoy={yoy&&fY(yoy.fr,'pp')} noBorder={!compD.length}/>
-        {compD.length>0&&<Stat T={N} label="Best friend" value={compD[0].name} sub={compD[0].Films+' films together'}/>}
-        {compD.length>0&&<Stat T={N} label="People seen with" value={compD.length} sub="distinct" noBorder/>}
-      </div>
-      <div><SectionHead T={N} title="Companions" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>hover for top films</span>}/><div className="flex justify-end mb-2"><SrtB T={N} val={sorts.co} onToggle={function(){ts('co')}}/></div><div className="max-h-96 overflow-y-auto"><CTbl T={N} cap={10} data={compD} sel={sCo} onSel={sSCo} sortMode={sorts.co}/></div></div>
-      <FilmList T={N} title={sCo} films={compF} onClose={function(){sSCo(null)}}/>
+      {/* The Platforms and Theaters tables moved onto the taste map as their own sets, where
+          they get a rating axis instead of a rating column. What stays here is the pair of
+          figures the map cannot show: the theatre share of everything watched, and how many
+          distinct platforms and rooms are behind it. */}
+      <div className="text-xs" style={{color:N.muted}}>Both breakdowns are on the Taste tab now, as the map's Platforms and Theaters sets.</div>
     </div>}
 
     {/* ===== YESMINE ===== */}
-    {tab==='people'&&<div className="space-y-6">
-      {/* Everything above is "who I watch with". This is a different subject — one
-          person's ratings against mine — so it gets a visible break rather than sitting
-          in the same run of panels. */}
-      <div className="pt-5" style={{borderTop:'1px solid '+N.borderStrong}}>
+    {tab==='yesmine'&&<div className="space-y-6">
+      {/* This used to sit below the companions panels behind a divider, which is why it had a
+          borderTop. It is the whole tab now, so it opens rather than interrupts. The friend
+          breakdown that stood above it lives on the taste map's Friends set. */}
+      <div>
         <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Babylonian and Yesmine</div>
         <div className="text-xs mt-1" style={{color:N.mutedSoft}}>Films watched together, and the two sets of ratings</div>
       </div>
@@ -1214,10 +1209,41 @@ export default function Dashboard(){
 
     {/* ===== RANKINGS ===== */}
     {tab==='rankings'&&<div className="space-y-8">
-      {top50Evo.years.length>0&&<div>
-        <SectionHead T={N} title="Top 50, all time" aside={<span className="text-xs" style={{color:N.mutedSoft}}>{top50Evo.years.join(" → ")}</span>}/>
-        <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th>{top50Evo.years.map(function(y){return <th key={y} className="text-center py-2" style={{width:80,fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>{y}</th>})}</tr></thead><tbody>{top50Evo.films.map(function(fi,i){var yrs2=top50Evo.years;var latestR=fi.ranks[yrs2[yrs2.length-1]];var inLatest=latestR!==undefined;return <tr key={i} style={{borderBottom:'0.5px solid '+N.border,opacity:inLatest?1:0.35}}><td className="py-1.5" style={{color:N.inkSoft}}><span className="flex items-center gap-2"><Poster meta={gMeta(fi)} w={22}/>{fi.name} <span style={{color:N.muted}}>({fi.year})</span></span></td>{yrs2.map(function(y,yi){var r=fi.ranks[y];var prev=yi>0?fi.ranks[yrs2[yi-1]]:null;var move=r&&prev?(prev-r):null;var isNew=r&&!prev&&yi>0;var isOut=!r&&prev;return <td key={y} className="py-1.5 text-center"><div className="flex items-center justify-center gap-0.5">{r?<span style={{fontWeight:500,color:N.ink}}>{r}</span>:isOut?<span className="text-xs" style={{color:N.mutedSoft}}>OUT</span>:<span style={{color:N.mutedSoft}}>—</span>}{r&&yi>0&&(isNew?<span className="ml-0.5" style={{fontSize:10,color:MOVE_NEW,fontWeight:500}}>NEW</span>:move!==null?<span className="ml-0.5" style={{fontSize:10,color:move>0?MOVE_UP:move<0?MOVE_DOWN:N.mutedSoft}}>{move>0?"▲"+move:move<0?"▼"+Math.abs(move):"="}</span>:null)}</div></td>})}</tr>})}</tbody></table></div></div>
-      </div>}
+      {top50Evo.years.length>0&&(function(){
+        // One renderer, two tables. The year columns are identical in both; only the ordering
+        // and what a missing rank means differ.
+        var yrs2=top50Evo.years;
+        var rows=function(list){return list.map(function(fi,i){
+          var inLatest=fi.ranks[top50Evo.last]!==undefined;
+          return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}>
+            <td className="py-1.5" style={{color:N.inkSoft}}><span className="flex items-center gap-2"><Poster meta={gMeta(fi)} w={22}/>{fi.name} <span style={{color:N.muted}}>({fi.year})</span></span></td>
+            {yrs2.map(function(y,yi){
+              var r=fi.ranks[y],prev=yi>0?fi.ranks[yrs2[yi-1]]:null;
+              var move=r&&prev?(prev-r):null,isNew=r&&!prev&&yi>0,isOut=!r&&prev;
+              return <td key={y} className="py-1.5 text-center"><div className="flex items-center justify-center gap-0.5">
+                {r?<span style={{fontWeight:500,color:N.ink}}>{r}</span>:isOut?<span className="text-xs" style={{color:MOVE_DOWN}}>OUT</span>:<span style={{color:N.mutedSoft}}>{'\u2014'}</span>}
+                {r&&yi>0&&(isNew?<span className="ml-0.5" style={{fontSize:10,color:MOVE_NEW,fontWeight:500}}>NEW</span>
+                  :move!==null?<span className="ml-0.5" style={{fontSize:10,color:move>0?MOVE_UP:move<0?MOVE_DOWN:N.mutedSoft}}>{move>0?'\u25B2'+move:move<0?'\u25BC'+Math.abs(move):'='}</span>:null)}
+              </div></td>})}
+            {!inLatest&&<td className="py-1.5 text-right whitespace-nowrap" style={{color:N.mutedSoft,fontSize:10}}>left at {'#'+fi.lastRank}</td>}
+          </tr>})};
+        var head=function(extra){return <thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}>
+          <th className="text-left py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th>
+          {yrs2.map(function(y){return <th key={y} className="text-center py-2" style={{width:80,fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>{y}</th>})}
+          {extra&&<th className="text-right py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Last rank</th>}
+        </tr></thead>};
+        return <div className="space-y-8">
+          <div>
+            <SectionHead T={N} title={'Top 50, all time'} count={top50Evo.current.length} aside={<span className="text-xs" style={{color:N.mutedSoft}}>{yrs2.join(' \u2192 ')}</span>}/>
+            <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs">{head(false)}<tbody>{rows(top50Evo.current)}</tbody></table></div></div>
+          </div>
+          {top50Evo.gone.length>0&&<div>
+            <SectionHead T={N} title="Gone, not forgotten" count={top50Evo.gone.length}/>
+            <div className="text-xs mb-2" style={{color:N.muted}}>On the list once, not on the current one. Most recently dropped first.</div>
+            <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs">{head(true)}<tbody>{rows(top50Evo.gone)}</tbody></table></div></div>
+          </div>}
+        </div>;
+      })()}
     </div>}
 
     {tab==='costs'&&(isAdmin?<div className="space-y-6">
