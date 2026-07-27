@@ -578,8 +578,6 @@ export default function Dashboard(){
   // distribution biased towards the films you rewatch -- exactly the ones you already like.
   var rDist=useMemo(function(){var c={};for(var r=0.5;r<=5;r+=0.5)c[r]=0;efOnce.forEach(function(e){if(e.rating!==null)c[e.rating]=(c[e.rating]||0)+1});return Object.entries(c).sort(function(a,b){return parseFloat(a[0])-parseFloat(b[0])}).map(function(x){return{rating:x[0],count:x[1]}})},[efOnce]);
   var selFilms=useMemo(function(){return sR===null?[]:efOnce.filter(function(e){return e.rating===sR})},[efOnce,sR]);
-  var platD=useMemo(function(){return agg(ef,function(e){return gP(e.tags,fullReg)}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
-  var venD=useMemo(function(){var v={};ef.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var dn=getDn(vn,fullReg);if(!v[dn])v[dn]={c:0,s:0,r:0};v[dn].c++;if(e.rating!==null){v[dn].s+=e.rating;v[dn].r++}});return Object.keys(v).map(function(n){var d=v[n];return{name:n,Films:d.c,Avg:d.r?parseFloat((d.s/d.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[ef,fullReg]);
   // "How much of the 1990s have you seen" is a films question, so the ribbon and the decade
   // tile count films, not watches.
   var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
@@ -790,7 +788,7 @@ export default function Dashboard(){
 
   var renderTagRow=function(t,showCheck){var e=fullReg[t]||{};return <div key={t} className="flex items-center gap-2 py-1" style={{borderBottom:'0.5px solid '+N.border}}>{showCheck&&<input type="checkbox" checked={!!tagSel[t]} onChange={function(){sTagSel(function(p){var n=Object.assign({},p);n[t]=!n[t];return n})}} style={{accentColor:T.primary}}/>}<div className="flex-1 text-xs truncate min-w-0" title={t} style={{color:N.inkSoft}}>{t}</div><div className="text-xs w-8 text-right shrink-0" style={{color:N.mutedSoft}}>{allTagCounts[t]||0}</div>{isAdmin?<select className="text-xs w-28 shrink-0" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.inkSoft,padding:'2px 4px'}} value={e.cat||''} onChange={function(ev){doSetTag(t,ev.target.value)}}><option value="">—</option>{CATS.map(function(c){return <option key={c} value={c}>{CI[c].l}</option>})}</select>:<div className="text-xs w-28 shrink-0 text-right" style={{color:e.cat?N.inkSoft:N.mutedSoft}}>{e.cat?CI[e.cat].l:'—'}</div>}{isAdmin?<input className="text-xs w-28 shrink-0" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4,color:N.inkSoft,padding:'2px 4px'}} placeholder="Display name" value={e.dn||''} onChange={function(ev){doSetDn(t,ev.target.value)}}/>:<div className="text-xs w-28 shrink-0 text-right truncate" style={{color:N.muted}}>{e.dn||''}</div>}</div>};
 
-  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Taste'},{id:'rankings',l:'Rankings'},{id:'yesmine',l:'Yesmine'},{id:'where',l:'Where'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
+  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Taste'},{id:'rankings',l:'Rankings'},{id:'yesmine',l:'Yesmine'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
   // Tags is the only fully private tab — it is a raw editing surface with nothing to
   // read. Everything else is public, including Costs: that tab already splits itself,
   // showing the spend cards and graphs to everyone while keeping the subscription
@@ -814,8 +812,8 @@ export default function Dashboard(){
   var costView=<div className="space-y-6">
     <div className="flex gap-1 flex-wrap">{costYrs.map(function(y){return <button key={y} onClick={function(){sCostYr(y)}} style={costYr===y?{background:N.ink,border:'0.5px solid '+N.ink,borderRadius:4,color:N.paper,padding:'4px 10px',fontSize:11,fontWeight:500}:{background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,color:N.muted,padding:'4px 10px',fontSize:11}}>{y}</button>})}</div>
     {costYr==='All'?renderCostCards(allTimeTotals,'All Time'):costDataFilt.map(function(d){return <div key={d.yr}>{renderCostCards(d,d.yr)}</div>})}
-    {platRanking.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Platform value ranking" aside={<button onClick={function(){sRankMode(function(v){return v==='sub'?'plat':'sub'})}} style={btnSecondary}>{rankMode==='sub'?'Per subscription':'Per platform'}</button>}/><div className="space-y-1.5">{platRanking.map(function(d,i){var maxC=Math.max.apply(null,platRanking.map(function(r){return r.cpf}).concat([1]));return <div key={i} className="flex items-center gap-2"><span className="text-xs w-5 text-right" style={{color:N.mutedSoft,fontWeight:500}}>{i+1}</span><span className="text-xs w-20 md:w-32 truncate" style={{color:N.inkSoft}}>{d.name}</span><div className="flex-1 h-6 flex items-center" style={{background:N.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.cpf/maxC)*100,8)+'%',backgroundColor:d.color,borderRadius:4}}><span className="text-xs" style={{color:T.chartTextColor||NEUTRAL.ink,fontWeight:500}}>{'\u20AC'}{d.cpf.toFixed(2)}</span></div></div><span className="text-xs w-14 text-right" style={{color:N.muted}}>{d.films} films</span><span className="text-xs w-12 text-right font-mono" style={{color:NEUTRAL.ink}}>{d.avg?d.avg.toFixed(1)+'\u2605':'\u2014'}</span></div>})}</div></div>}
-    {cpfData.length>1&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Cost per film, over time"/><ResponsiveContainer width="100%" height={220}><LineChart data={cpfData}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="q" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.period}</div><div style={{color:T.primary}}>{'\u20AC'}{d.cpf.toFixed(2)}/film</div><div style={{color:N.muted}}>{d.films} films {'\u00B7'} {'\u20AC'}{d.cost.toFixed(0)} spent</div></div>}}/><Line type="monotone" dataKey="cpf" stroke={T.primary} strokeWidth={2} dot={{fill:T.primary,r:2}}/></LineChart></ResponsiveContainer></div>}
+    {platRanking.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Which platforms pay off" aside={<button onClick={function(){sRankMode(function(v){return v==='sub'?'plat':'sub'})}} style={btnSecondary}>{rankMode==='sub'?'Per subscription':'Per platform'}</button>}/><div className="space-y-1.5">{platRanking.map(function(d,i){var maxC=Math.max.apply(null,platRanking.map(function(r){return r.cpf}).concat([1]));return <div key={i} className="flex items-center gap-2"><span className="text-xs w-5 text-right" style={{color:N.mutedSoft,fontWeight:500}}>{i+1}</span><span className="text-xs w-20 md:w-32 truncate" style={{color:N.inkSoft}}>{d.name}</span><div className="flex-1 h-6 flex items-center" style={{background:N.surfaceAlt,borderRadius:4,overflow:'hidden'}}><div className="h-full flex items-center px-2" style={{width:Math.max((d.cpf/maxC)*100,8)+'%',backgroundColor:d.color,borderRadius:4}}><span className="text-xs" style={{color:T.chartTextColor||NEUTRAL.ink,fontWeight:500}}>{'\u20AC'}{d.cpf.toFixed(2)}</span></div></div><span className="text-xs w-14 text-right" style={{color:N.muted}}>{d.films} films</span><span className="text-xs w-12 text-right font-mono" style={{color:NEUTRAL.ink}}>{d.avg?d.avg.toFixed(1)+'\u2605':'\u2014'}</span></div>})}</div></div>}
+    {cpfData.length>1&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="The price of a film, over time"/><ResponsiveContainer width="100%" height={220}><LineChart data={cpfData}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="q" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.period}</div><div style={{color:T.primary}}>{'\u20AC'}{d.cpf.toFixed(2)}/film</div><div style={{color:N.muted}}>{d.films} films {'\u00B7'} {'\u20AC'}{d.cost.toFixed(0)} spent</div></div>}}/><Line type="monotone" dataKey="cpf" stroke={T.primary} strokeWidth={2} dot={{fill:T.primary,r:2}}/></LineChart></ResponsiveContainer></div>}
     {monthlyFilt.length>3&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Monthly spend"/><ResponsiveContainer width="100%" height={250}><BarChart data={monthlyFilt}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="m" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){return <CostTip {...p} T={N}/>}}/><Bar dataKey="subs" name="Subscriptions" stackId="a" fill={sc[0]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="tickets" name="Tickets" stackId="a" fill={sc[1]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="rentals" name="Rentals" stackId="a" fill={sc[2]} stroke={NEUTRAL.surface} strokeWidth={2}/></BarChart></ResponsiveContainer><div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[0],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Subscriptions</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Tickets</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rentals</span></div></div></div>})()}
   </div>;
 
@@ -868,7 +866,10 @@ export default function Dashboard(){
     {unclass>0&&!isAdmin&&<div className="p-3 mb-4 text-xs" style={{background:N.surface,border:'0.5px solid '+T.primary,borderRadius:4,color:T.secondary}}>{unclass} tags unclassified.</div>}
 
     {/* FILTER BAR */}
-    {['overview','ratings','where','who','yesmine','taste','films','rankings','diary'].indexOf(tab)!==-1&&<div className="flex flex-wrap items-center gap-3 mb-6">
+    {/* Only the tabs whose figures actually move with the filter. Rankings reads the yearly
+        Top 50 snapshots rather than the diary, so a year selector there was a control that
+        looked live and did nothing. 'ratings' and the rest were ids that stopped existing. */}
+    {['overview','yesmine','taste'].indexOf(tab)!==-1&&<div className="flex flex-wrap items-center gap-3 mb-6">
       <div className="flex gap-1 flex-wrap">{yrs.map(function(y){var active=yr===y;return <button key={y} onClick={function(){sYr(y);cls()}} style={active?{padding:'4px 10px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'4px 10px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{y}</button>})}</div>
       <button onClick={function(){sIRW(function(v){return!v});cls()}} style={iRW?{padding:'4px 10px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}:{padding:'4px 10px',fontSize:11,fontWeight:500,color:N.paper,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}}>{iRW?'Excl. rewatches':'Incl. rewatches'}</button>
       <div className="flex items-center gap-1"><input type="date" style={Object.assign({},inputStyle,{fontSize:11,padding:'4px 6px'})} value={dateFrom} onChange={function(e){sDateFrom(e.target.value)}}/><span className="text-xs" style={{color:N.mutedSoft}}>{"\u2192"}</span><input type="date" style={Object.assign({},inputStyle,{fontSize:11,padding:'4px 6px'})} value={dateTo} onChange={function(e){sDateTo(e.target.value)}}/>{(dateFrom||dateTo)&&<button onClick={function(){sDateFrom('');sDateTo('')}} className="text-xs" style={{color:N.muted}}>{"\u2715"}</button>}</div>
@@ -941,7 +942,7 @@ export default function Dashboard(){
 
       {/* CUMULATIVE */}
       <div>
-        <SectionHead T={N} title="Cumulative films, year over year"/>
+        <SectionHead T={N} title="The pace of a year, month by month"/>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={cumData.data}>
             <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -955,21 +956,6 @@ export default function Dashboard(){
       </div>
 
 
-    </div>}
-
-    {/* ===== WHERE ===== */}
-    {tab==='where'&&<div className="space-y-6">
-      {/* "In theaters" moved here from Overview — it is a venue question, not a volume one. */}
-      <div className="grid grid-cols-3" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
-        <Stat T={N} label="In theaters" value={stats.th} sub={stats.total?Math.round(stats.th/stats.total*100)+'% of films':''} yoy={yoy&&yoy.th!=null?fY(yoy.th,'pp'):null}/>
-        <Stat T={N} label="Platforms" value={platD.length} sub="distinct"/>
-        <Stat T={N} label="Venues" value={venD.length} sub="distinct" noBorder/>
-      </div>
-      {/* The Platforms and Theaters tables moved onto the taste map as their own sets, where
-          they get a rating axis instead of a rating column. What stays here is the pair of
-          figures the map cannot show: the theatre share of everything watched, and how many
-          distinct platforms and rooms are behind it. */}
-      <div className="text-xs" style={{color:N.muted}}>Both breakdowns are on the Taste tab now, as the map's Platforms and Theaters sets.</div>
     </div>}
 
     {/* ===== YESMINE ===== */}
@@ -1003,7 +989,7 @@ export default function Dashboard(){
           on the distribution instead. */}
       {/* RATING DISTRIBUTION — moved from Overview */}
       <div>
-        <SectionHead T={N} title="Rating distribution" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span></span>}/>
+        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span></span>}/>
         <ResponsiveContainer width="100%" height={230}>
           <BarChart data={rDist}>
             <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1022,7 +1008,7 @@ export default function Dashboard(){
           A continuous strip cannot: every decade from your earliest to your latest gets a
           slot, width carries the count, and the dashed gaps are the finding. */}
       <div>
-        <SectionHead T={N} title="Films by release decade" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a decade for the films</span>}/>
+        <SectionHead T={N} title="A century of film, decade by decade" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a decade for the films</span>}/>
         <div className="flex gap-1 items-stretch" style={{height:54}}>
           {decRibbon.map(function(d){var on=sDe===d.label,empty=d.Films===0;
             return <div key={d.dec} onClick={function(){if(!empty){sSDe(on?null:d.label);sSTg(null)}}}
@@ -1086,7 +1072,7 @@ export default function Dashboard(){
           Tags keeps its table: it is the one set that is not a partition of the collection. */}
       <div className="lg:w-2/3 mx-auto space-y-6">
       <div>
-        <SectionHead T={N} title="Rating lift by tag" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
+        <SectionHead T={N} title="What a tag is worth" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
         <div className="text-xs mb-3" style={{color:N.muted}}>How far the films carrying a tag sit from the overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
         <div className="space-y-1">
           {tagLift.rows.map(function(r){
@@ -1116,7 +1102,7 @@ export default function Dashboard(){
           the same run of panels. Deliberately ignores the year filter: a change of mind
           belongs to the whole history. */}
       <div className="pt-5" style={{borderTop:'1px solid '+N.borderStrong}}>
-        <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Revised ratings {'·'} all time</div>
+        <div style={{fontSize:10,letterSpacing:'0.2em',textTransform:'uppercase',color:N.muted}}>Second thoughts {'·'} all time</div>
         <div className="text-xs mt-1" style={{color:N.mutedSoft}}>The rating logged on the night, against the rating the film holds today</div>
       </div>
 
@@ -1134,7 +1120,7 @@ export default function Dashboard(){
         {/* SLOPE CHART — two dots and a line beat two bars: the reader sees direction and
             distance in one mark, and the rows sort by how much the mind moved. */}
         {revisions.rows.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Films whose rating changed" count={revisions.rows.length}/>
+          <SectionHead T={N} title="Changes of heart" count={revisions.rows.length}/>
           <div className="text-xs mb-3" style={{color:N.muted}}>Each line runs from the first rating logged to the rating held now. <span style={{color:MOVE_UP}}>Green climbed</span>, <span style={{color:MOVE_DOWN}}>orange fell</span>. The hollow dot is the original.</div>
           <div className="space-y-1">
             {revisions.rows.slice(0,revOpen?revisions.rows.length:12).map(function(r,i){
@@ -1159,7 +1145,7 @@ export default function Dashboard(){
         </div>}
 
         {revisions.pairs.length>2&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Rewatched films: first rating against latest" count={revisions.drift.length}/>
+          <SectionHead T={N} title="Does a second viewing help?" count={revisions.drift.length}/>
           <div className="text-xs mb-2" style={{color:N.muted}}>First rating across, most recent up, for every film rated more than once. Above the diagonal the rating rose on a rewatch; below it, it fell. Bigger dots hold more films.</div>
           <ResponsiveContainer width="100%" height={280}>
             <ScatterChart margin={{top:10,right:20,bottom:20,left:0}}>
@@ -1175,7 +1161,7 @@ export default function Dashboard(){
         </div>}
 
         {preDist.preN>0&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Rated but never logged" count={preDist.preN} aside={<span className="text-xs" style={{color:N.muted}}>{preDist.preAvg.toFixed(2)}{'★'} unlogged {'·'} {preDist.diaryAvg.toFixed(2)}{'★'} logged</span>}/>
+          <SectionHead T={N} title="The shelf before the diary" count={preDist.preN} aside={<span className="text-xs" style={{color:N.muted}}>{preDist.preAvg.toFixed(2)}{'★'} unlogged {'·'} {preDist.diaryAvg.toFixed(2)}{'★'} logged</span>}/>
           <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all — watched before the diary began. Plotted as a share of each set rather than a count, since the two are nowhere near the same size.</div>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={preDist.data}>
@@ -1191,7 +1177,7 @@ export default function Dashboard(){
         </div>})()}
 
         {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Rolling average rating" aside={<span className="text-xs" style={{color:N.muted}}>all-time mean {inflation.mean.toFixed(2)}{'★'}</span>}/>
+          <SectionHead T={N} title="Growing more generous?" aside={<span className="text-xs" style={{color:N.muted}}>all-time mean {inflation.mean.toFixed(2)}{'★'}</span>}/>
           <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} rated watches, in diary order. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line.</div>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={inflation.data}>
@@ -1212,29 +1198,35 @@ export default function Dashboard(){
       {top50Evo.years.length>0&&(function(){
         // One renderer, two tables. The year columns are identical in both; only the ordering
         // and what a missing rank means differ.
+        // Chronological for the arithmetic, reversed for the display: the current rank is what
+        // a reader looks for first, so it sits in the first column. Movement still compares a
+        // year against the one BEFORE it in time, not against the column to its left, which
+        // after the reversal is the year after.
         var yrs2=top50Evo.years;
+        var cols=yrs2.slice().reverse();
         var rows=function(list){return list.map(function(fi,i){
           var inLatest=fi.ranks[top50Evo.last]!==undefined;
           return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}>
             <td className="py-1.5" style={{color:N.inkSoft}}><span className="flex items-center gap-2"><Poster meta={gMeta(fi)} w={22}/>{fi.name} <span style={{color:N.muted}}>({fi.year})</span></span></td>
-            {yrs2.map(function(y,yi){
-              var r=fi.ranks[y],prev=yi>0?fi.ranks[yrs2[yi-1]]:null;
-              var move=r&&prev?(prev-r):null,isNew=r&&!prev&&yi>0,isOut=!r&&prev;
+            {cols.map(function(y){
+              var ci=yrs2.indexOf(y),py=ci>0?yrs2[ci-1]:null;
+              var r=fi.ranks[y],prev=py!==null?fi.ranks[py]:null;
+              var move=r&&prev?(prev-r):null,isNew=r&&!prev&&py!==null,isOut=!r&&prev;
               return <td key={y} className="py-1.5 text-center"><div className="flex items-center justify-center gap-0.5">
                 {r?<span style={{fontWeight:500,color:N.ink}}>{r}</span>:isOut?<span className="text-xs" style={{color:MOVE_DOWN}}>OUT</span>:<span style={{color:N.mutedSoft}}>{'\u2014'}</span>}
-                {r&&yi>0&&(isNew?<span className="ml-0.5" style={{fontSize:10,color:MOVE_NEW,fontWeight:500}}>NEW</span>
+                {r&&py!==null&&(isNew?<span className="ml-0.5" style={{fontSize:10,color:MOVE_NEW,fontWeight:500}}>NEW</span>
                   :move!==null?<span className="ml-0.5" style={{fontSize:10,color:move>0?MOVE_UP:move<0?MOVE_DOWN:N.mutedSoft}}>{move>0?'\u25B2'+move:move<0?'\u25BC'+Math.abs(move):'='}</span>:null)}
               </div></td>})}
             {!inLatest&&<td className="py-1.5 text-right whitespace-nowrap" style={{color:N.mutedSoft,fontSize:10}}>left at {'#'+fi.lastRank}</td>}
           </tr>})};
         var head=function(extra){return <thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}>
           <th className="text-left py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Film</th>
-          {yrs2.map(function(y){return <th key={y} className="text-center py-2" style={{width:80,fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>{y}</th>})}
+          {cols.map(function(y){return <th key={y} className="text-center py-2" style={{width:80,fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>{y}</th>})}
           {extra&&<th className="text-right py-2" style={{fontWeight:400,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase'}}>Last rank</th>}
         </tr></thead>};
         return <div className="space-y-8">
           <div>
-            <SectionHead T={N} title={'Top 50, all time'} count={top50Evo.current.length} aside={<span className="text-xs" style={{color:N.mutedSoft}}>{yrs2.join(' \u2192 ')}</span>}/>
+            <SectionHead T={N} title={'Top 50, all time'} count={top50Evo.current.length} aside={<span className="text-xs" style={{color:N.mutedSoft}}>latest year first</span>}/>
             <div className="overflow-x-auto"><div style={{minWidth:380}}><table className="w-full text-xs">{head(false)}<tbody>{rows(top50Evo.current)}</tbody></table></div></div>
           </div>
           {top50Evo.gone.length>0&&<div>
