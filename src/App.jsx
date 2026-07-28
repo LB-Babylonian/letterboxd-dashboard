@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, Component } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, Component } from "react";
 import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList } from "recharts";
 import { createClient } from "@supabase/supabase-js";
 // Supabase config comes from .env (see .env.example). Note that Vite inlines
@@ -410,8 +410,38 @@ function Stat(p){var T=p.T;var yoyColor=p.yoy?(p.yoy.charAt(0)==='+'?T.primary:p
 
 
 
-// FilmList — Selected film panel
-function FilmList(p){var T=p.T;if(!p.films||!p.films.length)return null;return <div className="mt-3 p-4" style={{background:NEUTRAL.surface,border:'0.5px solid '+T.primary,borderRadius:4}}><div className="flex justify-between items-center mb-2"><div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div><button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,borderRadius:4}}>{'\u2715'}</button></div><div className="max-h-72 overflow-y-auto">{p.films.map(function(f,i){return <div key={i} className="text-xs py-1.5 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span><span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span></div>})}</div></div>}
+// Every selection on the site opens its films through this: a calendar cell, a rating bar, a
+// dot on the map, a decade, a tag. It used to expand INLINE beneath the panel, which pushed
+// everything under it down the page and, for a chart low on a long tab, opened below the fold —
+// you clicked and nothing appeared to happen. As a modal the list arrives where the eye already
+// is, and dismissing it leaves the layout exactly as it was.
+//
+// Rewriting the component was enough; all five call sites pass the same props and needed no
+// change.
+function FilmList(p){
+  var open=!!(p.films&&p.films.length);
+  // onClose is an inline function at every call site, so a new one arrives each render. Held in
+  // a ref, the listener effect can depend on `open` alone rather than rebinding continuously.
+  var closeRef=useRef(p.onClose);closeRef.current=p.onClose;
+  useEffect(function(){
+    if(!open)return;
+    var h=function(e){if(e.key==='Escape')closeRef.current()};
+    window.addEventListener('keydown',h);
+    return function(){window.removeEventListener('keydown',h)};
+  },[open]);
+  if(!open)return null;
+  return <div onClick={p.onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.62)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px'}}>
+    <div onClick={function(e){e.stopPropagation()}} style={{background:NEUTRAL.surface,border:'1px solid '+NEUTRAL.borderStrong,borderRadius:6,width:'100%',maxWidth:560,maxHeight:'80vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 64px rgba(0,0,0,0.5)'}}>
+      <div className="flex justify-between items-baseline px-4 py-3" style={{borderBottom:'0.5px solid '+NEUTRAL.border,flex:'0 0 auto'}}>
+        <div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div>
+        <button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,border:'none',borderRadius:4,cursor:'pointer'}} title="Close — or press Escape">{'\u2715'}</button>
+      </div>
+      <div className="px-4 py-1" style={{overflowY:'auto'}}>
+        {p.films.map(function(f,i2){return <div key={i2} className="text-xs py-1.5 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span><span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span></div>})}
+      </div>
+    </div>
+  </div>;
+}
 
 // Profile picture. Drop the file at public/avatar.jpg and it appears; leave it out and
 // this renders nothing at all. Served from public/ rather than hotlinked from
