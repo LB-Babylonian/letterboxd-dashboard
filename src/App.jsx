@@ -1077,9 +1077,11 @@ export default function Dashboard(){
               <Avatar src={AVATAR_SRC} size={72} ring={T.primary}/>
               <span style={{fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:heroDescriptorC,fontFamily:fontLabel,whiteSpace:'nowrap'}}>Babylonian</span>
             </a>
-            <div>
+            {/* Centred in the space left of the supporting figures, and larger: the headline
+                number is the one thing on the page that should be visible across a room. */}
+            <div className="flex-1 text-center">
             <div style={{fontSize:10,letterSpacing:'0.22em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontFamily:fontLabel}}>{copyHeroLabel}{yr==='All'?' \u00b7 all time':' \u00b7 '+yr}</div>
-            <div style={{fontSize:'clamp(46px, 6vw, 72px)',lineHeight:1,fontWeight:600,color:heroMetricC,letterSpacing:'-0.035em',fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums',textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
+            <div style={{fontSize:'clamp(54px, 7vw, 88px)',lineHeight:1,fontWeight:600,color:heroMetricC,letterSpacing:'-0.035em',fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums',textShadow:T.glow?'0 0 24px '+T.glow+'66, 0 0 48px '+T.glow+'33':'none'}}>{stats.total}</div>
             {yoy&&yoy.films!=null&&<div style={{fontSize:12,color:heroSubC,fontFamily:fontLabel,marginTop:5}}>{copyHeroSuffix}</div>}
             </div>
           </div>
@@ -1485,13 +1487,34 @@ export default function Dashboard(){
 
         // What changed this year, as four counts. Fifty rows of arrows is a lot to add up by eye.
         var moves=top50Evo.current.map(moveOf);
+        // No "dropped out": the list is a fixed fifty, so departures always equal new entries
+        // and printing both said the same number twice.
         var summary=[
           {l:'climbed',n:moves.filter(function(m){return m.move>0}).length,c:MOVE_UP},
           {l:'slipped',n:moves.filter(function(m){return m.move<0}).length,c:MOVE_DOWN},
           {l:'new entries',n:moves.filter(function(m){return m.isNew}).length,c:MOVE_NEW},
-          {l:'unmoved',n:moves.filter(function(m){return m.move===0}).length,c:N.mutedSoft},
-          {l:'dropped out',n:top50Evo.gone.filter(function(f){return f.lastYear===prevYearOf(top50Evo.last)}).length,c:MOVE_DOWN}
+          {l:'unmoved',n:moves.filter(function(m){return m.move===0}).length,c:N.mutedSoft}
         ];
+
+        // The four films the year actually turned on. The summary counts how much moved; these
+        // name what moved furthest, which is the part worth reading.
+        var py=prevYearOf(top50Evo.last);
+        var moved=top50Evo.current.map(function(fi){return{fi:fi,m:moveOf(fi)}}).filter(function(x){return x.m.move!==null});
+        var climber=moved.filter(function(x){return x.m.move>0}).sort(function(a,b){return b.m.move-a.m.move})[0];
+        var faller=moved.filter(function(x){return x.m.move<0}).sort(function(a,b){return a.m.move-b.m.move})[0];
+        var entrant=top50Evo.current.filter(function(fi){return moveOf(fi).isNew})
+          .sort(function(a,b){return a.ranks[top50Evo.last]-b.ranks[top50Evo.last]})[0];
+        // Highest departure is measured from the rank it held last year, not the rank it once
+        // reached: what matters is how far up the list it was when it fell off.
+        var departed=py===null?null:top50Evo.gone.filter(function(f){return f.ranks[py]!==undefined})
+          .sort(function(a,b){return a.ranks[py]-b.ranks[py]})[0];
+        var titleOf=function(f){return f.name+' ('+f.year+')'};
+        var highlights=[
+          climber&&{l:'Biggest climber',v:'\u25B2'+climber.m.move,c:MOVE_UP,sub:titleOf(climber.fi),note:climber.m.prev+' \u2192 '+climber.m.r},
+          entrant&&{l:'Highest new entry',v:'#'+entrant.ranks[top50Evo.last],c:MOVE_NEW,sub:titleOf(entrant),note:'straight in'},
+          faller&&{l:'Biggest fall',v:'\u25BC'+Math.abs(faller.m.move),c:MOVE_DOWN,sub:titleOf(faller.fi),note:faller.m.prev+' \u2192 '+faller.m.r},
+          departed&&{l:'Highest departure',v:'#'+departed.ranks[py],c:NEUTRAL.mutedSoft,sub:titleOf(departed),note:'off the list'}
+        ].filter(Boolean);
 
         return <div className="space-y-8">
           <div>
@@ -1502,6 +1525,14 @@ export default function Dashboard(){
               <span>In {top50Evo.last}:</span>
               {summary.map(function(x){return <span key={x.l}><span style={{color:x.c,fontWeight:500}}>{x.n}</span> {x.l}</span>})}
             </div>
+            {highlights.length>0&&<div className="grid grid-cols-2 md:grid-cols-4 mb-5" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
+              {highlights.map(function(h,hi){return <div key={h.l} className="px-4 py-3" style={{borderRight:hi===highlights.length-1?'none':'0.5px solid '+N.border}}>
+                <div className="mb-1.5" style={{fontSize:9,letterSpacing:'0.15em',color:N.muted,textTransform:'uppercase'}}>{h.l}</div>
+                <div style={{fontSize:20,fontWeight:500,lineHeight:1,color:h.c,fontVariantNumeric:'tabular-nums'}}>{h.v}</div>
+                <div className="mt-1.5" style={{fontSize:11,color:N.inkSoft,lineHeight:1.35}}>{h.sub}</div>
+                <div style={{fontSize:10,color:N.mutedSoft,marginTop:2}}>{h.note}</div>
+              </div>})}
+            </div>}
             {/* Ten across, because 50 divides by it: five full rows rather than four and an
                 orphan. The crowding was mostly the gutter, so that doubles while the poster
                 itself only comes down a little. */}
