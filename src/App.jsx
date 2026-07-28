@@ -855,7 +855,7 @@ export default function Dashboard(){
     // it is the FIRST such point in that window: a rolling mean sits on plateaus, and without
     // the tie-break every point of a flat peak would be marked. Comparing only to immediate
     // neighbours would mark hundreds of one-step wiggles instead.
-    var R=W;
+    var R=W,extIdx=[];
     out.forEach(function(pt,i){
       var lo=Math.max(0,i-R),hi=Math.min(out.length-1,i+R),isMax=true,isMin=true,tie=false;
       for(var j=lo;j<=hi;j++){
@@ -864,9 +864,19 @@ export default function Dashboard(){
         if(out[j].avg<pt.avg)isMin=false;
         if(out[j].avg===pt.avg&&j<i)tie=true;
       }
-      if(!tie&&isMax!==isMin)pt.ext=isMax?'max':'min';
+      if(!tie&&isMax!==isMin){pt.ext=isMax?'max':'min';extIdx.push(i)}
     });
-    var extrema=out.filter(function(pt){return pt.ext});
+    // Nothing is drawn for these. They exist so the cursor can REACH them: at roughly two
+    // points per pixel, hitting the exact top of a peak by hand is not possible, so every
+    // point within SNAP of a turning point resolves to it — the tooltip reports the peak and
+    // the click opens the peak's window. Away from one, the hovered point answers for itself.
+    var SNAP=8;
+    extIdx.forEach(function(ei){
+      var lo=Math.max(0,ei-SNAP),hi=Math.min(out.length-1,ei+SNAP);
+      for(var j=lo;j<=hi;j++){var cur=out[j].snap;
+        if(cur==null||Math.abs(j-ei)<Math.abs(j-cur))out[j].snap=ei}
+    });
+    var extrema=extIdx.map(function(i){return out[i]});
     return{data:out,rated:rated,extrema:extrema,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
   },[all]);
 
@@ -1014,8 +1024,12 @@ export default function Dashboard(){
 
   // One modal for every drill-down. Each panel just hands it a title and a list of films.
   var drillModal=<FilmList T={N} title={drill?drill.title:null} films={drill?drill.films:[]} onClose={function(){sDrill(null)}}/>;
+  // Resolves a hovered point to the nearby turning point, if there is one. A peak is a single
+  // point on a line carrying two per pixel; without this it can be seen but not landed on.
+  var snapExt=function(d){return(d&&d.snap!=null&&inflation.data[d.snap])?inflation.data[d.snap]:d};
   // The 50 ratings behind a point on the rolling average, newest first.
-  var openDrillWindow=function(d){
+  var openDrillWindow=function(raw){
+    var d=snapExt(raw);
     if(!d||d.i==null)return;
     openDrill('The '+inflation.w+' ratings up to '+d.date,inflation.rated.slice(Math.max(0,d.i-inflation.w+1),d.i+1).slice().reverse());
   };
@@ -1093,7 +1107,8 @@ export default function Dashboard(){
               <XAxis type="number" dataKey="cpf" domain={[0,xhi]} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return '€'+v.toFixed(0)}} label={{value:'cost per film',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
               <YAxis type="number" dataKey="avg" domain={[ylo,yhi]} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'average rating',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
               <ZAxis dataKey="films" range={[60,420]}/>
-              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;
+                var raw=pp.payload[0].payload,d=snapExt(raw);
                 var cheap=d.cpf<=mx,good=d.avg>=my;
                 return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}>
                   <div style={{color:N.ink,fontWeight:500}}>{d.name}</div>
@@ -1575,7 +1590,7 @@ export default function Dashboard(){
 
         {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Growing more generous?" aside={<span className="text-xs" style={{color:N.muted}}>mean of every rating given, {inflation.mean.toFixed(2)}{'★'}</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line. This is the one panel counted per watch at the rating typed on the night, because the question is how the scoring itself moved -- which is why its mean sits above the {statsOnce.avg.toFixed(2)}{'★'} quoted elsewhere, where each film counts once at today's score. The dots are the turning points: <span style={{color:VIZ_GOOD}}>local peaks</span> and <span style={{color:NEG}}>local lows</span>, each the highest or lowest point within {inflation.w} ratings either side.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line. This is the one panel counted per watch at the rating typed on the night, because the question is how the scoring itself moved -- which is why its mean sits above the {statsOnce.avg.toFixed(2)}{'★'} quoted elsewhere, where each film counts once at today's score. Hovering near a turning point snaps to it, so the tooltip reads the exact peak or trough rather than a neighbour a pixel away.</div>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={inflation.data} onClick={function(st){
               // Two ways in, because a Line reports the series rather than a point. The chart state
@@ -1597,8 +1612,7 @@ export default function Dashboard(){
                 </div>}}/>
               <ReferenceLine y={inflation.mean} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2}
-                dot={function(dp){var d=dp&&dp.payload;if(!d||!d.ext)return null;
-                  return <circle key={'x'+d.i} cx={dp.cx} cy={dp.cy} r={3.4} fill={d.ext==='max'?VIZ_GOOD:NEG} stroke={NEUTRAL.paper} strokeWidth={1.2}/>}}
+                dot={false}
                 activeDot={{r:4,fill:VIZ_MARK,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
             </LineChart>
           </ResponsiveContainer>
