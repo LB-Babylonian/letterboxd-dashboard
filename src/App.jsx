@@ -1589,7 +1589,7 @@ export default function Dashboard(){
 
         {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Growing more generous?" aside={<span className="text-xs" style={{color:N.muted}}>mean of every rating given, {inflation.mean.toFixed(2)}{'★'}</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line. This is the one panel counted per watch at the rating typed on the night, because the question is how the scoring itself moved -- which is why its mean sits above the {statsOnce.avg.toFixed(2)}{'★'} quoted elsewhere, where each film counts once at today's score. Hovering near a turning point snaps to it, so the tooltip reads the exact peak or trough rather than a neighbour a pixel away.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged.</div>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={inflation.data} onClick={function(st){
               // Two ways in, because a Line reports the series rather than a point. The chart state
