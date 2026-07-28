@@ -1098,7 +1098,7 @@ export default function Dashboard(){
       var yhi=pts.length?Math.min(5,Math.ceil(Math.max.apply(null,ys)*4)/4+0.2):5;
       return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
         <SectionHead T={N} title="Price against quality" count={pts.length} aside={<button onClick={function(){sRankMode(function(v){return v==='sub'?'plat':'sub'})}} style={btnSecondary}>{rankMode==='sub'?'Per subscription':'Per platform'}</button>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>What each film cost across, how it was rated up. Bottom right is cheap and good; top left is dear and mediocre. The crosshair is the median of each. Dot size is the number of films.</div>
+        <div className="text-xs mb-3" style={{color:N.muted}}>What each film cost across, how it was rated up. Bottom right is cheap and good; top left is dear and mediocre. The crosshair is the median of each. Dot size is the number of films. Click a dot for its films.</div>
         {pts.length<3?<div className="text-xs py-6 text-center" style={{color:N.mutedSoft}}>Not enough priced platforms to plot yet.</div>:<div>
           <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>Cheap · rated higher</span><span>Dear · rated higher</span></div>
           <ResponsiveContainer width="100%" height={320}>
@@ -1254,7 +1254,7 @@ export default function Dashboard(){
 
       {/* HEATMAP */}
       <div>
-        <SectionHead T={N} title="The viewing calendar" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a cell to see the films</span>}/>
+        <SectionHead T={N} title="The viewing calendar" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a cell for its films</span>}/>
         <div className="overflow-x-auto"><div style={{minWidth:380}}>
           <div className="flex items-center mb-1"><div style={{width:36}}/>{MS.map(function(m,i){return <div key={i} className="flex-1 text-center" style={{fontSize:10,color:N.muted,letterSpacing:'0.05em'}}>{m}</div>})}</div>
           {hmData.years.map(function(y){var isCurrentYr=yr===y;return <div key={y} className="flex items-center gap-1 mb-1" style={isCurrentYr?{outline:'1px solid '+T.primary,borderRadius:4,padding:'1px'}:{}}><div style={{width:36,fontSize:10,color:N.muted,textAlign:'right',paddingRight:8}}>{y}</div>{hmData.grid[y].map(function(c,m){var iS=selHM&&selHM.yr===y&&selHM.mo===m;var bgColor=hmColor(c,hmData.max);return <div key={m} onClick={function(){sSelHM(c>0?(iS?null:{yr:y,mo:m}):null)}} className={'flex-1 flex items-center justify-center '+(c>0?'cursor-pointer':'')} style={{height:26,background:bgColor,color:c>0?textOn(bgColor):'transparent',borderRadius:4,outline:iS?'1.5px solid '+N.ink:'none'}}><span style={{fontSize:10,fontWeight:500}}>{c>0?c:''}</span></div>})}</div>})}
@@ -1311,7 +1311,7 @@ export default function Dashboard(){
             the size of the argument and the side says who liked it more. */}
         <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Two verdicts, one film" count={yAnalysis.n}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>Babylonian across, Yesmine up. On the dashed line the two agreed exactly; above it Yesmine liked it more, below it Babylonian did. Bigger dots hold more films.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>Babylonian across, Yesmine up. On the dashed line the two agreed exactly; above it Yesmine liked it more, below it Babylonian did. Bigger dots hold more films. Click a dot for its films.</div>
           <ResponsiveContainer width="100%" height={300}>
             <ScatterChart margin={{top:10,right:18,bottom:22,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1330,7 +1330,7 @@ export default function Dashboard(){
             apart or a handful of blazing rows. This says which. */}
         <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Size of the disagreement" aside={<span className="text-xs" style={{color:N.muted}}>{yAnalysis.same} exact ties</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>Yesmine's rating minus Babylonian's. Bars left of zero are films Babylonian rated higher ({yAnalysis.bHigher}), right are Yesmine ({yAnalysis.yHigher}).</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>Yesmine's rating minus Babylonian's. Bars left of zero are films Babylonian rated higher ({yAnalysis.bHigher}), right are Yesmine ({yAnalysis.yHigher}). Click a bar for its films.</div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={yAnalysis.dist}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1359,11 +1359,11 @@ export default function Dashboard(){
         var gmax=Math.max.apply(null,yAnalysis.genres.map(function(g){return Math.abs(g.gap)}).concat([0.2]));
         return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Where the two part company" count={yAnalysis.genres.length} aside={<span className="text-xs" style={{color:N.muted}}>overall {(yAnalysis.bias>0?'+':'')+yAnalysis.bias.toFixed(2)}</span>}/>
-          <div className="text-xs mb-3" style={{color:N.muted}}>Average gap by genre, Yesmine minus Babylonian, for genres with five or more shared films. Right of the line Yesmine is the more generous of the two.</div>
+          <div className="text-xs mb-3" style={{color:N.muted}}>Average gap by genre, Yesmine minus Babylonian, for genres with five or more shared films. Right of the line Yesmine is the more generous of the two. Click a row for its films.</div>
           <div className="space-y-1">
             {yAnalysis.genres.map(function(g){
               var pos=g.gap>=0,c=pos?VIZ_SERIES[2]:VIZ_MARK,w=Math.abs(g.gap)/gmax*50;
-              return <div key={g.name} className="flex items-center gap-2 cursor-pointer" title={g.n+' shared films — click to list them'}
+              return <div key={g.name} className="flex items-center gap-2 cursor-pointer" title={g.n+' shared films'}
                 onClick={function(){openDrill(g.name+' \u00b7 '+(g.gap>=0?'+':'')+g.gap.toFixed(2)+' Yesmine',g.films)}}>
                 <div className="w-24 md:w-32 text-xs text-right truncate" style={{color:N.inkSoft}}>{g.name}</div>
                 <div className="w-8 text-xs text-right" style={{color:N.mutedSoft}}>{g.n}</div>
@@ -1391,7 +1391,7 @@ export default function Dashboard(){
           on the distribution instead. */}
       {/* RATING DISTRIBUTION — moved from Overview */}
       <div>
-        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span></span>}/>
+        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span> {'\u00B7'} <span style={{fontStyle:'italic',color:N.mutedSoft}}>click a bar for its films</span></span>}/>
         <ResponsiveContainer width="100%" height={230}>
           <BarChart data={rDist}>
             <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1410,7 +1410,7 @@ export default function Dashboard(){
           A continuous strip cannot: every decade from your earliest to your latest gets a
           slot, width carries the count, and the dashed gaps are the finding. */}
       <div>
-        <SectionHead T={N} title="A century of film, decade by decade" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a decade for the films</span>}/>
+        <SectionHead T={N} title="A century of film, decade by decade" aside={<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>click a decade for its films</span>}/>
         <div className="flex gap-1 items-stretch" style={{height:54}}>
           {decRibbon.map(function(d){var on=sDe===d.label,empty=d.Films===0;
             return <div key={d.dec} onClick={function(){if(!empty){sSDe(on?null:d.label);sSTg(null)}}}
@@ -1554,7 +1554,7 @@ export default function Dashboard(){
 
         {revisions.pairs.length>2&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Does a second viewing help?" count={revisions.drift.length}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>First rating across, most recent up, for every film rated more than once. Above the diagonal the rating rose on a rewatch; below it, it fell. Bigger dots hold more films.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>First rating across, most recent up, for every film rated more than once. Above the diagonal the rating rose on a rewatch; below it, it fell. Bigger dots hold more films. Click a dot for its films.</div>
           <ResponsiveContainer width="100%" height={280}>
             <ScatterChart margin={{top:10,right:20,bottom:20,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1571,7 +1571,7 @@ export default function Dashboard(){
 
         {preDist.preN>0&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="The shelf before the diary" count={preDist.preN} aside={<span className="text-xs" style={{color:N.muted}}>{preDist.preAvg.toFixed(2)}{'★'} unlogged {'·'} {preDist.diaryAvg.toFixed(2)}{'★'} logged</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all, watched before the diary began.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all, watched before the diary began. Click either bar for its films.</div>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={preDist.data}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1589,7 +1589,7 @@ export default function Dashboard(){
 
         {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Growing more generous?" aside={<span className="text-xs" style={{color:N.muted}}>mean of every rating given, {inflation.mean.toFixed(2)}{'★'}</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. Click a point for the {inflation.w} behind it.</div>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={inflation.data} onClick={function(st){
               // Two ways in, because a Line reports the series rather than a point. The chart state
