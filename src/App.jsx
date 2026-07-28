@@ -1107,8 +1107,7 @@ export default function Dashboard(){
               <XAxis type="number" dataKey="cpf" domain={[0,xhi]} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return '€'+v.toFixed(0)}} label={{value:'cost per film',position:'insideBottom',offset:-14,fill:N.mutedSoft,fontSize:10}}/>
               <YAxis type="number" dataKey="avg" domain={[ylo,yhi]} width={46} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}} label={{value:'average rating',angle:-90,position:'insideLeft',offset:16,fill:N.mutedSoft,fontSize:10}}/>
               <ZAxis dataKey="films" range={[60,420]}/>
-              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;
-                var raw=pp.payload[0].payload,d=snapExt(raw);
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;
                 var cheap=d.cpf<=mx,good=d.avg>=my;
                 return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}>
                   <div style={{color:N.ink,fontWeight:500}}>{d.name}</div>
@@ -1604,7 +1603,10 @@ export default function Dashboard(){
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
               <XAxis dataKey="d" tick={{fill:N.muted,fontSize:9}} interval={Math.max(0,Math.floor(inflation.data.length/8))} angle={-45} textAnchor="end" height={46}/>
               <YAxis domain={[function(v){return Math.floor(v*10)/10-0.05},function(v){return Math.ceil(v*10)/10+0.05}]} width={40} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}}/>
-              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;
+                // Report the turning point when the cursor is near one; snapExt returns the
+                // hovered point untouched everywhere else.
+                var d=snapExt(pp.payload[0].payload);
                 return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:260}}>
                   <div style={{color:d.ext?(d.ext==='max'?VIZ_GOOD:NEG):N.ink,fontWeight:500}}>{d.avg.toFixed(2)}{'\u2605'} rolling average{d.ext?(d.ext==='max'?' \u00b7 local peak':' \u00b7 local low'):''}</div>
                   <div style={{color:N.muted,marginTop:2}}>after {d.name} ({d.year}) {'\u00b7'} {d.date}</div>
