@@ -841,13 +841,33 @@ export default function Dashboard(){
   // the shape; 50 is wide enough that one generous week does not move the line.
   var inflation=useMemo(function(){
     var rated=all.filter(function(e){return e.rating!==null}).slice().sort(function(a,b){return a.date<b.date?-1:1});
-    var W=50;if(rated.length<W+10)return{data:[],rated:[],mean:0,w:W};
+    var W=50;if(rated.length<W+10)return{data:[],rated:[],extrema:[],mean:0,w:W};
     // One point per rating rather than per month, each carrying its index so the window behind
     // it can be listed on click, and the exact date so the tooltip is not limited to a month.
     var out=[],sum=0;
     for(var i=0;i<rated.length;i++){sum+=rated[i].rating;if(i>=W)sum-=rated[i-W].rating;
       if(i>=W-1)out.push({i:i,d:rated[i].date.slice(0,7),date:rated[i].date,name:rated[i].name,year:rated[i].year,rating:rated[i].rating,avg:sum/W})}
-    return{data:out,rated:rated,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
+    // Local peaks and troughs, marked so they can be seen and hovered. The line carries a point
+    // per rating — roughly two per pixel — so without markers the turning points are unhittable
+    // with a cursor and effectively invisible.
+    //
+    // A point qualifies when it is the highest (or lowest) in a window of +/-W either side, and
+    // it is the FIRST such point in that window: a rolling mean sits on plateaus, and without
+    // the tie-break every point of a flat peak would be marked. Comparing only to immediate
+    // neighbours would mark hundreds of one-step wiggles instead.
+    var R=W;
+    out.forEach(function(pt,i){
+      var lo=Math.max(0,i-R),hi=Math.min(out.length-1,i+R),isMax=true,isMin=true,tie=false;
+      for(var j=lo;j<=hi;j++){
+        if(j===i)continue;
+        if(out[j].avg>pt.avg)isMax=false;
+        if(out[j].avg<pt.avg)isMin=false;
+        if(out[j].avg===pt.avg&&j<i)tie=true;
+      }
+      if(!tie&&isMax!==isMin)pt.ext=isMax?'max':'min';
+    });
+    var extrema=out.filter(function(pt){return pt.ext});
+    return{data:out,rated:rated,extrema:extrema,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
   },[all]);
 
   // ============================================================
@@ -1555,7 +1575,7 @@ export default function Dashboard(){
 
         {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Growing more generous?" aside={<span className="text-xs" style={{color:N.muted}}>mean of every rating given, {inflation.mean.toFixed(2)}{'★'}</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line. This is the one panel counted per watch at the rating typed on the night, because the question is how the scoring itself moved -- which is why its mean sits above the {statsOnce.avg.toFixed(2)}{'★'} quoted elsewhere, where each film counts once at today's score.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line. This is the one panel counted per watch at the rating typed on the night, because the question is how the scoring itself moved -- which is why its mean sits above the {statsOnce.avg.toFixed(2)}{'★'} quoted elsewhere, where each film counts once at today's score. The dots are the turning points: <span style={{color:VIZ_GOOD}}>local peaks</span> and <span style={{color:NEG}}>local lows</span>, each the highest or lowest point within {inflation.w} ratings either side.</div>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={inflation.data} onClick={function(st){
               // Two ways in, because a Line reports the series rather than a point. The chart state
@@ -1571,12 +1591,15 @@ export default function Dashboard(){
               <YAxis domain={[function(v){return Math.floor(v*10)/10-0.05},function(v){return Math.ceil(v*10)/10+0.05}]} width={40} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}}/>
               <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;
                 return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:260}}>
-                  <div style={{color:N.ink,fontWeight:500}}>{d.avg.toFixed(2)}{'\u2605'} rolling average</div>
+                  <div style={{color:d.ext?(d.ext==='max'?VIZ_GOOD:NEG):N.ink,fontWeight:500}}>{d.avg.toFixed(2)}{'\u2605'} rolling average{d.ext?(d.ext==='max'?' \u00b7 local peak':' \u00b7 local low'):''}</div>
                   <div style={{color:N.muted,marginTop:2}}>after {d.name} ({d.year}) {'\u00b7'} {d.date}</div>
                   <div style={{color:N.mutedSoft,marginTop:2}}>that film scored {d.rating}{'\u2605'} {'\u00b7'} click for the {inflation.w} behind this point</div>
                 </div>}}/>
               <ReferenceLine y={inflation.mean} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2} dot={false} activeDot={{r:4,fill:VIZ_MARK,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
+              <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2}
+                dot={function(dp){var d=dp&&dp.payload;if(!d||!d.ext)return null;
+                  return <circle key={'x'+d.i} cx={dp.cx} cy={dp.cy} r={3.4} fill={d.ext==='max'?VIZ_GOOD:NEG} stroke={NEUTRAL.paper} strokeWidth={1.2}/>}}
+                activeDot={{r:4,fill:VIZ_MARK,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
             </LineChart>
           </ResponsiveContainer>
         </div>}
