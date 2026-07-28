@@ -1571,7 +1571,7 @@ export default function Dashboard(){
 
         {preDist.preN>0&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="The shelf before the diary" count={preDist.preN} aside={<span className="text-xs" style={{color:N.muted}}>{preDist.preAvg.toFixed(2)}{'★'} unlogged {'·'} {preDist.diaryAvg.toFixed(2)}{'★'} logged</span>}/>
-          <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all — watched before the diary began. Plotted as a share of each set rather than a count, since the two are nowhere near the same size.</div>
+          <div className="text-xs mb-2" style={{color:N.muted}}>{preDist.preN} films carry a rating but no diary entry at all, watched before the diary began.</div>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={preDist.data}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
