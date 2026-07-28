@@ -880,6 +880,10 @@ export default function Dashboard(){
     var present=Object.keys(by).map(Number);if(!present.length)return[];
     var lo=Math.min.apply(null,present),hi=Math.max.apply(null,present),out=[];
     for(var d=lo;d<=hi;d+=10){var e=by[d];out.push({dec:d,label:d+'s',Films:e?e.Films:0,Avg:e?e.Avg:0})}
+    // Share of the collection. The width already encodes it, but a width cannot be read to a
+    // number, and "a third of everything is from the 2020s" is the sentence this chart is for.
+    var tot=out.reduce(function(a,x){return a+x.Films},0);
+    out.forEach(function(x){x.pct=tot?x.Films/tot*100:0});
     return out;
   },[decD]);
   // The list is a snapshot per year, so a film is either on the current one or it fell off.
@@ -1301,7 +1305,7 @@ export default function Dashboard(){
         <div className="flex gap-1 items-stretch" style={{height:54}}>
           {decRibbon.map(function(d){var on=sDe===d.label,empty=d.Films===0;
             return <div key={d.dec} onClick={function(){if(!empty){sSDe(on?null:d.label);sSTg(null)}}}
-              title={empty?d.label+' — nothing watched':d.label+' — '+d.Films+' films'+(d.Avg?', '+d.Avg.toFixed(2)+'★':'')}
+              title={empty?d.label+' — nothing watched':d.label+' — '+d.Films+' films, '+d.pct.toFixed(1)+'% of the collection'+(d.Avg?', '+d.Avg.toFixed(2)+'★':'')}
               style={{flexGrow:d.Films,flexBasis:empty?0:0,minWidth:empty?20:36,cursor:empty?'default':'pointer',
                 background:empty?'transparent':VIZ_MARK,opacity:empty?1:(sDe&&!on?0.3:1),
                 border:empty?'0.5px dashed '+N.borderStrong:'none',borderRadius:4,
@@ -1311,7 +1315,13 @@ export default function Dashboard(){
               {!empty&&d.Avg>0&&<span style={{fontSize:9,marginTop:2,opacity:0.8,color:textOn(VIZ_MARK)}}>{d.Avg.toFixed(1)}{'★'}</span>}
             </div>})}
         </div>
-        <div className="flex gap-1 mt-1">{decRibbon.map(function(d){var empty=d.Films===0;return <div key={d.dec} className="text-center" style={{flexGrow:d.Films,flexBasis:0,minWidth:empty?20:36,fontSize:9,color:empty?N.mutedSoft:N.muted,whiteSpace:'nowrap',overflow:'hidden'}}>{empty?'’'+String(d.dec).slice(2):d.label}</div>})}</div>
+        {/* The share sits in the label row rather than inside the segment: at 36px, the narrow
+            decades have no room for a third line, but "2%" always fits. Anything under one per
+            cent reads as "<1%" instead of a row of 0.1s that would all look identical. */}
+        <div className="flex gap-1 mt-1">{decRibbon.map(function(d){var empty=d.Films===0;return <div key={d.dec} className="text-center" style={{flexGrow:d.Films,flexBasis:0,minWidth:empty?20:36,fontSize:9,color:empty?N.mutedSoft:N.muted,whiteSpace:'nowrap',overflow:'hidden'}}>
+          <div>{empty?'’'+String(d.dec).slice(2):d.label}</div>
+          {!empty&&<div style={{color:N.inkSoft,fontWeight:500,marginTop:1}}>{d.pct<1?'<1%':Math.round(d.pct)+'%'}</div>}
+        </div>})}</div>
       </div>
       <FilmList T={N} title={sDe} films={decF} onClose={function(){sSDe(null)}}/>
 
