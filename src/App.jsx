@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, Component } from "react";
-import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList } from "recharts";
+import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ReferenceDot, LabelList } from "recharts";
 import { createClient } from "@supabase/supabase-js";
 // Supabase config comes from .env (see .env.example). Note that Vite inlines
 // VITE_* values into the production bundle — these are NOT secrets and must not
@@ -540,7 +540,7 @@ export default function Dashboard(){
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
-  var[saving,sSaving]=useState(false);var[showSubs,sShowSubs]=useState(false);var[drill,sDrill]=useState(null);var[rankMode,sRankMode]=useState('sub');
+  var[saving,sSaving]=useState(false);var[showSubs,sShowSubs]=useState(false);var[drill,sDrill]=useState(null);var[rollHover,sRollHover]=useState(null);var[rankMode,sRankMode]=useState('sub');
   var[filmMeta,sFilmMeta]=useState({});var[yRatings,sYRatings]=useState({});var[allRatings,sAllRatings]=useState([]);var[top50s,sTop50s]=useState([]);
   // Theme system: randomly pick at mount, persist in localStorage, avoid immediate repeat
   var[themeId,sThemeId]=useState(function(){try{var saved=localStorage.getItem('dashboard_theme_explicit');if(saved&&THEMES.find(function(t){return t.id===saved}))return saved;return 'neutral'}catch(e){return 'neutral'}});
@@ -846,7 +846,7 @@ export default function Dashboard(){
     // it can be listed on click, and the exact date so the tooltip is not limited to a month.
     var out=[],sum=0;
     for(var i=0;i<rated.length;i++){sum+=rated[i].rating;if(i>=W)sum-=rated[i-W].rating;
-      if(i>=W-1)out.push({i:i,d:rated[i].date.slice(0,7),date:rated[i].date,name:rated[i].name,year:rated[i].year,rating:rated[i].rating,avg:sum/W})}
+      if(i>=W-1)out.push({x:out.length,i:i,d:rated[i].date.slice(0,7),date:rated[i].date,name:rated[i].name,year:rated[i].year,rating:rated[i].rating,avg:sum/W})}
     // Local peaks and troughs, marked so they can be seen and hovered. The line carries a point
     // per rating — roughly two per pixel — so without markers the turning points are unhittable
     // with a cursor and effectively invisible.
@@ -1599,11 +1599,17 @@ export default function Dashboard(){
               var d=(st&&st.activePayload&&st.activePayload[0]&&st.activePayload[0].payload)
                 ||(st&&st.activeTooltipIndex!=null?inflation.data[st.activeTooltipIndex]:null);
               if(d)openDrillWindow(d);
-            }} style={{cursor:'pointer'}}>
+            }}
+            onMouseMove={function(st){sRollHover(st&&st.activeTooltipIndex!=null?st.activeTooltipIndex:null)}}
+            onMouseLeave={function(){sRollHover(null)}} style={{cursor:'pointer'}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
-              <XAxis dataKey="d" tick={{fill:N.muted,fontSize:9}} interval={Math.max(0,Math.floor(inflation.data.length/8))} angle={-45} textAnchor="end" height={46}/>
+              {/* Numeric, keyed on the point's own index. The axis still prints months, but a
+                  category axis with 766 duplicate labels cannot address one point, and placing a
+                  marker on the exact peak needs exactly that. */}
+              <XAxis type="number" dataKey="x" domain={['dataMin','dataMax']} tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={46}
+                tickFormatter={function(v){var pt=inflation.data[Math.round(v)];return pt?pt.d:''}}/>
               <YAxis domain={[function(v){return Math.floor(v*10)/10-0.05},function(v){return Math.ceil(v*10)/10+0.05}]} width={40} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}}/>
-              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;
+              <Tooltip cursor={false} content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;
                 // Report the turning point when the cursor is near one; snapExt returns the
                 // hovered point untouched everywhere else.
                 var d=snapExt(pp.payload[0].payload);
@@ -1615,7 +1621,14 @@ export default function Dashboard(){
               <ReferenceLine y={inflation.mean} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2}
                 dot={false}
-                activeDot={{r:4,fill:VIZ_MARK,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
+                activeDot={{r:9,fillOpacity:0,strokeOpacity:0,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
+              {/* The marker sits on whatever the tooltip is describing — the snapped turning point,
+                  or the hovered point itself. recharts' own active dot stays but is invisible and
+                  only carries the click, because it can only be drawn at the cursor: leaving it
+                  visible is what put the orange dot beside the peak the text was naming. */}
+              {rollHover!=null&&inflation.data[rollHover]&&(function(){var sp=snapExt(inflation.data[rollHover]);
+                return <ReferenceDot x={sp.x} y={sp.avg} r={4.5} isFront
+                  fill={sp.ext?(sp.ext==='max'?VIZ_GOOD:NEG):VIZ_MARK} stroke={NEUTRAL.paper} strokeWidth={1.5}/>})()}
             </LineChart>
           </ResponsiveContainer>
         </div>}
