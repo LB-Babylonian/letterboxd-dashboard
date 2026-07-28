@@ -389,7 +389,37 @@ function aggMulti(films,keysOf){
   return Object.keys(m).map(function(n){var v=m[n];return{name:n,Films:v.c,Avg:v.r?parseFloat((v.s/v.r).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films});
 }
 function getWeekMon(ds){var d=new Date(ds+'T12:00:00');var day=d.getDay();d.setDate(d.getDate()-(day===0?6:day-1));return d.toISOString().slice(0,10)}
-function calcStreaks(films){var dates=Array.from(new Set(films.map(function(e){return e.date}))).sort();if(!dates.length)return{day:0,week:0,wr:''};var ds=new Set(dates),last=dates[dates.length-1],dayS=0,cd=new Date(last+'T12:00:00');while(ds.has(cd.toISOString().slice(0,10))){dayS++;cd.setDate(cd.getDate()-1)}var weeks=new Set(dates.map(function(d){return getWeekMon(d)})),weekS=0,cm=new Date(getWeekMon(last)+'T12:00:00');while(weeks.has(cm.toISOString().slice(0,10))){weekS++;cm.setDate(cm.getDate()-7)}var ws=new Date(cm);ws.setDate(ws.getDate()+7);var we=new Date(getWeekMon(last)+'T12:00:00');we.setDate(we.getDate()+6);var wr='';if(weekS>0){var a=ws.toISOString().slice(0,10).split('-').map(Number),b=we.toISOString().slice(0,10).split('-').map(Number);wr=MS[a[1]-1]+' '+a[2]+', '+a[0]+' \u2013 '+MS[b[1]-1]+' '+b[2]+', '+b[0]}return{day:dayS,week:weekS,wr:wr}}
+// Day and week streaks. The week figure the hero shows is the LONGEST run, not the current
+// one: today they are the same 217 weeks, but a label that says "current" becomes wrong the
+// first week a film is missed, and the interesting fact about a four-year run is its length.
+//
+// Steps by calendar weeks rather than comparing timestamps. Two Mondays a week apart are not
+// 7x24h across a DST change — they are 167 or 169 hours — so an arithmetic comparison silently
+// breaks every run at the March and October transitions.
+function calcStreaks(films){
+  var dates=Array.from(new Set(films.map(function(e){return e.date}))).sort();
+  if(!dates.length)return{day:0,week:0,wr:'',longest:0,lwr:''};
+  var ds=new Set(dates),last=dates[dates.length-1];
+  var dayS=0,cd=new Date(last+'T12:00:00');
+  while(ds.has(cd.toISOString().slice(0,10))){dayS++;cd.setDate(cd.getDate()-1)}
+  var shift=function(iso,n){var d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+  var weekList=Array.from(new Set(dates.map(function(d){return getWeekMon(d)}))).sort();
+  var weeks=new Set(weekList);
+  // current run, counting back from the most recent week
+  var weekS=0,cm=getWeekMon(last);
+  while(weeks.has(cm)){weekS++;cm=shift(cm,-7)}
+  // longest run: start only at weeks with no predecessor, then walk forward
+  var best=0,bs=null,be=null;
+  weekList.forEach(function(w){
+    if(weeks.has(shift(w,-7)))return;
+    var n=1,c=w;
+    while(weeks.has(shift(c,7))){n++;c=shift(c,7)}
+    if(n>best){best=n;bs=w;be=c}
+  });
+  var fmt=function(a,b){if(!a)return'';var x=a.split('-').map(Number),y=shift(b,6).split('-').map(Number);
+    return MS[x[1]-1]+' '+x[2]+', '+x[0]+' \u2013 '+MS[y[1]-1]+' '+y[2]+', '+y[0]};
+  return{day:dayS,week:weekS,wr:fmt(shift(getWeekMon(last),-(weekS-1)),getWeekMon(last)),longest:best,lwr:fmt(bs,be)};
+}
 function calcWrapped(all,reg){return Array.from(new Set(all.map(function(e){return e.date.slice(0,4)}))).sort().map(function(yr){var f=all.filter(function(e){return e.date.indexOf(yr)===0}),rated=f.filter(function(e){return e.rating!==null}),avg=rated.length?rated.reduce(function(s,e){return s+e.rating},0)/rated.length:0;var cc={};f.forEach(function(e){gC(e.tags,reg).forEach(function(n){cc[n]=(cc[n]||0)+1})});var topC=null,topCC=0;Object.keys(cc).forEach(function(n){if(cc[n]>topCC){topCC=cc[n];topC=n}});var mc={};f.forEach(function(e){mc[e.date.slice(5,7)]=(mc[e.date.slice(5,7)]||0)+1});var topMo=null,topMC=0;Object.keys(mc).forEach(function(m){if(mc[m]>topMC){topMC=mc[m];topMo=m}});var thN=f.filter(function(e){return gP(e.tags,reg)==='Theater'||gV(e.tags,reg)!==null}).length;return{yr:yr,total:f.length,avg:avg,topC:topC,topCC:topCC,topMo:topMo?MF[parseInt(topMo)-1]:null,topMC:topMC,thPct:f.length?Math.round(thN/f.length*100):0}})}
 // Only the things that make a COST wrong. The unrated-films list and the sub-venue-premium
 // list were inventories rather than problems: a film can simply be unrated, and a price on a
@@ -510,7 +540,7 @@ export default function Dashboard(){
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
-  var[saving,sSaving]=useState(false);var[expYrs,sExpYrs]=useState({});var[rankMode,sRankMode]=useState('sub');
+  var[saving,sSaving]=useState(false);var[showSubs,sShowSubs]=useState(false);var[drill,sDrill]=useState(null);var[rankMode,sRankMode]=useState('sub');
   var[filmMeta,sFilmMeta]=useState({});var[yRatings,sYRatings]=useState({});var[allRatings,sAllRatings]=useState([]);var[top50s,sTop50s]=useState([]);
   // Theme system: randomly pick at mount, persist in localStorage, avoid immediate repeat
   var[themeId,sThemeId]=useState(function(){try{var saved=localStorage.getItem('dashboard_theme_explicit');if(saved&&THEMES.find(function(t){return t.id===saved}))return saved;return 'neutral'}catch(e){return 'neutral'}});
@@ -624,6 +654,12 @@ export default function Dashboard(){
   // Average rating over WATCH rows, each at its film's current score. The Costs tab's unit has
   // to stay the watch -- a second ticket is a second payment -- but the rating it reports should
   // come from the same place as every other rating on the site.
+  // Watch rows re-stamped with each film's current rating, so a drill-down list shows the same
+  // numbers the panel above it averaged.
+  var withCur=useCallback(function(rows){
+    return (rows||[]).map(function(e){var c=currentRatings[normName(e.name)+'|||'+e.year];
+      return c?Object.assign({},e,{rating:c.rating}):e});
+  },[currentRatings]);
   var avgCur=useCallback(function(rows){
     var sum=0,n=0;
     rows.forEach(function(e){var c=currentRatings[normName(e.name)+'|||'+e.year];var v=c?c.rating:e.rating;
@@ -728,13 +764,13 @@ export default function Dashboard(){
     pairs.forEach(function(_,i){cov+=(b[i]-mb)*(y[i]-my);vb+=Math.pow(b[i]-mb,2);vy+=Math.pow(y[i]-my,2)});
     var r=(vb&&vy)?cov/Math.sqrt(vb*vy):null;
     // Identical (x,y) pairs stack on one pixel, so collapse and size the dot by how many.
-    var cells={};pairs.forEach(function(f){var k=f.rating+'|'+f.yRating;if(!cells[k])cells[k]={x:f.rating,y:f.yRating,n:0,films:[]};cells[k].n++;cells[k].films.push(f.name)});
-    var buckets={};pairs.forEach(function(f){buckets[f.signed]=(buckets[f.signed]||0)+1});
-    var dist=Object.keys(buckets).map(Number).sort(function(a,c){return a-c}).map(function(d){return{d:d,label:(d>0?'+':'')+d.toFixed(1),count:buckets[d]}});
+    var cells={};pairs.forEach(function(f){var k=f.rating+'|'+f.yRating;if(!cells[k])cells[k]={x:f.rating,y:f.yRating,n:0,films:[],names:[]};cells[k].n++;cells[k].names.push(f.name);cells[k].films.push(f)});
+    var buckets={};pairs.forEach(function(f){if(!buckets[f.signed])buckets[f.signed]=[];buckets[f.signed].push(f)});
+    var dist=Object.keys(buckets).map(Number).sort(function(a,c){return a-c}).map(function(d){return{d:d,label:(d>0?'+':'')+d.toFixed(1),count:buckets[d].length,films:buckets[d]}});
     // Where the two of them part company. A floor of 5 shared films, because one thriller
     // neither liked is not a pattern.
-    var g={};pairs.forEach(function(f){var m=gMeta(f);if(!m||!m.genres)return;m.genres.split(', ').forEach(function(x){if(x){if(!g[x])g[x]=[];g[x].push(f.signed)}})});
-    var genres=Object.keys(g).filter(function(k){return g[k].length>=5}).map(function(k){return{name:k,n:g[k].length,gap:mean(g[k])}}).sort(function(a,c){return c.gap-a.gap});
+    var g={};pairs.forEach(function(f){var m=gMeta(f);if(!m||!m.genres)return;m.genres.split(', ').forEach(function(x){if(x){if(!g[x])g[x]=[];g[x].push(f)}})});
+    var genres=Object.keys(g).filter(function(k){return g[k].length>=5}).map(function(k){return{name:k,n:g[k].length,gap:mean(g[k].map(function(f){return f.signed})),films:g[k]}}).sort(function(a,c){return c.gap-a.gap});
     return{pairs:pairs,n:pairs.length,r:r,bias:mean(pairs.map(function(f){return f.signed})),
       // Averaged over the paired films only, both of them. Taking his across all 127 shared
       // films while hers came from the 114 she scored numerically put two averages side by
@@ -765,7 +801,7 @@ export default function Dashboard(){
       var f=diaryByFilm[k],w=f.watches,first=w[0].rating,lastLogged=w[w.length-1].rating;
       // No row in ratings.csv means nothing was re-scored, so the last logged rating stands.
       var cur=currentRatings[k]?currentRatings[k].rating:lastLogged;
-      if(w.length>1)drift.push({name:f.name,year:f.year,first:first,last:lastLogged,delta:lastLogged-first,watches:w.length});
+      if(w.length>1)drift.push({name:f.name,year:f.year,first:first,last:lastLogged,delta:lastLogged-first,watches:w.length,date:w[w.length-1].date});
       if(Math.abs(cur-first)>=0.01)rows.push({name:f.name,year:f.year,from:first,to:cur,delta:cur-first,
         how:(w.length>1&&Math.abs(lastLogged-first)>=0.01)?'rewatched':'re-scored'});
     });
@@ -774,7 +810,8 @@ export default function Dashboard(){
     var down=rows.filter(function(r){return r.delta<0}).sort(function(a,b){return a.delta-b.delta});
     // Identical (first,last) pairs land on the same pixel, so collapse them and size the
     // dot by how many films sit there — otherwise the scatter reads as ten dots, not 80.
-    var pairs={};drift.forEach(function(d){var pk=d.first+'|'+d.last;if(!pairs[pk])pairs[pk]={x:d.first,y:d.last,n:0,films:[]};pairs[pk].n++;pairs[pk].films.push(d.name)});
+    var pairs={};drift.forEach(function(d){var pk=d.first+'|'+d.last;if(!pairs[pk])pairs[pk]={x:d.first,y:d.last,n:0,films:[],names:[]};pairs[pk].n++;pairs[pk].names.push(d.name);
+      pairs[pk].films.push({name:d.name,year:d.year,rating:d.last,date:d.date})});
     // Keyed off every diary film, not just the rated ones. diaryByFilm holds only films with a
     // rating, so four films that were logged and left unrated were counted as never logged --
     // which is a different claim, and it moved the average.
@@ -792,20 +829,25 @@ export default function Dashboard(){
     // The diary side used each film's FIRST logged rating while the unlogged side used the
     // current one, so the two bars were measuring different things and the gap was overstated
     // by 0.05. Both are current ratings now, one row per film, all time.
-    var dN=0;allOnce.forEach(function(e){if(e.rating!==null&&dC[e.rating]!==undefined){dC[e.rating]++;dN++}});
-    var pN=0;revisions.preDiary.forEach(function(f){if(pC[f.rating]!==undefined){pC[f.rating]++;pN++}});
+    // Each bucket keeps its films so a bar can be opened.
+    var dF={},pF={};buckets.forEach(function(r){dF[r]=[];pF[r]=[]});
+    var dN=0;allOnce.forEach(function(e){if(e.rating!==null&&dC[e.rating]!==undefined){dC[e.rating]++;dN++;dF[e.rating].push(e)}});
+    var pN=0;revisions.preDiary.forEach(function(f){if(pC[f.rating]!==undefined){pC[f.rating]++;pN++;pF[f.rating].push(f)}});
     var dS=0,pS=0;buckets.forEach(function(r){dS+=r*dC[r];pS+=r*pC[r]});
-    return{data:buckets.map(function(r){return{rating:String(r),logged:dN?dC[r]/dN*100:0,pre:pN?pC[r]/pN*100:0}}),
+    return{data:buckets.map(function(r){return{rating:String(r),logged:dN?dC[r]/dN*100:0,pre:pN?pC[r]/pN*100:0,loggedFilms:dF[r],preFilms:pF[r],loggedN:dC[r],preN:pC[r]}}),
       diaryN:dN,preN:pN,diaryAvg:dN?dS/dN:0,preAvg:pN?pS/pN:0};
   },[allOnce,revisions]);
   // Rolling mean over the last 50 rated watches, in diary order. A per-year average hides
   // the shape; 50 is wide enough that one generous week does not move the line.
   var inflation=useMemo(function(){
     var rated=all.filter(function(e){return e.rating!==null}).slice().sort(function(a,b){return a.date<b.date?-1:1});
-    var W=50;if(rated.length<W+10)return{data:[],mean:0,w:W};
+    var W=50;if(rated.length<W+10)return{data:[],rated:[],mean:0,w:W};
+    // One point per rating rather than per month, each carrying its index so the window behind
+    // it can be listed on click, and the exact date so the tooltip is not limited to a month.
     var out=[],sum=0;
-    for(var i=0;i<rated.length;i++){sum+=rated[i].rating;if(i>=W)sum-=rated[i-W].rating;if(i>=W-1)out.push({d:rated[i].date.slice(0,7),avg:sum/W})}
-    return{data:out,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
+    for(var i=0;i<rated.length;i++){sum+=rated[i].rating;if(i>=W)sum-=rated[i-W].rating;
+      if(i>=W-1)out.push({i:i,d:rated[i].date.slice(0,7),date:rated[i].date,name:rated[i].name,year:rated[i].year,rating:rated[i].rating,avg:sum/W})}
+    return{data:out,rated:rated,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
   },[all]);
 
   // ============================================================
@@ -913,20 +955,20 @@ export default function Dashboard(){
   var costData=useMemo(function(){var now=getNowYM();return Array.from(new Set(all.map(function(e){return e.date.slice(0,4)}))).sort().map(function(y){
     var films=all.filter(function(e){return e.date.indexOf(y)===0});var st=0,sbk=[];subscriptions.forEach(function(sub){sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var pTo=pr.to||now,yS=y+'-01',yE=y+'-12',eF=pr.from>yS?pr.from:yS,eT=pTo<yE?pTo:yE;if(eF>eT)return;var mo=mBt(eF,eT),co=mo*pr.price;st+=co;sbk.push({name:sub.name,mo:mo,price:pr.price,cost:co})})});
     var tt=0,tc=0,rt=0,rc=0;films.forEach(function(e){var vn=gV(e.tags,fullReg);if(vn&&getCat(vn,fullReg)==='sub_venue'&&!isSubCovAt(e.date,subscriptions)){var p=gTP(e.tags,fullReg);if(p!==null){tt+=p;tc++}}if(vn&&getCat(vn,fullReg)==='indie_venue'){var p2=gTP(e.tags,fullReg);if(p2!==null){tt+=p2;tc++}}if(vn&&getCat(vn,fullReg)==='sub_venue'&&isSubCovAt(e.date,subscriptions)){var p3=gTP(e.tags,fullReg);if(p3!==null){tt+=p3;tc++}}if(e.tags.some(function(t){return getCat(t,fullReg)==='platform_rental'})){var p4=gTP(e.tags,fullReg);if(p4!==null){rt+=p4;rc++}}});
-    var platRows=[];subscriptions.forEach(function(sub){var subCost=0;sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var pTo=pr.to||now,yS=y+'-01',yE=y+'-12',eF=pr.from>yS?pr.from:yS,eT=pTo<yE?pTo:yE;if(eF>eT)return;subCost+=mBt(eF,eT)*pr.price});if(sub.platforms.indexOf('_theater_sub')!==-1){var covF=films.filter(function(e){var vn=gV(e.tags,fullReg);return vn&&getCat(vn,fullReg)==='sub_venue'&&isSubCovAt(e.date,subscriptions)});if(covF.length>0)platRows.push({plat:'Sub Theaters',films:covF.length,sub:sub.name,cost:subCost,cpf:subCost/covF.length})}else{var subFC=films.filter(function(e){return e.tags.some(function(t){return sub.platforms.indexOf(t)!==-1})}).length;var cpf=subFC?subCost/subFC:0;sub.platforms.forEach(function(pt){var cnt=films.filter(function(e){return e.tags.indexOf(pt)!==-1}).length;if(cnt>0)platRows.push({plat:getDn(pt,fullReg),films:cnt,sub:sub.name,cost:cpf*cnt,cpf:cpf})})}});
-    var renF=films.filter(function(e){return e.tags.some(function(t){return getCat(t,fullReg)==='platform_rental'})});var renC=0;renF.forEach(function(e){var p=gTP(e.tags,fullReg);if(p!==null)renC+=p});if(renF.length)platRows.push({plat:'Rental',films:renF.length,sub:'Per use',cost:renC,cpf:renC/renF.length});
-    var tkAll=[],tkC=0;films.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var cat=getCat(vn,fullReg);if(cat==='indie_venue'||(cat==='sub_venue'&&!isSubCovAt(e.date,subscriptions))){tkAll.push(e);var p=gTP(e.tags,fullReg);if(p!==null)tkC+=p}});if(tkAll.length&&tkC>0)platRows.push({plat:'Theaters (per ticket)',films:tkAll.length,sub:'Per ticket',cost:tkC,cpf:tkC/tkAll.length});
-    var tot=st+tt+rt;return{yr:y,films:films.length,st:st,sbk:sbk,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,pf:films.length?tot/films.length:0,platRows:platRows}})},[all,subscriptions,fullReg]);
+    var tot=st+tt+rt;return{yr:y,films:films.length,st:st,sbk:sbk,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,pf:films.length?tot/films.length:0}})},[all,subscriptions,fullReg]);
   // Theatre visits with no price tag, for whichever year the Costs tab is showing. dq is
   // all-time, so it has to be narrowed here or the pill would contradict the cards beside it.
   var noPriceCost=useMemo(function(){return costYr==='All'?dq.nP:dq.nP.filter(function(e){return e.date.indexOf(costYr)===0})},[dq,costYr]);
   var costDataFilt=useMemo(function(){return costYr==='All'?costData:costData.filter(function(d){return d.yr===costYr})},[costData,costYr]);
-  var allTimeTotals=useMemo(function(){var st=0,tt=0,tc=0,rt=0,rc=0,fn=0,pr=[];costData.forEach(function(d){st+=d.st;tt+=d.tt;tc+=d.tc;rt+=d.rt;rc+=d.rc;fn+=d.films;d.platRows.forEach(function(r){var ex=pr.find(function(x){return x.plat===r.plat});if(ex){ex.cost+=r.cost;ex.films+=r.films}else{pr.push({plat:r.plat,films:r.films,sub:r.sub,cost:r.cost})}})});pr.forEach(function(r){r.cpf=r.films?r.cost/r.films:0});var tot=st+tt+rt;return{st:st,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,films:fn,pf:fn?tot/fn:0,platRows:pr}},[costData]);
+  // The per-platform rows are gone with the breakdown table they fed. "Which platforms pay
+  // off" answers the same question on two axes, and it is built from platRankSub/platRankPlat,
+  // so nothing here ever fed it.
+  var allTimeTotals=useMemo(function(){var st=0,tt=0,tc=0,rt=0,rc=0,fn=0;costData.forEach(function(d){st+=d.st;tt+=d.tt;tc+=d.tc;rt+=d.rt;rc+=d.rc;fn+=d.films});var tot=st+tt+rt;return{st:st,tt:tt,tc:tc,rt:rt,rc:rc,tot:tot,films:fn,pf:fn?tot/fn:0}},[costData]);
   var monthlySpend=useMemo(function(){if(!all.length)return[];var now=getNowYM();var months=[];var first=all[0].date.slice(0,7),last=all[all.length-1].date.slice(0,7);var cur=first;while(cur<=last){months.push(cur);var p=cur.split('-').map(Number);p[1]++;if(p[1]>12){p[0]++;p[1]=1}cur=p[0]+'-'+String(p[1]).padStart(2,'0')}return months.map(function(ym){var sc=subCostForMonth(ym,subscriptions);var mF=all.filter(function(e){return e.date.slice(0,7)===ym});var tk=0,rl=0;mF.forEach(function(e){var vn=gV(e.tags,fullReg);if(vn){var pr=gTP(e.tags,fullReg);if(pr!==null)tk+=pr}if(e.tags.some(function(t){return getCat(t,fullReg)==='platform_rental'})){var p2=gTP(e.tags,fullReg);if(p2!==null)rl+=p2}});return{m:MS[parseInt(ym.slice(5))-1]+' '+ym.slice(2,4),ym:ym,subs:sc,tickets:tk,rentals:rl,total:sc+tk+rl}})},[all,subscriptions,fullReg]);
   var monthlyFilt=useMemo(function(){if(costYr==='All')return monthlySpend;return monthlySpend.filter(function(m){return m.ym.indexOf(costYr)===0})},[monthlySpend,costYr]);
   var cpfData=useMemo(function(){var src=monthlyFilt;if(src.length<2)return[];var cs=costYr==='All'?3:1;var res=[];for(var i=0;i<src.length;i+=cs){var ch=src.slice(i,i+cs);var cost=ch.reduce(function(s,m){return s+m.total},0);var fl=ch[0].m,ll=ch[ch.length-1].m;var fc=0;ch.forEach(function(m){fc+=all.filter(function(e){return e.date.slice(0,7)===m.ym}).length});res.push({q:fl,period:cs===1?fl:fl+' \u2013 '+ll,cost:cost,films:fc,cpf:fc?cost/fc:0})}return res},[monthlyFilt,all,costYr]);
-  var platRankSub=useMemo(function(){var now=getNowYM();var src=costYr==='All'?all:all.filter(function(e){return e.date.indexOf(costYr)===0});var rows=[];subscriptions.forEach(function(sub){var tc=0;sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var to=pr.to||now;if(costYr!=='All'){var yS=costYr+'-01',yE=costYr+'-12',eF=pr.from>yS?pr.from:yS,eT=to<yE?to:yE;if(eF>eT)return;tc+=mBt(eF,eT)*pr.price}else{tc+=mBt(pr.from,to)*pr.price}});var covF=src.filter(function(e){var ym=e.date.slice(0,7);var inP=sub.periods.some(function(pr){if(!pr.from)return false;return ym>=pr.from&&ym<=(pr.to||now)});if(!inP)return false;if(sub.platforms.indexOf('_theater_sub')!==-1){var vn=gV(e.tags,fullReg);return vn&&getCat(vn,fullReg)==='sub_venue'}return e.tags.some(function(t){return sub.platforms.indexOf(t)!==-1})});if(covF.length>0&&tc>0)rows.push({name:sub.name,cost:tc,films:covF.length,cpf:tc/covF.length,avg:avgCur(covF)})});var rc=0,rn=0,rF=[];src.forEach(function(e){if(e.tags.some(function(t){return getCat(t,fullReg)==='platform_rental'})){rn++;rF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)rc+=p}});if(rn>0&&rc>0)rows.push({name:'Rental',cost:rc,films:rn,cpf:rc/rn,avg:avgCur(rF)});var tkF=[],tkC=0;src.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var cat=getCat(vn,fullReg);if(cat==='indie_venue'||(cat==='sub_venue'&&!isSubCovAt(e.date,subscriptions))){tkF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)tkC+=p}});if(tkF.length&&tkC>0)rows.push({name:'Theaters (per ticket)',cost:tkC,films:tkF.length,cpf:tkC/tkF.length,avg:avgCur(tkF)});return rows.map(function(r,i){return Object.assign({},r,{color:T.primary})}).sort(function(a,b){return a.cpf-b.cpf})},[all,subscriptions,fullReg,costYr,T.primary,avgCur]);
-  var platRankPlat=useMemo(function(){var now=getNowYM();var src=costYr==="All"?all:all.filter(function(e){return e.date.indexOf(costYr)===0});var pm={};paidPlatTags.forEach(function(pt){var dn=getDn(pt,fullReg);if(!pm[dn])pm[dn]={films:[],cost:0};src.filter(function(e){if(e.tags.indexOf(pt)===-1)return false;return subscriptions.some(function(sub){if(sub.platforms.indexOf(pt)===-1)return false;return sub.periods.some(function(pr){if(!pr.from)return false;return e.date.slice(0,7)>=pr.from&&e.date.slice(0,7)<=(pr.to||now)})})}).forEach(function(e){if(pm[dn].films.indexOf(e)===-1)pm[dn].films.push(e)})});subscriptions.forEach(function(sub){sub.platforms.forEach(function(pt){if(pt==="_theater_sub")return;var dn=getDn(pt,fullReg);if(!pm[dn])return;var sc=0;sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var to=pr.to||now;if(costYr!=="All"){var yS=costYr+"-01",yE=costYr+"-12",eF=pr.from>yS?pr.from:yS,eT=to<yE?to:yE;if(eF>eT)return;sc+=mBt(eF,eT)*pr.price}else{sc+=mBt(pr.from,to)*pr.price}});var ac=src.filter(function(e){return e.tags.some(function(t){return sub.platforms.indexOf(t)!==-1})&&sub.periods.some(function(pr){if(!pr.from)return false;return e.date.slice(0,7)>=pr.from&&e.date.slice(0,7)<=(pr.to||now)})}).length;if(ac>0){var pc=pm[dn].films.filter(function(e){return sub.periods.some(function(pr){if(!pr.from)return false;return e.date.slice(0,7)>=pr.from&&e.date.slice(0,7)<=(pr.to||now)})}).length;pm[dn].cost+=(pc/ac)*sc}})});var subThF=src.filter(function(e){var vn=gV(e.tags,fullReg);return vn&&getCat(vn,fullReg)==="sub_venue"&&isSubCovAt(e.date,subscriptions)});var subThC=0;subscriptions.forEach(function(sub){if(sub.platforms.indexOf("_theater_sub")===-1)return;sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var to=pr.to||now;if(costYr!=="All"){var yS=costYr+"-01",yE=costYr+"-12",eF=pr.from>yS?pr.from:yS,eT=to<yE?to:yE;if(eF>eT)return;subThC+=mBt(eF,eT)*pr.price}else{subThC+=mBt(pr.from,to)*pr.price}})});if(subThF.length>0&&subThC>0)pm["Sub Theaters"]={films:subThF,cost:subThC};var tkF=[],tkC=0;src.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var cat=getCat(vn,fullReg);if(cat==="indie_venue"||(cat==="sub_venue"&&!isSubCovAt(e.date,subscriptions))){tkF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)tkC+=p}});if(tkF.length&&tkC>0)pm["Theaters (per ticket)"]={films:tkF,cost:tkC};var rF=[],rC2=0;src.forEach(function(e){if(e.tags.some(function(t){return getCat(t,fullReg)==="platform_rental"})){rF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)rC2+=p}});if(rF.length&&rC2>0)pm["Rental"]={films:rF,cost:rC2};return Object.keys(pm).filter(function(n){return pm[n].cost>0&&pm[n].films.length>0}).map(function(n,i){var d=pm[n];return{name:n,cost:d.cost,films:d.films.length,cpf:d.cost/d.films.length,avg:avgCur(d.films),color:T.primary}}).sort(function(a,b){return a.cpf-b.cpf})},[all,subscriptions,fullReg,costYr,paidPlatTags,T.primary,avgCur]);
+  var platRankSub=useMemo(function(){var now=getNowYM();var src=costYr==='All'?all:all.filter(function(e){return e.date.indexOf(costYr)===0});var rows=[];subscriptions.forEach(function(sub){var tc=0;sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var to=pr.to||now;if(costYr!=='All'){var yS=costYr+'-01',yE=costYr+'-12',eF=pr.from>yS?pr.from:yS,eT=to<yE?to:yE;if(eF>eT)return;tc+=mBt(eF,eT)*pr.price}else{tc+=mBt(pr.from,to)*pr.price}});var covF=src.filter(function(e){var ym=e.date.slice(0,7);var inP=sub.periods.some(function(pr){if(!pr.from)return false;return ym>=pr.from&&ym<=(pr.to||now)});if(!inP)return false;if(sub.platforms.indexOf('_theater_sub')!==-1){var vn=gV(e.tags,fullReg);return vn&&getCat(vn,fullReg)==='sub_venue'}return e.tags.some(function(t){return sub.platforms.indexOf(t)!==-1})});if(covF.length>0&&tc>0)rows.push({name:sub.name,cost:tc,films:covF.length,cpf:tc/covF.length,rows:covF,avg:avgCur(covF)})});var rc=0,rn=0,rF=[];src.forEach(function(e){if(e.tags.some(function(t){return getCat(t,fullReg)==='platform_rental'})){rn++;rF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)rc+=p}});if(rn>0&&rc>0)rows.push({name:'Rental',cost:rc,films:rn,cpf:rc/rn,rows:rF,avg:avgCur(rF)});var tkF=[],tkC=0;src.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var cat=getCat(vn,fullReg);if(cat==='indie_venue'||(cat==='sub_venue'&&!isSubCovAt(e.date,subscriptions))){tkF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)tkC+=p}});if(tkF.length&&tkC>0)rows.push({name:'Theaters (per ticket)',cost:tkC,films:tkF.length,cpf:tkC/tkF.length,rows:tkF,avg:avgCur(tkF)});return rows.map(function(r,i){return Object.assign({},r,{color:T.primary})}).sort(function(a,b){return a.cpf-b.cpf})},[all,subscriptions,fullReg,costYr,T.primary,avgCur]);
+  var platRankPlat=useMemo(function(){var now=getNowYM();var src=costYr==="All"?all:all.filter(function(e){return e.date.indexOf(costYr)===0});var pm={};paidPlatTags.forEach(function(pt){var dn=getDn(pt,fullReg);if(!pm[dn])pm[dn]={films:[],cost:0};src.filter(function(e){if(e.tags.indexOf(pt)===-1)return false;return subscriptions.some(function(sub){if(sub.platforms.indexOf(pt)===-1)return false;return sub.periods.some(function(pr){if(!pr.from)return false;return e.date.slice(0,7)>=pr.from&&e.date.slice(0,7)<=(pr.to||now)})})}).forEach(function(e){if(pm[dn].films.indexOf(e)===-1)pm[dn].films.push(e)})});subscriptions.forEach(function(sub){sub.platforms.forEach(function(pt){if(pt==="_theater_sub")return;var dn=getDn(pt,fullReg);if(!pm[dn])return;var sc=0;sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var to=pr.to||now;if(costYr!=="All"){var yS=costYr+"-01",yE=costYr+"-12",eF=pr.from>yS?pr.from:yS,eT=to<yE?to:yE;if(eF>eT)return;sc+=mBt(eF,eT)*pr.price}else{sc+=mBt(pr.from,to)*pr.price}});var ac=src.filter(function(e){return e.tags.some(function(t){return sub.platforms.indexOf(t)!==-1})&&sub.periods.some(function(pr){if(!pr.from)return false;return e.date.slice(0,7)>=pr.from&&e.date.slice(0,7)<=(pr.to||now)})}).length;if(ac>0){var pc=pm[dn].films.filter(function(e){return sub.periods.some(function(pr){if(!pr.from)return false;return e.date.slice(0,7)>=pr.from&&e.date.slice(0,7)<=(pr.to||now)})}).length;pm[dn].cost+=(pc/ac)*sc}})});var subThF=src.filter(function(e){var vn=gV(e.tags,fullReg);return vn&&getCat(vn,fullReg)==="sub_venue"&&isSubCovAt(e.date,subscriptions)});var subThC=0;subscriptions.forEach(function(sub){if(sub.platforms.indexOf("_theater_sub")===-1)return;sub.periods.forEach(function(pr){if(!pr.from||!pr.price)return;var to=pr.to||now;if(costYr!=="All"){var yS=costYr+"-01",yE=costYr+"-12",eF=pr.from>yS?pr.from:yS,eT=to<yE?to:yE;if(eF>eT)return;subThC+=mBt(eF,eT)*pr.price}else{subThC+=mBt(pr.from,to)*pr.price}})});if(subThF.length>0&&subThC>0)pm["Sub Theaters"]={films:subThF,cost:subThC};var tkF=[],tkC=0;src.forEach(function(e){var vn=gV(e.tags,fullReg);if(!vn)return;var cat=getCat(vn,fullReg);if(cat==="indie_venue"||(cat==="sub_venue"&&!isSubCovAt(e.date,subscriptions))){tkF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)tkC+=p}});if(tkF.length&&tkC>0)pm["Theaters (per ticket)"]={films:tkF,cost:tkC};var rF=[],rC2=0;src.forEach(function(e){if(e.tags.some(function(t){return getCat(t,fullReg)==="platform_rental"})){rF.push(e);var p=gTP(e.tags,fullReg);if(p!==null)rC2+=p}});if(rF.length&&rC2>0)pm["Rental"]={films:rF,cost:rC2};return Object.keys(pm).filter(function(n){return pm[n].cost>0&&pm[n].films.length>0}).map(function(n,i){var d=pm[n];return{name:n,cost:d.cost,films:d.films.length,cpf:d.cost/d.films.length,rows:d.films,avg:avgCur(d.films),color:T.primary}}).sort(function(a,b){return a.cpf-b.cpf})},[all,subscriptions,fullReg,costYr,paidPlatTags,T.primary,avgCur]);
   var platRanking=rankMode==='sub'?platRankSub:platRankPlat;
 
   // ============================================================
@@ -950,6 +992,15 @@ export default function Dashboard(){
   var PRIVATE_TABS=['tags'];
   var TABS=isAdmin?TABS_ALL:TABS_ALL.filter(function(t){return PRIVATE_TABS.indexOf(t.id)===-1});
 
+  // One modal for every drill-down. Each panel just hands it a title and a list of films.
+  var drillModal=<FilmList T={N} title={drill?drill.title:null} films={drill?drill.films:[]} onClose={function(){sDrill(null)}}/>;
+  // The 50 ratings behind a point on the rolling average, newest first.
+  var openDrillWindow=function(d){
+    if(!d||d.i==null)return;
+    openDrill('The '+inflation.w+' ratings up to '+d.date,inflation.rated.slice(Math.max(0,d.i-inflation.w+1),d.i+1).slice().reverse());
+  };
+  var openDrill=function(title,films){if(films&&films.length)sDrill({title:title,films:films})};
+
   var themePickerModal=showPicker?<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px',overflowY:'auto'}} onClick={function(){sShowPicker(false)}}><div style={{background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,maxWidth:720,width:'100%',maxHeight:'90vh',overflowY:'auto'}} onClick={function(e){e.stopPropagation()}}><div className="flex justify-between items-baseline mb-4 pb-3" style={{borderBottom:'0.5px solid '+N.border}}><div><div style={{fontSize:9,letterSpacing:'0.22em',color:N.muted,textTransform:'uppercase'}}>Choose a theme</div><div style={{fontSize:18,fontWeight:500,color:N.ink,marginTop:4}}>{THEMES.length} cinematic palettes</div></div><button onClick={function(){sShowPicker(false)}} style={btnSecondary}>{'\u2715'}</button></div><div className="grid grid-cols-2 md:grid-cols-3 gap-2">{THEMES.map(function(theme){var isActive=theme.id===themeId;return <button key={theme.id} onClick={function(){pickTheme(theme.id)}} style={{background:theme.paper,border:isActive?'2px solid '+T.primary:'0.5px solid '+theme.border,borderRadius:4,padding:'10px 12px',cursor:'pointer',textAlign:'left',transition:'transform 0.1s'}}><div style={{fontSize:9,letterSpacing:'0.15em',color:theme.muted,textTransform:'uppercase',marginBottom:4}}>Theme</div><div style={{fontSize:14,fontWeight:500,color:theme.ink,marginBottom:6}}>{theme.name}</div><div style={{display:'flex',gap:4,alignItems:'center'}}><div style={{fontSize:24,fontWeight:600,color:theme.metricColor||theme.primary,lineHeight:1,fontFamily:'ui-monospace,monospace'}}>142</div><div style={{display:'flex',flexDirection:'column',gap:2,marginLeft:'auto'}}><div style={{width:18,height:6,background:theme.metricColor||theme.primary,borderRadius:4}}/><div style={{width:18,height:6,background:theme.secondary||blend(theme.primary,theme.paper,0.35),borderRadius:4}}/><div style={{width:18,height:6,background:theme.ink,borderRadius:4}}/></div></div></button>})}</div><div className="mt-4 pt-3 text-xs" style={{borderTop:'0.5px solid '+N.border,color:N.muted}}>The theme is locked once you pick one. Default loads first; click any other to switch.</div></div></div>:null;
   var pwModal=showPwModal?<div style={{position:'fixed',inset:0,background:'rgba(26,26,26,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:50}} onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}}><div style={{background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,width:320}} onClick={function(e){e.stopPropagation()}}><div style={{fontSize:14,fontWeight:500,color:N.ink}}>Admin sign in</div><div className="mb-4 mt-1" style={{fontSize:11,color:N.muted,lineHeight:1.4}}>Supabase account. The server rejects writes without a session, so this is a real gate rather than a UI toggle.</div><input type="email" autoComplete="username" placeholder="Email" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwEmail} onChange={function(e){sPwEmail(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/><input type="password" autoComplete="current-password" placeholder="Password" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwInput} onChange={function(e){sPwInput(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/>{pwErr&&<div className="text-xs mb-2" style={{color:NEG}}>{pwErr}</div>}<div className="flex gap-2"><button onClick={handleLogin} disabled={pwBusy} style={Object.assign({},btnPrimary,{flex:1,opacity:pwBusy?0.5:1,cursor:pwBusy?'default':'pointer'})}>{pwBusy?'Signing in\u2026':'Sign in'}</button><button onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}} style={Object.assign({},btnSecondary,{flex:1})}>Cancel</button></div></div></div>:null;
 
@@ -960,9 +1011,26 @@ export default function Dashboard(){
     <Stat T={N} label={'Rentals ('+d.rc+')'} value={'\u20AC'+d.rt.toFixed(2)} color={N.ink}/>
     <Stat T={N} label="Total" value={'\u20AC'+d.tot.toFixed(2)} color={N.ink}/>
     <Stat T={N} label="Per film" value={'\u20AC'+d.pf.toFixed(2)} color={N.ink} noBorder/>
-  </div>{d.platRows&&d.platRows.filter(function(r){return r.cost>0}).length>0&&<button onClick={function(){sExpYrs(function(p){var n=Object.assign({},p);n[label]=!n[label];return n})}} className="text-xs" style={{color:N.muted}}>{expYrs[label]?'\u25BE Hide breakdown':'\u25B8 Per platform breakdown'}</button>}{expYrs[label]&&d.platRows&&<table className="w-full text-xs"><thead><tr style={{color:N.muted,borderBottom:'0.5px solid '+N.border}}><th className="text-left py-1.5" style={{fontWeight:400,letterSpacing:'0.1em',textTransform:'uppercase',fontSize:10}}>Platform</th><th className="text-right py-1.5" style={{fontWeight:400,letterSpacing:'0.1em',textTransform:'uppercase',fontSize:10}}>Films</th><th className="text-right py-1.5" style={{fontWeight:400,letterSpacing:'0.1em',textTransform:'uppercase',fontSize:10}}>Via</th><th className="text-right py-1.5" style={{fontWeight:400,letterSpacing:'0.1em',textTransform:'uppercase',fontSize:10}}>Cost</th><th className="text-right py-1.5" style={{fontWeight:400,letterSpacing:'0.1em',textTransform:'uppercase',fontSize:10}}>/Film</th></tr></thead><tbody>{d.platRows.filter(function(r){return r.cost>0}).map(function(r,i){return <tr key={i} style={{borderBottom:'0.5px solid '+N.border}}><td className="py-1.5" style={{color:N.inkSoft}}>{r.plat}</td><td className="py-1.5 text-right" style={{color:N.muted}}>{r.films}</td><td className="py-1.5 text-right" style={{color:N.mutedSoft}}>{r.sub}</td><td className="py-1.5 text-right" style={{color:N.inkSoft}}>{'\u20AC'}{r.cost.toFixed(2)}</td><td className="py-1.5 text-right" style={{color:N.ink,fontWeight:500}}>{'\u20AC'}{r.cpf.toFixed(2)}</td></tr>})}</tbody></table>}</div>};
+  </div></div>};
 
-  var costView=<div className="space-y-6">
+  // Folded by default: this is an editing surface, not a reading one, and the numbers are
+  // why the tab exists. Passed into costView so it lands BELOW the year filters instead of
+  // above the whole view, where a form was the first thing on the page and the figures
+  // started halfway down.
+  var subsEditorCard=<div>
+      <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
+        <SectionHead T={N} title={<button onClick={function(){sShowSubs(function(v){return!v})}} style={{background:'transparent',border:'none',padding:0,cursor:'pointer',color:N.ink,font:'inherit'}}>{showSubs?'\u25BE':'\u25B8'} Subscription editor</button>} aside={showSubs?<button onClick={function(){doUpSubs(function(p){return p.concat([{id:'s_'+Date.now(),name:'New',platforms:[],periods:[{from:'',to:'',price:0}]}])})}} style={btnPrimary}>+ Add</button>:null}/>
+        {showSubs&&<div className="space-y-2">{subscriptions.map(function(sub){return <div key={sub.id} className="p-3" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><div className="flex justify-between items-center"><span style={{fontSize:13,fontWeight:500,color:N.ink}}>{sub.name}</span><div className="flex gap-1"><button onClick={function(){sCostEs(costEs===sub.id?null:sub.id)}} style={btnSecondary}>{costEs===sub.id?'Close':'Edit'}</button><button onClick={function(){doUpSubs(function(p){return p.filter(function(s){return s.id!==sub.id})});sCostEs(null)}} style={{background:N.surfaceAlt,border:'0.5px solid '+T.primary,borderRadius:4,color:T.primary,padding:'4px 10px',fontSize:11}}>{'\u00D7'}</button></div></div>
+          {costEs===sub.id&&<div className="space-y-3 mt-3">
+            <div className="flex gap-2 items-center"><label className="text-xs w-14" style={{color:N.muted}}>Name</label><input style={Object.assign({},inputStyle,{flex:1,fontSize:11,padding:'4px 6px'})} value={sub.name} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{name:v}):s})})}}/></div>
+            <div><label className="text-xs mb-1 block" style={{color:N.muted}}>Platforms (click to toggle)</label><div className="flex flex-wrap gap-1">{paidPlatTags.map(function(t){var isIn=sub.platforms.indexOf(t)!==-1;return <button key={t} onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var np=isIn?s.platforms.filter(function(x){return x!==t}):s.platforms.concat([t]);return Object.assign({},s,{platforms:np})})})}} style={isIn?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{getDn(t,fullReg)}</button>})}<button key="_ts" onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var isIn=s.platforms.indexOf('_theater_sub')!==-1;var np=isIn?s.platforms.filter(function(x){return x!=='_theater_sub'}):s.platforms.concat(['_theater_sub']);return Object.assign({},s,{platforms:np})})})}} style={sub.platforms.indexOf('_theater_sub')!==-1?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>Theater pass</button></div></div>
+            <div><div className="flex justify-between"><label className="text-xs" style={{color:N.muted}}>Periods</label><button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.concat([{from:'',to:'',price:0}])}):s})})}} className="text-xs" style={{color:T.primary}}>+</button></div>{sub.periods.map(function(pr,pi){return <div key={pi} className="flex gap-1 items-center flex-wrap mt-1"><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} value={pr.from} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{from:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u2192'}</span><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} placeholder="ongoing" value={pr.to} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{to:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u20AC'}</span><input type="number" step="0.01" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:56})} value={pr.price} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{price:parseFloat(v)||0}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>/mo</span>{sub.periods.length>1&&<button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.filter(function(_,j){return j!==pi})}):s})})}} className="text-xs" style={{color:T.primary}}>{'\u00D7'}</button>}</div>})}</div>
+          </div>}
+        </div>})}</div>}
+      </div>
+  </div>;
+
+  var costView=function(editor){return <div className="space-y-6">
     {/* Every other year selector on the site uses the theme accent for the active year; this
         one was white, which read as a different kind of control. */}
     <div className="flex gap-2 items-center flex-wrap">
@@ -980,6 +1048,7 @@ export default function Dashboard(){
       <div className="text-xs mb-2" style={{color:N.inkSoft}}>Not counted in any figure on this tab. Tag a price on these and the totals rise.</div>
       <div className="max-h-40 overflow-y-auto">{noPriceCost.map(function(e,i2){return <div key={i2} className="text-xs py-0.5 flex justify-between" style={{color:N.muted}}><span className="truncate mr-2">{e.name} <span style={{color:N.mutedSoft}}>({e.year})</span></span><span className="whitespace-nowrap" style={{color:N.mutedSoft}}>{e.date}</span></div>})}</div>
     </div>}
+    {editor}
     {costYr==='All'?renderCostCards(allTimeTotals,'All Time'):costDataFilt.map(function(d){return <div key={d.yr}>{renderCostCards(d,d.yr)}</div>})}
     {/* PRICE AGAINST QUALITY — the ranked bar could only sort on cost, so the rating printed at
         the end of each row was a second column the eye had to carry. Both are axes now: cheap
@@ -1013,7 +1082,8 @@ export default function Dashboard(){
                 </div>}}/>
               <ReferenceLine x={mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <ReferenceLine y={my} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <Scatter data={pts} fill={VIZ_MARK} fillOpacity={0.78}>
+              <Scatter data={pts} fill={VIZ_MARK} fillOpacity={0.78} cursor="pointer"
+                onClick={function(d){var c=(d&&d.payload)||d;if(c&&c.rows)openDrill(c.name+' \u00b7 \u20ac'+c.cpf.toFixed(2)+' a film',withCur(c.rows))}}>
                 <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
               </Scatter>
             </ScatterChart>
@@ -1024,7 +1094,7 @@ export default function Dashboard(){
     })()}
     {cpfData.length>1&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="The price of a film, over time"/><ResponsiveContainer width="100%" height={220}><LineChart data={cpfData}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="q" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.period}</div><div style={{color:T.primary}}>{'\u20AC'}{d.cpf.toFixed(2)}/film</div><div style={{color:N.muted}}>{d.films} films {'\u00B7'} {'\u20AC'}{d.cost.toFixed(0)} spent</div></div>}}/><Line type="monotone" dataKey="cpf" stroke={T.primary} strokeWidth={2} dot={{fill:T.primary,r:2}}/></LineChart></ResponsiveContainer></div>}
     {monthlyFilt.length>3&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Monthly spend"/><ResponsiveContainer width="100%" height={250}><BarChart data={monthlyFilt}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="m" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){return <CostTip {...p} T={N}/>}}/><Bar dataKey="subs" name="Subscriptions" stackId="a" fill={sc[0]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="tickets" name="Tickets" stackId="a" fill={sc[1]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="rentals" name="Rentals" stackId="a" fill={sc[2]} stroke={NEUTRAL.surface} strokeWidth={2}/></BarChart></ResponsiveContainer><div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[0],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Subscriptions</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Tickets</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rentals</span></div></div></div>})()}
-  </div>;
+  </div>};
 
   if(CONFIG_ERROR)return(<div style={{background:NEUTRAL.paper,color:NEUTRAL.ink,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:fontOf('sans')}}>
     <div style={{maxWidth:520,background:NEUTRAL.surface,border:'0.5px solid '+NEG,borderRadius:4,padding:24}}>
@@ -1055,7 +1125,7 @@ export default function Dashboard(){
   var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films watched',copyCtx);
   var copyHeroSuffix=applyCopy((T.copy&&T.copy.heroSuffix)||'{n} vs '+(yr==='All'?'':String(parseInt(yr)-1)),copyCtx);
 
-  return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}<div className="max-w-6xl mx-auto">
+  return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}{drillModal}<div className="max-w-6xl mx-auto">
 
     {/* NAV — tabs and controls share one row. They were two stacked rows with their own
         borders and margins, costing ~50px before any content for what is a single band of
@@ -1106,7 +1176,9 @@ export default function Dashboard(){
         </div>}
         <div className="grid md:grid-cols-5 gap-x-8 gap-y-5 items-center" style={{position:'relative',zIndex:1}}>
           <div className="md:col-span-2 flex items-center gap-4">
-            <a className="lb-link flex flex-col items-center gap-1.5" href="https://letterboxd.com/Rhobz37/"
+            {/* Nudged right at md and up, to sit nearer the headline figure. Not on small
+                screens, where the row has no slack to give. */}
+            <a className="lb-link flex flex-col items-center gap-1.5 md:ml-12" href="https://letterboxd.com/Rhobz37/"
                target="_blank" rel="noopener noreferrer" title="Babylonian on Letterboxd" style={{flex:'0 0 auto'}}>
               <Avatar src={AVATAR_SRC} size={72} ring={T.primary}/>
               <span style={{fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:heroDescriptorC,fontFamily:fontLabel,whiteSpace:'nowrap'}}>Babylonian</span>
@@ -1135,7 +1207,7 @@ export default function Dashboard(){
               ['Rewatches',stats.rw||'\u2014',stats.total?Math.round((stats.rw/stats.total)*100)+'% of watches':''],
               ['Foreign',stats.fo||'\u2014',stats.total?Math.round((stats.fo/stats.total)*100)+'% of films':''],
               ['Longest binge',binge.streak+' days',binge.range],
-              ['Current streak',streaks.week+' weeks',streaks.wr],
+              ['Longest streak',streaks.longest+' weeks',streaks.lwr],
               ['Most in a day',busiest.count+' films',busiest.fmt]
             ].map(function(row,i){return <div key={i} title={row[3]||undefined}>
               <div style={{fontSize:9.5,letterSpacing:'0.14em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>{row[0]}</div>
@@ -1214,7 +1286,8 @@ export default function Dashboard(){
               <ZAxis dataKey="n" range={[55,420]}/>
               <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>Babylonian {d.x}★ · Yesmine {d.y}★</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.films.slice(0,4).join(', ')}{d.films.length>4?' +'+(d.films.length-4)+' more':''}</div></div>}}/>
               <ReferenceLine segment={[{x:0.5,y:0.5},{x:5,y:5}]} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <Scatter data={yAnalysis.cells} fill={VIZ_MARK} fillOpacity={0.72}/>
+              <Scatter data={yAnalysis.cells} fill={VIZ_MARK} fillOpacity={0.72} cursor="pointer"
+                onClick={function(d){var c=(d&&d.payload)||d;if(c&&c.films)openDrill('Babylonian '+c.x+'\u2605 \u00b7 Yesmine '+c.y+'\u2605',c.films)}}/>
             </ScatterChart>
           </ResponsiveContainer>
         </div>
@@ -1232,7 +1305,8 @@ export default function Dashboard(){
               <XAxis dataKey="label" tick={{fill:N.muted,fontSize:10}} height={28}/>
               <YAxis tick={{fill:N.muted,fontSize:10}} width={34}/>
               <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.count} {d.count===1?'film':'films'}</div><div style={{color:N.muted}}>{d.d===0?'rated identically':Math.abs(d.d)+'★ apart, '+(d.d>0?'Yesmine higher':'Babylonian higher')}</div></div>}}/>
-              <Bar dataKey="count" radius={[3,3,0,0]}>
+              <Bar dataKey="count" radius={[3,3,0,0]} cursor="pointer"
+                onClick={function(d){openDrill(d.d===0?'Rated identically':Math.abs(d.d)+'\u2605 apart \u00b7 '+(d.d>0?'Yesmine higher':'Babylonian higher'),d.films)}}>
                 {yAnalysis.dist.map(function(d,i){return <Cell key={i} fill={d.d===0?NEUTRAL.mutedSoft:d.d>0?VIZ_SERIES[2]:VIZ_MARK}/>})}
               </Bar>
             </BarChart>
@@ -1255,7 +1329,8 @@ export default function Dashboard(){
           <div className="space-y-1">
             {yAnalysis.genres.map(function(g){
               var pos=g.gap>=0,c=pos?VIZ_SERIES[2]:VIZ_MARK,w=Math.abs(g.gap)/gmax*50;
-              return <div key={g.name} className="flex items-center gap-2" title={g.n+' shared films'}>
+              return <div key={g.name} className="flex items-center gap-2 cursor-pointer" title={g.n+' shared films — click to list them'}
+                onClick={function(){openDrill(g.name+' \u00b7 '+(g.gap>=0?'+':'')+g.gap.toFixed(2)+' Yesmine',g.films)}}>
                 <div className="w-24 md:w-32 text-xs text-right truncate" style={{color:N.inkSoft}}>{g.name}</div>
                 <div className="w-8 text-xs text-right" style={{color:N.mutedSoft}}>{g.n}</div>
                 <div className="flex-1 relative" style={{height:22,background:N.surfaceAlt,borderRadius:4}}>
@@ -1454,7 +1529,8 @@ export default function Dashboard(){
               <ZAxis dataKey="n" range={[55,420]}/>
               <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>{d.x}{'★'} {'→'} {d.y}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.films.slice(0,4).join(', ')}{d.films.length>4?' +'+(d.films.length-4)+' more':''}</div></div>}}/>
               <ReferenceLine segment={[{x:0.5,y:0.5},{x:5,y:5}]} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <Scatter data={revisions.pairs} fill={VIZ_MARK} fillOpacity={0.72}/>
+              <Scatter data={revisions.pairs} fill={VIZ_MARK} fillOpacity={0.72} cursor="pointer"
+                onClick={function(d){var c=(d&&d.payload)||d;if(c&&c.films)openDrill(c.x+'\u2605 then '+c.y+'\u2605',c.films)}}/>
             </ScatterChart>
           </ResponsiveContainer>
         </div>}
@@ -1468,8 +1544,10 @@ export default function Dashboard(){
               <XAxis dataKey="rating" tick={{fill:N.muted,fontSize:11}}/>
               <YAxis tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return Math.round(v)+'%'}}/>
               <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500,marginBottom:4}}>{p.label}{'★'}</div>{p.payload.map(function(x,i){return <div key={i} style={{color:x.color}}>{x.name}: {x.value.toFixed(1)}%</div>})}</div>}}/>
-              <Bar dataKey="logged" name="Logged in the diary" fill={sc[1]} radius={[3,3,0,0]}/>
-              <Bar dataKey="pre" name="Rated, never logged" fill={sc[2]} radius={[3,3,0,0]}/>
+              <Bar dataKey="logged" name="Logged in the diary" fill={sc[1]} radius={[3,3,0,0]} cursor="pointer"
+                onClick={function(d){openDrill(d.rating+'\u2605 \u00b7 logged in the diary',d.loggedFilms)}}/>
+              <Bar dataKey="pre" name="Rated, never logged" fill={sc[2]} radius={[3,3,0,0]} cursor="pointer"
+                onClick={function(d){openDrill(d.rating+'\u2605 \u00b7 rated, never logged',d.preFilms)}}/>
             </BarChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Logged in the diary</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rated, never logged</span></div></div>
@@ -1479,13 +1557,26 @@ export default function Dashboard(){
           <SectionHead T={N} title="Growing more generous?" aside={<span className="text-xs" style={{color:N.muted}}>mean of every rating given, {inflation.mean.toFixed(2)}{'★'}</span>}/>
           <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. A yearly average flattens this; {inflation.w} is wide enough that one generous week does not move the line. This is the one panel counted per watch at the rating typed on the night, because the question is how the scoring itself moved -- which is why its mean sits above the {statsOnce.avg.toFixed(2)}{'★'} quoted elsewhere, where each film counts once at today's score.</div>
           <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={inflation.data}>
+            <LineChart data={inflation.data} onClick={function(st){
+              // Two ways in, because a Line reports the series rather than a point. The chart state
+              // exposes the hovered index even where activePayload is absent, and the active dot —
+              // the one the tooltip is already tracking — carries its own payload. Whichever
+              // arrives first wins; openDrill ignores an empty list.
+              var d=(st&&st.activePayload&&st.activePayload[0]&&st.activePayload[0].payload)
+                ||(st&&st.activeTooltipIndex!=null?inflation.data[st.activeTooltipIndex]:null);
+              if(d)openDrillWindow(d);
+            }} style={{cursor:'pointer'}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
               <XAxis dataKey="d" tick={{fill:N.muted,fontSize:9}} interval={Math.max(0,Math.floor(inflation.data.length/8))} angle={-45} textAnchor="end" height={46}/>
               <YAxis domain={[function(v){return Math.floor(v*10)/10-0.05},function(v){return Math.ceil(v*10)/10+0.05}]} width={40} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}}/>
-              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{p.label}</div><div style={{color:T.primary}}>{p.payload[0].value.toFixed(2)}{'★'} rolling</div></div>}}/>
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;
+                return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:260}}>
+                  <div style={{color:N.ink,fontWeight:500}}>{d.avg.toFixed(2)}{'\u2605'} rolling average</div>
+                  <div style={{color:N.muted,marginTop:2}}>after {d.name} ({d.year}) {'\u00b7'} {d.date}</div>
+                  <div style={{color:N.mutedSoft,marginTop:2}}>that film scored {d.rating}{'\u2605'} {'\u00b7'} click for the {inflation.w} behind this point</div>
+                </div>}}/>
               <ReferenceLine y={inflation.mean} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2} dot={false}/>
+              <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2} dot={false} activeDot={{r:4,fill:VIZ_MARK,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
             </LineChart>
           </ResponsiveContainer>
         </div>}
@@ -1615,18 +1706,8 @@ export default function Dashboard(){
     </div>}
 
     {tab==='costs'&&(isAdmin?<div className="space-y-6">
-      <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-        <SectionHead T={N} title="Subscription editor" aside={<button onClick={function(){doUpSubs(function(p){return p.concat([{id:'s_'+Date.now(),name:'New',platforms:[],periods:[{from:'',to:'',price:0}]}])})}} style={btnPrimary}>+ Add</button>}/>
-        <div className="space-y-2">{subscriptions.map(function(sub){return <div key={sub.id} className="p-3" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><div className="flex justify-between items-center"><span style={{fontSize:13,fontWeight:500,color:N.ink}}>{sub.name}</span><div className="flex gap-1"><button onClick={function(){sCostEs(costEs===sub.id?null:sub.id)}} style={btnSecondary}>{costEs===sub.id?'Close':'Edit'}</button><button onClick={function(){doUpSubs(function(p){return p.filter(function(s){return s.id!==sub.id})});sCostEs(null)}} style={{background:N.surfaceAlt,border:'0.5px solid '+T.primary,borderRadius:4,color:T.primary,padding:'4px 10px',fontSize:11}}>{'\u00D7'}</button></div></div>
-          {costEs===sub.id&&<div className="space-y-3 mt-3">
-            <div className="flex gap-2 items-center"><label className="text-xs w-14" style={{color:N.muted}}>Name</label><input style={Object.assign({},inputStyle,{flex:1,fontSize:11,padding:'4px 6px'})} value={sub.name} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{name:v}):s})})}}/></div>
-            <div><label className="text-xs mb-1 block" style={{color:N.muted}}>Platforms (click to toggle)</label><div className="flex flex-wrap gap-1">{paidPlatTags.map(function(t){var isIn=sub.platforms.indexOf(t)!==-1;return <button key={t} onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var np=isIn?s.platforms.filter(function(x){return x!==t}):s.platforms.concat([t]);return Object.assign({},s,{platforms:np})})})}} style={isIn?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{getDn(t,fullReg)}</button>})}<button key="_ts" onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var isIn=s.platforms.indexOf('_theater_sub')!==-1;var np=isIn?s.platforms.filter(function(x){return x!=='_theater_sub'}):s.platforms.concat(['_theater_sub']);return Object.assign({},s,{platforms:np})})})}} style={sub.platforms.indexOf('_theater_sub')!==-1?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>Theater pass</button></div></div>
-            <div><div className="flex justify-between"><label className="text-xs" style={{color:N.muted}}>Periods</label><button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.concat([{from:'',to:'',price:0}])}):s})})}} className="text-xs" style={{color:T.primary}}>+</button></div>{sub.periods.map(function(pr,pi){return <div key={pi} className="flex gap-1 items-center flex-wrap mt-1"><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} value={pr.from} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{from:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u2192'}</span><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} placeholder="ongoing" value={pr.to} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{to:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u20AC'}</span><input type="number" step="0.01" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:56})} value={pr.price} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{price:parseFloat(v)||0}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>/mo</span>{sub.periods.length>1&&<button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.filter(function(_,j){return j!==pi})}):s})})}} className="text-xs" style={{color:T.primary}}>{'\u00D7'}</button>}</div>})}</div>
-          </div>}
-        </div>})}</div>
-      </div>
-      {costView}<DQPanel T={N} data={dq}/>
-    </div>:costView)}
+      {costView(subsEditorCard)}<DQPanel T={N} data={dq}/>
+    </div>:costView(null))}
 
     {/* ===== TAGS (admin) ===== */}
     {tab==='tags'&&isAdmin&&<div className="space-y-4">
