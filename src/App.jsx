@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, Component } from "react";
-import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ReferenceDot, LabelList } from "recharts";
+import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList } from "recharts";
 import { createClient } from "@supabase/supabase-js";
 // Supabase config comes from .env (see .env.example). Note that Vite inlines
 // VITE_* values into the production bundle — these are NOT secrets and must not
@@ -488,9 +488,21 @@ function Avatar(p){
 // Poster — 772 of 777 metadata rows carry a TMDB thumbnail (w92) that nothing rendered
 // until now. Small and lazy-loaded on purpose: this is for recognising a title at a
 // glance, not decoration. Falls back to an empty slot so rows never jump height.
+// TMDB serves posters at fixed widths and the enrich script stored the smallest, w92 — 92px
+// wide. In the Top 50 wall that fills a ~94px slot, which is 188 device pixels on a retina
+// screen, so every poster was being upscaled twofold and looked it. Rewriting the size segment
+// here rather than in the database means all 777 stored rows sharpen at once, with no re-import,
+// and each slot asks for the size it actually needs instead of one size for every use.
+function tmdbSize(url,cssWidth){
+  if(!url)return url;
+  var need=cssWidth*2;
+  var size=need<=92?'w92':need<=185?'w185':need<=342?'w342':'w500';
+  return url.replace(/\/t\/p\/w\d+\//,'/t/p/'+size+'/');
+}
 function Poster(p){
   var w=p.w||24,h=Math.round(w*1.5);
-  var src=p.meta&&p.meta.poster;
+  // fill mode has no fixed width; the wall runs about 94px on desktop and wider on a phone.
+  var src=tmdbSize(p.meta&&p.meta.poster,p.fill?120:w);
   // fill: take the width of the parent and hold 2:3, for grids where a fixed pixel width would
   // leave the cell wider than the image -- anything positioned against the cell's edges then
   // lands in the gutter instead of on the poster.
@@ -540,7 +552,7 @@ export default function Dashboard(){
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
-  var[saving,sSaving]=useState(false);var[showSubs,sShowSubs]=useState(false);var[drill,sDrill]=useState(null);var[rollHover,sRollHover]=useState(null);var[rankMode,sRankMode]=useState('sub');
+  var[saving,sSaving]=useState(false);var[showSubs,sShowSubs]=useState(false);var[drill,sDrill]=useState(null);var[rankMode,sRankMode]=useState('sub');
   var[filmMeta,sFilmMeta]=useState({});var[yRatings,sYRatings]=useState({});var[allRatings,sAllRatings]=useState([]);var[top50s,sTop50s]=useState([]);
   // Theme system: randomly pick at mount, persist in localStorage, avoid immediate repeat
   var[themeId,sThemeId]=useState(function(){try{var saved=localStorage.getItem('dashboard_theme_explicit');if(saved&&THEMES.find(function(t){return t.id===saved}))return saved;return 'neutral'}catch(e){return 'neutral'}});
@@ -841,43 +853,13 @@ export default function Dashboard(){
   // the shape; 50 is wide enough that one generous week does not move the line.
   var inflation=useMemo(function(){
     var rated=all.filter(function(e){return e.rating!==null}).slice().sort(function(a,b){return a.date<b.date?-1:1});
-    var W=50;if(rated.length<W+10)return{data:[],rated:[],extrema:[],mean:0,w:W};
+    var W=50;if(rated.length<W+10)return{data:[],rated:[],mean:0,w:W};
     // One point per rating rather than per month, each carrying its index so the window behind
     // it can be listed on click, and the exact date so the tooltip is not limited to a month.
     var out=[],sum=0;
     for(var i=0;i<rated.length;i++){sum+=rated[i].rating;if(i>=W)sum-=rated[i-W].rating;
       if(i>=W-1)out.push({x:out.length,i:i,d:rated[i].date.slice(0,7),date:rated[i].date,name:rated[i].name,year:rated[i].year,rating:rated[i].rating,avg:sum/W})}
-    // Local peaks and troughs, marked so they can be seen and hovered. The line carries a point
-    // per rating — roughly two per pixel — so without markers the turning points are unhittable
-    // with a cursor and effectively invisible.
-    //
-    // A point qualifies when it is the highest (or lowest) in a window of +/-W either side, and
-    // it is the FIRST such point in that window: a rolling mean sits on plateaus, and without
-    // the tie-break every point of a flat peak would be marked. Comparing only to immediate
-    // neighbours would mark hundreds of one-step wiggles instead.
-    var R=W,extIdx=[];
-    out.forEach(function(pt,i){
-      var lo=Math.max(0,i-R),hi=Math.min(out.length-1,i+R),isMax=true,isMin=true,tie=false;
-      for(var j=lo;j<=hi;j++){
-        if(j===i)continue;
-        if(out[j].avg>pt.avg)isMax=false;
-        if(out[j].avg<pt.avg)isMin=false;
-        if(out[j].avg===pt.avg&&j<i)tie=true;
-      }
-      if(!tie&&isMax!==isMin){pt.ext=isMax?'max':'min';extIdx.push(i)}
-    });
-    // Nothing is drawn for these. They exist so the cursor can REACH them: at roughly two
-    // points per pixel, hitting the exact top of a peak by hand is not possible, so every
-    // point within SNAP of a turning point resolves to it — the tooltip reports the peak and
-    // the click opens the peak's window. Away from one, the hovered point answers for itself.
-    var SNAP=8;
-    extIdx.forEach(function(ei){
-      var lo=Math.max(0,ei-SNAP),hi=Math.min(out.length-1,ei+SNAP);
-      for(var j=lo;j<=hi;j++){var cur=out[j].snap;
-        if(cur==null||Math.abs(j-ei)<Math.abs(j-cur))out[j].snap=ei}
-    });
-    var extrema=extIdx.map(function(i){return out[i]});
-    return{data:out,rated:rated,extrema:extrema,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
+    return{data:out,rated:rated,mean:rated.reduce(function(s,e){return s+e.rating},0)/rated.length,w:W};
   },[all]);
 
   // ============================================================
@@ -1024,12 +1006,8 @@ export default function Dashboard(){
 
   // One modal for every drill-down. Each panel just hands it a title and a list of films.
   var drillModal=<FilmList T={N} title={drill?drill.title:null} films={drill?drill.films:[]} onClose={function(){sDrill(null)}}/>;
-  // Resolves a hovered point to the nearby turning point, if there is one. A peak is a single
-  // point on a line carrying two per pixel; without this it can be seen but not landed on.
-  var snapExt=function(d){return(d&&d.snap!=null&&inflation.data[d.snap])?inflation.data[d.snap]:d};
   // The 50 ratings behind a point on the rolling average, newest first.
-  var openDrillWindow=function(raw){
-    var d=snapExt(raw);
+  var openDrillWindow=function(d){
     if(!d||d.i==null)return;
     openDrill('The '+inflation.w+' ratings up to '+d.date,inflation.rated.slice(Math.max(0,d.i-inflation.w+1),d.i+1).slice().reverse());
   };
@@ -1600,8 +1578,7 @@ export default function Dashboard(){
                 ||(st&&st.activeTooltipIndex!=null?inflation.data[st.activeTooltipIndex]:null);
               if(d)openDrillWindow(d);
             }}
-            onMouseMove={function(st){sRollHover(st&&st.activeTooltipIndex!=null?st.activeTooltipIndex:null)}}
-            onMouseLeave={function(){sRollHover(null)}} style={{cursor:'pointer'}}>
+            style={{cursor:'pointer'}}>
               <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
               {/* Numeric, keyed on the point's own index. The axis still prints months, but a
                   category axis with 766 duplicate labels cannot address one point, and placing a
@@ -1609,26 +1586,16 @@ export default function Dashboard(){
               <XAxis type="number" dataKey="x" domain={['dataMin','dataMax']} tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={46}
                 tickFormatter={function(v){var pt=inflation.data[Math.round(v)];return pt?pt.d:''}}/>
               <YAxis domain={[function(v){return Math.floor(v*10)/10-0.05},function(v){return Math.ceil(v*10)/10+0.05}]} width={40} tick={{fill:N.muted,fontSize:10}} tickFormatter={function(v){return v.toFixed(1)}}/>
-              <Tooltip cursor={false} content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;
-                // Report the turning point when the cursor is near one; snapExt returns the
-                // hovered point untouched everywhere else.
-                var d=snapExt(pp.payload[0].payload);
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;
                 return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:260}}>
-                  <div style={{color:d.ext?(d.ext==='max'?VIZ_GOOD:NEG):N.ink,fontWeight:500}}>{d.avg.toFixed(2)}{'\u2605'} rolling average{d.ext?(d.ext==='max'?' \u00b7 local peak':' \u00b7 local low'):''}</div>
+                  <div style={{color:N.ink,fontWeight:500}}>{d.avg.toFixed(2)}{'\u2605'} rolling average</div>
                   <div style={{color:N.muted,marginTop:2}}>after {d.name} ({d.year}) {'\u00b7'} {d.date}</div>
                   <div style={{color:N.mutedSoft,marginTop:2}}>that film scored {d.rating}{'\u2605'} {'\u00b7'} click for the {inflation.w} behind this point</div>
                 </div>}}/>
               <ReferenceLine y={inflation.mean} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <Line type="monotone" dataKey="avg" name="Rolling average" stroke={VIZ_MARK} strokeWidth={2}
                 dot={false}
-                activeDot={{r:9,fillOpacity:0,strokeOpacity:0,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
-              {/* The marker sits on whatever the tooltip is describing — the snapped turning point,
-                  or the hovered point itself. recharts' own active dot stays but is invisible and
-                  only carries the click, because it can only be drawn at the cursor: leaving it
-                  visible is what put the orange dot beside the peak the text was naming. */}
-              {rollHover!=null&&inflation.data[rollHover]&&(function(){var sp=snapExt(inflation.data[rollHover]);
-                return <ReferenceDot x={sp.x} y={sp.avg} r={4.5} isFront
-                  fill={sp.ext?(sp.ext==='max'?VIZ_GOOD:NEG):VIZ_MARK} stroke={NEUTRAL.paper} strokeWidth={1.5}/>})()}
+                activeDot={{r:4,fill:VIZ_MARK,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
             </LineChart>
           </ResponsiveContainer>
         </div>}
