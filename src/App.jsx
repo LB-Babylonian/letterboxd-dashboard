@@ -548,7 +548,7 @@ export default function Dashboard(){
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);
   var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
-  var[quadSet,sQuadSet]=useState('genre');var[revOpen,sRevOpen]=useState(false);
+  var[quadSet,sQuadSet]=useState('genre');var[revOpen,sRevOpen]=useState(false);var[heartDir,sHeartDir]=useState('all');
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
@@ -833,6 +833,10 @@ export default function Dashboard(){
       net:rows.length?rows.reduce(function(s,r){return s+r.delta},0)/rows.length:0,
       riser:up[0]||null,faller:down[0]||null};
   },[diaryByFilm,currentRatings,all]);
+  // Which direction the slope chart is showing. revisions.up and .down are already split and
+  // sorted by size of change; 'all' keeps the by-magnitude order so the biggest movers lead
+  // whichever way they went.
+  var heartRows=heartDir==='up'?revisions.up:heartDir==='down'?revisions.down:revisions.rows;
   // Shares rather than counts: the pre-diary shelf is a fraction of the diary's size, so
   // raw bars would put one distribution flat against the axis.
   var preDist=useMemo(function(){
@@ -1506,10 +1510,17 @@ export default function Dashboard(){
         {/* SLOPE CHART — two dots and a line beat two bars: the reader sees direction and
             distance in one mark, and the rows sort by how much the mind moved. */}
         {revisions.rows.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-          <SectionHead T={N} title="Changes of heart" count={revisions.rows.length}/>
+          <SectionHead T={N} title="Changes of heart" count={heartRows.length} aside={<div className="flex gap-1">
+            {[{k:'all',l:'Both',c:N.inkSoft},{k:'up',l:'Climbed',c:MOVE_UP},{k:'down',l:'Fell',c:MOVE_DOWN}].map(function(o){var on=heartDir===o.k;
+              return <button key={o.k} onClick={function(){sHeartDir(o.k);sRevOpen(false)}}
+                style={{padding:'3px 8px',fontSize:10,borderRadius:4,cursor:'pointer',fontWeight:on?500:400,
+                  background:on?N.surfaceAlt:'transparent',border:'0.5px solid '+(on?o.c:N.border),color:on?o.c:N.muted}}>
+                {o.l} <span style={{color:N.mutedSoft,fontWeight:400}}>{o.k==='all'?revisions.rows.length:o.k==='up'?revisions.up.length:revisions.down.length}</span>
+              </button>})}
+          </div>}/>
           <div className="text-xs mb-3" style={{color:N.muted}}>Each line runs from the first rating logged to the rating held now. <span style={{color:MOVE_UP}}>Green climbed</span>, <span style={{color:MOVE_DOWN}}>orange fell</span>. The hollow dot is the original.</div>
           <div className="space-y-1">
-            {revisions.rows.slice(0,revOpen?revisions.rows.length:12).map(function(r,i){
+            {heartRows.slice(0,revOpen?heartRows.length:12).map(function(r,i){
               var up=r.delta>0,c=up?MOVE_UP:MOVE_DOWN,pc=function(v){return((v-0.5)/4.5)*100};
               var a=Math.min(pc(r.from),pc(r.to)),b=Math.max(pc(r.from),pc(r.to));
               return <div key={i} className="flex items-center gap-2">
@@ -1527,7 +1538,7 @@ export default function Dashboard(){
               with justify-between put 1★ at 20% of the width when it belongs at 11%, which
               mislabelled every dot on the scale. */}
           <div className="flex mt-1"><div className="w-24 md:w-44"/><div className="flex-1 relative" style={{height:12}}>{[0.5,1,2,3,4,5].map(function(v){var l=((v-0.5)/4.5)*100;return <span key={v} style={{position:'absolute',left:l+'%',transform:'translateX('+(v===0.5?'0':v===5?'-100%':'-50%')+')',fontSize:9,color:N.mutedSoft,whiteSpace:'nowrap'}}>{v}{'★'}</span>})}</div><div className="w-12"/><div className="w-16"/></div>
-          {revisions.rows.length>12&&<button onClick={function(){sRevOpen(function(v){return!v})}} className="w-full text-xs py-1.5 mt-3" style={{color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,cursor:'pointer'}}>{revOpen?'Show fewer':'Show all '+revisions.rows.length}</button>}
+          {heartRows.length>12&&<button onClick={function(){sRevOpen(function(v){return!v})}} className="w-full text-xs py-1.5 mt-3" style={{color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4,cursor:'pointer'}}>{revOpen?'Show fewer':'Show all '+heartRows.length}</button>}
         </div>}
 
         {revisions.pairs.length>2&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
