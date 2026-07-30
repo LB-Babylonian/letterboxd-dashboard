@@ -266,11 +266,11 @@ var VIZ_SERIES=['#3DC25A','#C4832E','#4E90C4'];
 // NEUTRAL.muted the no-change midpoint.
 var VIZ_GOOD='#3DC25A';
 
-// Top 50 movement — a THIRD colour set, and deliberately not the polarity pair above. A rank
-// slipping is not the same claim as a rating falling: three states need three hues, NEW among
-// them, and orange here is the site's own mark colour rather than a verdict. Anything that means
-// better-or-worse uses VIZ_GOOD/NEG instead; the Second thoughts slope chart used these by
-// mistake, which put two different colours on "fell" within one section.
+// Top 50 movement. Orange for a slip here is the same orange the Ratings tab uses for a rating
+// that fell -- VIZ_MARK -- which was a deliberate call: it reads as "down" across the site even
+// though that hue is also the plain data mark. Terracotta NEG is still the negative pole for the
+// year-over-year deltas and the Yesmine bias, so two colours mean "worse" depending on where you
+// are. Chosen knowingly; see the commit that made the swap.
 //
 // Up and down previously resolved to the same colour, so a rise and a fall were
 // indistinguishable at a glance — the arrow glyph was doing all the work.
@@ -1472,7 +1472,7 @@ export default function Dashboard(){
         <div className="text-xs mb-3" style={{color:N.muted}}>How far the films carrying a tag sit from the overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
         <div className="space-y-1">
           {tagLift.rows.map(function(r){
-            var pos=r.lift>=0,c=pos?VIZ_GOOD:NEG,w=Math.abs(r.lift)/tagLift.max*50,thin=r.Films<15,on=sTg===r.name;
+            var pos=r.lift>=0,c=pos?VIZ_GOOD:VIZ_MARK,w=Math.abs(r.lift)/tagLift.max*50,thin=r.Films<15,on=sTg===r.name;
             return <div key={r.tag} onClick={function(){sSTg(on?null:r.name);sSDe(null)}} className="flex items-center gap-2 cursor-pointer py-0.5 px-1"
               title={thin?r.Films+' films only \u2014 treat this one lightly':r.Films+' films'}
               style={{borderRadius:4,background:on?N.surfaceAlt:'transparent',boxShadow:on?'inset 0 0 0 1px '+T.primary:'none'}}>
@@ -1506,28 +1506,28 @@ export default function Dashboard(){
 
         <div className="grid grid-cols-2 md:grid-cols-4" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
           <Stat T={N} label="Films re-scored" value={revisions.rows.length} sub={revisions.up.length+' up, '+revisions.down.length+' down'}/>
-          <Stat T={N} label="Net drift" value={(revisions.net>0?'+':'')+revisions.net.toFixed(2)} sub="average change" color={revisions.net>0?VIZ_GOOD:revisions.net<0?NEG:N.ink}/>
+          <Stat T={N} label="Net drift" value={(revisions.net>0?'+':'')+revisions.net.toFixed(2)} sub="average change" color={revisions.net>0?VIZ_GOOD:revisions.net<0?VIZ_MARK:N.ink}/>
           {/* The figure is the value and the title is the caption, not the other way round:
               a three-line film name in the 20px slot threw the whole row out of alignment. */}
           <Stat T={N} label="Biggest riser" value={revisions.riser?'+'+revisions.riser.delta.toFixed(1)+'★':'—'} sub={revisions.riser?revisions.riser.name+' ('+revisions.riser.from+'→'+revisions.riser.to+')':''} color={VIZ_GOOD}/>
-          <Stat T={N} label="Biggest faller" value={revisions.faller?revisions.faller.delta.toFixed(1)+'★':'—'} sub={revisions.faller?revisions.faller.name+' ('+revisions.faller.from+'→'+revisions.faller.to+')':''} color={NEG} noBorder/>
+          <Stat T={N} label="Biggest faller" value={revisions.faller?revisions.faller.delta.toFixed(1)+'★':'—'} sub={revisions.faller?revisions.faller.name+' ('+revisions.faller.from+'→'+revisions.faller.to+')':''} color={VIZ_MARK} noBorder/>
         </div>
 
         {/* SLOPE CHART — two dots and a line beat two bars: the reader sees direction and
             distance in one mark, and the rows sort by how much the mind moved. */}
         {revisions.rows.length>0&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Changes of heart" count={heartRows.length} aside={<div className="flex gap-1">
-            {[{k:'all',l:'Both',c:N.inkSoft},{k:'up',l:'Climbed',c:VIZ_GOOD},{k:'down',l:'Fell',c:NEG}].map(function(o){var on=heartDir===o.k;
+            {[{k:'all',l:'Both',c:N.inkSoft},{k:'up',l:'Climbed',c:VIZ_GOOD},{k:'down',l:'Fell',c:VIZ_MARK}].map(function(o){var on=heartDir===o.k;
               return <button key={o.k} onClick={function(){sHeartDir(o.k);sRevOpen(false)}}
                 style={{padding:'3px 8px',fontSize:10,borderRadius:4,cursor:'pointer',fontWeight:on?500:400,
                   background:on?N.surfaceAlt:'transparent',border:'0.5px solid '+(on?o.c:N.border),color:on?o.c:N.muted}}>
                 {o.l} <span style={{color:N.mutedSoft,fontWeight:400}}>{o.k==='all'?revisions.rows.length:o.k==='up'?revisions.up.length:revisions.down.length}</span>
               </button>})}
           </div>}/>
-          <div className="text-xs mb-3" style={{color:N.muted}}>Each line runs from the first rating logged to the rating held now. <span style={{color:VIZ_GOOD}}>Climbed</span> or <span style={{color:NEG}}>fell</span>. The hollow dot is the original.</div>
+          <div className="text-xs mb-3" style={{color:N.muted}}>Each line runs from the first rating logged to the rating held now. <span style={{color:VIZ_GOOD}}>Climbed</span> or <span style={{color:VIZ_MARK}}>fell</span>. The hollow dot is the original.</div>
           <div className="space-y-1">
             {heartRows.slice(0,revOpen?heartRows.length:12).map(function(r,i){
-              var up=r.delta>0,c=up?VIZ_GOOD:NEG,pc=function(v){return((v-0.5)/4.5)*100};
+              var up=r.delta>0,c=up?VIZ_GOOD:VIZ_MARK,pc=function(v){return((v-0.5)/4.5)*100};
               var a=Math.min(pc(r.from),pc(r.to)),b=Math.max(pc(r.from),pc(r.to));
               return <div key={i} className="flex items-center gap-2">
                 <div className="w-24 md:w-44 text-xs truncate text-right" title={r.name+' ('+r.year+') — '+r.how} style={{color:N.inkSoft}}>{r.name}</div>
