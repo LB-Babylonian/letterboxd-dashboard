@@ -105,7 +105,11 @@ async function fetchOne({ name, year }) {
     title: name,
     year,
     tmdb_id: hit.id,
-    poster: hit.poster_path ? `https://image.tmdb.org/t/p/w92${hit.poster_path}` : null,
+    // w342 rather than w92: the wall renders posters at ~94px, which is 188 device pixels on a
+    // retina screen. src/App.jsx rewrites the size per slot anyway, so rows stored at the old
+    // w92 render correctly too and nothing needs re-fetching — this just stops new rows being
+    // written at a size nothing displays.
+    poster: hit.poster_path ? `https://image.tmdb.org/t/p/w342${hit.poster_path}` : null,
     directors: join(crew.filter((c) => c.job === 'Director').map((c) => c.name)),
     genres: join((det.genres || []).map((g) => g.name)),
     runtime: det.runtime || null,
