@@ -571,7 +571,7 @@ export default function Dashboard(){
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);
   var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
-  var[quadSet,sQuadSet]=useState('genre');var[quadQ,sQuadQ]=useState('');var[revOpen,sRevOpen]=useState(false);var[heartDir,sHeartDir]=useState('all');
+  var[quadSet,sQuadSet]=useState('genre');var[pop,sPop]=useState('rated');var[quadQ,sQuadQ]=useState('');var[revOpen,sRevOpen]=useState(false);var[heartDir,sHeartDir]=useState('all');
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
@@ -721,13 +721,14 @@ export default function Dashboard(){
       return{name:c.name,year:c.year,rating:c.rating,date:'',tags:[],unlogged:true}});
   },[currentRatings,loggedKeys,runtimeOf]);
 
-  // Every rated film: the logged ones plus those. Only when the whole diary is in view — a year
-  // or a date range is a question about when something was watched, and an unlogged film has no
-  // answer, so it drops out rather than being silently attributed to a year.
+  // The population the taste panels count, switchable. Unlogged films can only join when the whole
+  // diary is in view: a year or a date range asks when something was watched and they have no
+  // answer, so the toggle has no effect there and says so rather than appearing to do nothing.
+  var wholeDiary=yr==='All'&&!dateFrom&&!dateTo;
+  var useRated=pop==='rated'&&wholeDiary;
   var efAll=useMemo(function(){
-    var whole=yr==='All'&&!dateFrom&&!dateTo;
-    return whole?efOnce.concat(unloggedRated):efOnce;
-  },[efOnce,unloggedRated,yr,dateFrom,dateTo]);
+    return useRated?efOnce.concat(unloggedRated):efOnce;
+  },[efOnce,unloggedRated,useRated]);
   // Average rating over WATCH rows, each at its film's current score. The Costs tab's unit has
   // to stay the watch -- a second ticket is a second payment -- but the rating it reports should
   // come from the same place as every other rating on the site.
@@ -1457,6 +1458,23 @@ export default function Dashboard(){
 
     {/* ===== TASTE ===== */}
     {tab==='taste'&&<div className="space-y-6">
+      {/* Which films the taste panels count. Rated brings in the 188 with a rating and no diary
+          row; logged is the diary's own shape. Only the panels that can answer both follow it —
+          the tag comparator, Second thoughts and the map's Friends, Platforms and Theaters sets
+          need a diary row whatever this says. */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {[{k:'rated',l:'Everything rated',n:efOnce.length+unloggedRated.length},{k:'logged',l:'Logged only',n:efOnce.length}].map(function(o){
+          var on=pop===o.k,dead=o.k==='rated'&&!wholeDiary;
+          return <button key={o.k} onClick={function(){sPop(o.k)}}
+            title={dead?'A year or a date range selects by watch date, which the unlogged films do not have':''}
+            style={{padding:'4px 10px',fontSize:11,borderRadius:4,cursor:'pointer',fontWeight:on?500:400,
+              opacity:dead?0.45:1,
+              background:on&&!dead?N.surfaceAlt:'transparent',border:'0.5px solid '+(on&&!dead?T.primary:N.border),
+              color:on&&!dead?T.primary:N.muted}}>
+            {o.l} <span style={{color:N.mutedSoft,fontWeight:400}}>{o.n}</span>
+          </button>})}
+        {!wholeDiary&&<span className="text-xs" style={{color:N.mutedSoft,fontStyle:'italic'}}>a year selects by watch date, so only logged films can answer</span>}
+      </div>
       {/* The four summary tiles that used to open this tab are gone. Every one of them was
           restated within a screen: the average again in the distribution caption and again as
           the tag baseline, the five-star count as the 5-star bar, the top genre as the map's
@@ -1464,7 +1482,7 @@ export default function Dashboard(){
           on the distribution instead. */}
       {/* RATING DISTRIBUTION — moved from Overview */}
       <div>
-        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.rated} rated films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span> {'\u00B7'} <span style={{fontStyle:'italic',color:N.mutedSoft}}>click a bar for its films</span></span>}/>
+        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.rated} {useRated?'rated':'logged'} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span> {'\u00B7'} <span style={{fontStyle:'italic',color:N.mutedSoft}}>click a bar for its films</span></span>}/>
         <ResponsiveContainer width="100%" height={230}>
           <BarChart data={rDist}>
             <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1517,11 +1535,11 @@ export default function Dashboard(){
           the four corners into four different statements. */}
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
         <SectionHead T={N} title="The taste map" count={quadHit?quadHit.hit.length+' of '+quad.pts.length:quad.pts.length} aside={<div className="flex gap-1 flex-wrap items-center">
-          <input value={quadQ} onChange={function(e){sQuadQ(e.target.value)}} placeholder="find\u2026" spellCheck={false}
+          <input value={quadQ} onChange={function(e){sQuadQ(e.target.value)}} placeholder="find…" spellCheck={false}
             style={{background:N.surface,border:'0.5px solid '+(quadQ?T.primary:N.border),borderRadius:4,color:N.ink,padding:'3px 8px',fontSize:11,width:96,outline:'none'}}/>
           {quadQ&&<button onClick={function(){sQuadQ('')}} title="clear" style={{background:'transparent',border:'none',color:N.muted,fontSize:11,cursor:'pointer',padding:'0 2px'}}>{'\u2715'}</button>}
           {QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>{quadCfg.diaryOnly?'Logged films':'Rated films'} against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
+        <div className="text-xs mb-3" style={{color:N.muted}}>{quadCfg.diaryOnly||!useRated?'Logged films':'Rated films'} against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
         {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
           {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
               collided with any dot label near a corner — Alya, at three films and two stars,
