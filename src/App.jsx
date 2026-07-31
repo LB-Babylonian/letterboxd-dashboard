@@ -376,9 +376,9 @@ var QUAD_SETS=[
   {id:'genre',l:'Genres',min:2,floor:'anything seen twice or more',ownList:true},
   {id:'dir',l:'Directors',min:3,floor:'directors with 3 films or more',ownList:true},
   {id:'cast',l:'Cast',min:3,floor:'actors in 3 films or more',ownList:true},
-  {id:'friend',l:'Friends',min:3,floor:'companions on 3 films or more',ownList:true},
-  {id:'plat',l:'Platforms',min:3,floor:'platforms with 3 films or more',ownList:true},
-  {id:'venue',l:'Theaters',min:3,floor:'venues with 3 films or more',ownList:true},
+  {id:'friend',l:'Friends',min:3,floor:'companions on 3 films or more',ownList:true,diaryOnly:true},
+  {id:'plat',l:'Platforms',min:3,floor:'platforms with 3 films or more',ownList:true,diaryOnly:true},
+  {id:'venue',l:'Theaters',min:3,floor:'venues with 3 films or more',ownList:true,diaryOnly:true},
   {id:'country',l:'Countries',min:2,floor:'countries with 2 films or more',ownList:true},
   {id:'decade',l:'Decades',min:1,floor:null}
 ];
@@ -706,6 +706,28 @@ export default function Dashboard(){
   // Must stay above its first consumer: as a `var` it is hoisted undefined, so a memo above
   // this line calling agg(efOnce, ...) threw on mount and blanked the page.
   var efOnce=useMemo(function(){return onceWithCurrent(ef)},[ef,onceWithCurrent]);
+
+  // Films you rated but never logged, minus the shorts. They carry a rating, a year and full TMDB
+  // metadata, which is everything a taste question needs — so they belong in the panels that ask
+  // what you like. No date, no tags, no venue: nothing that needs a diary row can use them.
+  var unloggedRated=useMemo(function(){
+    return Object.keys(currentRatings).filter(function(k){
+      if(loggedKeys[k])return false;
+      var rt=runtimeOf[k];
+      return !(rt&&rt<SHORT_MINUTES);
+    }).map(function(k){var c=currentRatings[k];
+      // date stays empty on purpose: ratings.csv records when it was RATED, and showing that in a
+      // film list beside real watch dates would read as a date watched.
+      return{name:c.name,year:c.year,rating:c.rating,date:'',tags:[],unlogged:true}});
+  },[currentRatings,loggedKeys,runtimeOf]);
+
+  // Every rated film: the logged ones plus those. Only when the whole diary is in view — a year
+  // or a date range is a question about when something was watched, and an unlogged film has no
+  // answer, so it drops out rather than being silently attributed to a year.
+  var efAll=useMemo(function(){
+    var whole=yr==='All'&&!dateFrom&&!dateTo;
+    return whole?efOnce.concat(unloggedRated):efOnce;
+  },[efOnce,unloggedRated,yr,dateFrom,dateTo]);
   // Average rating over WATCH rows, each at its film's current score. The Costs tab's unit has
   // to stay the watch -- a second ticket is a second payment -- but the rating it reports should
   // come from the same place as every other rating on the site.
@@ -729,11 +751,16 @@ export default function Dashboard(){
   // diary rows are 33 films that ever got a 5 and 26 that still hold one, because Rango alone
   // was logged at five stars five times and nine former favourites have since been marked down.
   var statsOnce=useMemo(function(){
-    var r=efOnce.filter(function(e){return e.rating!==null});
-    return{films:efOnce.length,rated:r.length,
+    var r=efAll.filter(function(e){return e.rating!==null});
+    return{films:efAll.length,rated:r.length,
       avg:r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0,
-      five:efOnce.filter(function(e){return e.rating===5}).length};
-  },[efOnce]);
+      five:efAll.filter(function(e){return e.rating===5}).length};
+  },[efAll]);
+  // The tag panel compares tagged films against a baseline, and only logged films carry tags, so
+  // its baseline has to be the logged average — not the all-rated one, which the unlogged films
+  // pull down by 0.14 and would inflate every tag's lift.
+  var loggedAvg=useMemo(function(){var r=efOnce.filter(function(e){return e.rating!==null});
+    return r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0},[efOnce]);
   var stats=useMemo(function(){var f=ef;return{total:f.length,th:f.filter(isT).length,rw:f.filter(function(e){return e.rewatch}).length,fo:f.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,fr:f.filter(function(e){return gC(e.tags,fullReg).length>0}).length}},[ef,fullReg,isT]);
   var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;var pp=function(cf,pf){return(cf/cN*100)-(pf/pN*100)};var pR=pv.filter(function(e){return e.rating!==null}),cR=ef.filter(function(e){return e.rating!==null});return{films:cN-pN,avg:(pR.length&&cR.length)?(cR.reduce(function(s,e){return s+e.rating},0)/cR.length)-(pR.reduce(function(s,e){return s+e.rating},0)/pR.length):null,th:pp(ef.filter(isT).length,pv.filter(isT).length),rw:iRW?pp(ef.filter(function(e){return e.rewatch}).length,pv.filter(function(e){return e.rewatch}).length):null,fo:pp(ef.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,pv.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length),fr:pp(ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length,pv.filter(function(e){return gC(e.tags,fullReg).length>0}).length)}},[yr,ef,all,iRW,fullReg,isT]);
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
@@ -744,12 +771,12 @@ export default function Dashboard(){
   // One bar per FILM at its current rating, not one per rating you ever typed. Counting rows
   // put a rewatched favourite in the 5-star bar five times, which is both a wrong count and a
   // distribution biased towards the films you rewatch -- exactly the ones you already like.
-  var rDist=useMemo(function(){var c={};for(var r=0.5;r<=5;r+=0.5)c[r]=0;efOnce.forEach(function(e){if(e.rating!==null)c[e.rating]=(c[e.rating]||0)+1});return Object.entries(c).sort(function(a,b){return parseFloat(a[0])-parseFloat(b[0])}).map(function(x){return{rating:x[0],count:x[1]}})},[efOnce]);
-  var selFilms=useMemo(function(){return sR===null?[]:efOnce.filter(function(e){return e.rating===sR})},[efOnce,sR]);
+  var rDist=useMemo(function(){var c={};for(var r=0.5;r<=5;r+=0.5)c[r]=0;efAll.forEach(function(e){if(e.rating!==null)c[e.rating]=(c[e.rating]||0)+1});return Object.entries(c).sort(function(a,b){return parseFloat(a[0])-parseFloat(b[0])}).map(function(x){return{rating:x[0],count:x[1]}})},[efAll]);
+  var selFilms=useMemo(function(){return sR===null?[]:efAll.filter(function(e){return e.rating===sR})},[efAll,sR]);
   // "How much of the 1990s have you seen" is a films question, so the ribbon and the decade
   // tile count films, not watches.
-  var decD=useMemo(function(){return agg(efOnce,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efOnce]);
-  var decF=useMemo(function(){return sDe?efOnce.filter(function(e){return Math.floor(e.year/10)*10===parseInt(sDe)}):[]},[efOnce,sDe]);
+  var decD=useMemo(function(){return agg(efAll,function(e){return Math.floor(e.year/10)*10+'s'}).sort(function(a,b){return a.name<b.name?-1:1})},[efAll]);
+  var decF=useMemo(function(){return sDe?efAll.filter(function(e){return Math.floor(e.year/10)*10===parseInt(sDe)}):[]},[efAll,sDe]);
   var tasteTags=useMemo(function(){return Object.keys(fullReg).filter(function(t){return fullReg[t].cat==='taste'})},[fullReg]);
   // Films, at today's rating, like every other count on this tab.
   var tagD=useMemo(function(){return tasteTags.map(function(t){var m=efOnce.filter(function(e){return e.tags.indexOf(t)!==-1}),r=m.filter(function(e){return e.rating!==null});return{name:getDn(t,fullReg),tag:t,Films:m.length,Avg:r.length?parseFloat((r.reduce(function(s,e){return s+e.rating},0)/r.length).toFixed(2)):0}}).sort(function(a,b){return b.Films-a.Films})},[efOnce,tasteTags,fullReg]);
@@ -758,7 +785,7 @@ export default function Dashboard(){
   // interesting number is not how many carry it but how far they sit from everything else.
   // Lift against your own average does that in one figure; a ranked count cannot.
   var tagLift=useMemo(function(){
-    var base=statsOnce.avg;
+    var base=loggedAvg;
     var rows=tagD.filter(function(d){return d.Films>0&&d.Avg>0}).map(function(d){return Object.assign({},d,{lift:d.Avg-base})});
     rows.sort(function(a,b){return b.lift-a.lift});
     // Scale to the widest bar, with a floor so a set of tiny lifts does not get magnified into
@@ -917,25 +944,28 @@ export default function Dashboard(){
   var quadCfg=QUAD_SETS.filter(function(q){return q.id===quadSet})[0]||QUAD_SETS[0];
   // Built from efOnce for every set: on one chart with one axis labelled "films seen", a set
   // that counted watches would be plotting a different quantity from the set beside it.
+  // Genres, directors, cast, countries and decades come from metadata, which every rated film has,
+  // so they run off efAll. Friends, platforms and theatres come from diary tags, which only a
+  // logged film can carry, so they stay on efOnce and say so in the caption.
   var quadData=useMemo(function(){return{
-    genre:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.genres?m.genres.split(', '):[]}),
-    dir:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.directors?m.directors.split(', '):[]}),
-    cast:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.cast_members?m.cast_members.split(', '):[]}),
+    genre:aggMulti(efAll,function(e){var m=gMeta(e);return m&&m.genres?m.genres.split(', '):[]}),
+    dir:aggMulti(efAll,function(e){var m=gMeta(e);return m&&m.directors?m.directors.split(', '):[]}),
+    cast:aggMulti(efAll,function(e){var m=gMeta(e);return m&&m.cast_members?m.cast_members.split(', '):[]}),
     friend:aggMulti(efOnce,function(e){return gC(e.tags,fullReg)}),
     // gP folds every cinema watch into one "Theater" bucket, which is the right grain here:
     // the platform question is how a film reached you, and the venue set answers which room.
     plat:aggMulti(efOnce,function(e){return[gP(e.tags,fullReg)]}),
     venue:aggMulti(efOnce,function(e){var v=gV(e.tags,fullReg);return v?[getDn(v,fullReg)]:[]}),
-    country:aggMulti(efOnce,function(e){var m=gMeta(e);return m&&m.countries?m.countries.split(', '):[]}),
-    decade:aggMulti(efOnce,function(e){return[Math.floor(e.year/10)*10+'s']})
-  }},[efOnce,filmMeta,fullReg]);
+    country:aggMulti(efAll,function(e){var m=gMeta(e);return m&&m.countries?m.countries.split(', '):[]}),
+    decade:aggMulti(efAll,function(e){return[Math.floor(e.year/10)*10+'s']})
+  }},[efAll,efOnce,filmMeta,fullReg]);
   var quadSrc=quadData[quadSet]||quadData.genre;
   // Whatever is selected in the set currently on the map, and the films behind it. Runs off
   // efOnce so the list length matches the count the dot was plotted at.
   var quadSelName=quadSet==='dir'?sDir:quadSet==='cast'?sCast:quadSet==='friend'?sCo:quadSet==='country'?sCountry:quadSet==='decade'?sDe:quadSet==='plat'?sP:quadSet==='venue'?sVe:sGenre;
   var quadFilms=useMemo(function(){
     if(!quadSelName)return[];
-    return efOnce.filter(function(e){
+    return (quadCfg.diaryOnly?efOnce:efAll).filter(function(e){
       if(quadSet==='friend')return gC(e.tags,fullReg).indexOf(quadSelName)!==-1;
       if(quadSet==='plat')return gP(e.tags,fullReg)===quadSelName;
       if(quadSet==='venue'){var v=gV(e.tags,fullReg);return !!v&&getDn(v,fullReg)===quadSelName}
@@ -944,7 +974,7 @@ export default function Dashboard(){
       var f=quadSet==='dir'?m.directors:quadSet==='cast'?m.cast_members:quadSet==='country'?m.countries:m.genres;
       return !!f&&f.split(', ').indexOf(quadSelName)!==-1;
     });
-  },[efOnce,quadSet,quadSelName,fullReg,filmMeta]);
+  },[efOnce,efAll,quadCfg,quadSet,quadSelName,fullReg,filmMeta]);
   var quad=useMemo(function(){
     var pts=quadSrc.filter(function(d){return d.Films>=quadCfg.min&&d.Avg>0});
     if(!pts.length)return{pts:[],plain:[],labeled:[],mx:0,my:0,yDom:[0,5]};
@@ -1434,7 +1464,7 @@ export default function Dashboard(){
           on the distribution instead. */}
       {/* RATING DISTRIBUTION — moved from Overview */}
       <div>
-        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} logged films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span> {'\u00B7'} <span style={{fontStyle:'italic',color:N.mutedSoft}}>click a bar for its films</span></span>}/>
+        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.rated} rated films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span> {'\u00B7'} <span style={{fontStyle:'italic',color:N.mutedSoft}}>click a bar for its films</span></span>}/>
         <ResponsiveContainer width="100%" height={230}>
           <BarChart data={rDist}>
             <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1491,7 +1521,7 @@ export default function Dashboard(){
             style={{background:N.surface,border:'0.5px solid '+(quadQ?T.primary:N.border),borderRadius:4,color:N.ink,padding:'3px 8px',fontSize:11,width:96,outline:'none'}}/>
           {quadQ&&<button onClick={function(){sQuadQ('')}} title="clear" style={{background:'transparent',border:'none',color:N.muted,fontSize:11,cursor:'pointer',padding:'0 2px'}}>{'\u2715'}</button>}
           {QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>Logged films against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
+        <div className="text-xs mb-3" style={{color:N.muted}}>{quadCfg.diaryOnly?'Logged films':'Rated films'} against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
         {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
           {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
               collided with any dot label near a corner — Alya, at three films and two stars,
@@ -1532,7 +1562,7 @@ export default function Dashboard(){
           Tags keeps its table: it is the one set that is not a partition of the collection. */}
       <div className="lg:w-2/3 mx-auto space-y-6">
       <div>
-        <SectionHead T={N} title="What a tag is worth" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
+        <SectionHead T={N} title="What a tag is worth" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>logged baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
         <div className="text-xs mb-3" style={{color:N.muted}}>How far the logged films carrying a tag sit from the overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
         <div className="space-y-1">
           {tagLift.rows.map(function(r){
