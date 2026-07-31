@@ -1,29 +1,80 @@
 name: Supabase Keepalive
 
+# Supabase pauses a free-tier project after roughly 7 days without activity, so this reads
+# one row every 5 days to keep it warm.
+#
+# History worth knowing, because it explains why this looks over-built for one curl: the
+# workflow existed for months without executing once — it was committed twice, both times
+# somewhere GitHub ignores (once with no .yml extension, once at the repo root). When it was
+# finally moved here it failed on its very first run, because the query it had always
+# carried asks for `pipe_data.name`, and that column has never existed. pipe_data holds the
+# whole diary as a single text blob: its columns are id, data, updated_at.
+#
+# That 400 is the reason for the checks below. PostgREST rejects an unknown column from its
+# schema cache, so the request very likely never reaches the database — meaning a keepalive
+# answering 400 is not keeping anything alive, and would have gone on quietly not doing its
+# job if it had not also been failing loudly. So this asserts a ROW came back rather than
+# just a status code, and prints what it got when one did not.
+#
+# Secrets: SUPABASE_URL, SUPABASE_ANON_KEY. The anon key is public by design (it ships in
+# the browser bundle); RLS is what protects the data. See supabase/schema.sql.
+
 on:
   schedule:
-    # Runs at 09:00 UTC every 5 days
-    - cron: '0 9 */5 * *'
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+    - cron: '0 9 */5 * *'   # every 5 days, 09:00 UTC — inside Supabase's ~7 day window
+  workflow_dispatch:        # "Run workflow" on the Actions tab
+
+permissions:
+  contents: read
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X GET \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/pipe_data?select=name&limit=1" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
-          
-          echo "HTTP Response: $RESPONSE"
-          
-          if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 206 ]; then
-            echo "✓ Supabase is alive"
-            exit 0
-          else
-            echo "✗ Supabase ping failed"
+          set -uo pipefail
+
+          # A missing secret otherwise produces a curl error that reads nothing like "the
+          # secret is missing", which is a bad half hour for whoever debugs it.
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY is not set."
+            echo "Settings > Secrets and variables > Actions. Both are needed."
             exit 1
           fi
+
+          # select=id, because id exists and is one integer. select=data would also work and
+          # would drag the entire diary across the wire for no reason.
+          BODY=$(curl -sS --max-time 30 -w '\n%{http_code}' \
+            "${SUPABASE_URL}/rest/v1/pipe_data?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}") || {
+              echo "::error::curl could not reach Supabase at all — network, or a malformed URL."
+              exit 1
+            }
+
+          CODE=$(printf '%s' "${BODY}" | tail -n1)
+          JSON=$(printf '%s' "${BODY}" | sed '$d')
+          echo "HTTP ${CODE}"
+          echo "body: ${JSON}"
+
+          if [ "${CODE}" != "200" ] && [ "${CODE}" != "206" ]; then
+            echo "::error::Supabase answered ${CODE}, not 200. The body above says why."
+            echo "  400  the query is malformed — a column that does not exist, most likely"
+            echo "  401/403  the anon key is wrong, or RLS blocks anonymous reads"
+            echo "  503/540  the project is paused, which is what this workflow exists to prevent"
+            exit 1
+          fi
+
+          # An empty array is a 200 that proved nothing useful: either the table is empty or a
+          # policy filtered every row away. In both cases the dashboard has no data to show,
+          # so this should not report success.
+          if [ "${JSON}" = "[]" ]; then
+            echo "::error::200, but no rows came back. pipe_data is empty, or RLS filtered it."
+            exit 1
+          fi
+
+          echo "Supabase is awake and pipe_data returned a row."
