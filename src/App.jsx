@@ -847,7 +847,7 @@ export default function Dashboard(){
     pairs.forEach(function(_,i){cov+=(b[i]-mb)*(y[i]-my);vb+=Math.pow(b[i]-mb,2);vy+=Math.pow(y[i]-my,2)});
     var r=(vb&&vy)?cov/Math.sqrt(vb*vy):null;
     // Identical (x,y) pairs stack on one pixel, so collapse and size the dot by how many.
-    var cells={};pairs.forEach(function(f){var k=f.rating+'|'+f.yRating;if(!cells[k])cells[k]={x:f.rating,y:f.yRating,n:0,films:[],names:[]};cells[k].n++;cells[k].names.push(f.name);cells[k].films.push(f)});
+    var cells={};pairs.forEach(function(f){var k=f.rating+'|'+f.yRating;if(!cells[k])cells[k]={x:f.rating,y:f.yRating,n:0,films:[],names:[]}/* films: rows for the drill; names: strings for the tooltip */;cells[k].n++;cells[k].names.push(f.name);cells[k].films.push(f)});
     var buckets={};pairs.forEach(function(f){if(!buckets[f.signed])buckets[f.signed]=[];buckets[f.signed].push(f)});
     var dist=Object.keys(buckets).map(Number).sort(function(a,c){return a-c}).map(function(d){return{d:d,label:(d>0?'+':'')+d.toFixed(1),count:buckets[d].length,films:buckets[d]}});
     // Where the two of them part company. A floor of 5 shared films, because one thriller
@@ -893,7 +893,7 @@ export default function Dashboard(){
     var down=rows.filter(function(r){return r.delta<0}).sort(function(a,b){return a.delta-b.delta});
     // Identical (first,last) pairs land on the same pixel, so collapse them and size the
     // dot by how many films sit there — otherwise the scatter reads as ten dots, not 80.
-    var pairs={};drift.forEach(function(d){var pk=d.first+'|'+d.last;if(!pairs[pk])pairs[pk]={x:d.first,y:d.last,n:0,films:[],names:[]};pairs[pk].n++;pairs[pk].names.push(d.name);
+    var pairs={};drift.forEach(function(d){var pk=d.first+'|'+d.last;if(!pairs[pk])pairs[pk]={x:d.first,y:d.last,n:0,films:[],names:[]}/* films: rows for the drill; names: strings for the tooltip */;pairs[pk].n++;pairs[pk].names.push(d.name);
       pairs[pk].films.push({name:d.name,year:d.year,rating:d.last,date:d.date})});
     // Keyed off loggedKeys — every diary row there is, rated or not, feature or short. diaryByFilm
     // holds only rated films, and `all` holds only features, so both undercount what was logged.
@@ -1392,7 +1392,7 @@ export default function Dashboard(){
               <XAxis type="number" dataKey="x" domain={[0,5.5]} ticks={[1,2,3,4,5]} tick={{fill:N.muted,fontSize:10}} label={{value:'Babylonian',position:'insideBottom',offset:-12,fill:N.mutedSoft,fontSize:10}}/>
               <YAxis type="number" dataKey="y" domain={[0,5.5]} ticks={[1,2,3,4,5]} width={38} tick={{fill:N.muted,fontSize:10}} label={{value:'Yesmine',angle:-90,position:'insideLeft',offset:14,fill:N.mutedSoft,fontSize:10}}/>
               <ZAxis dataKey="n" range={[55,420]}/>
-              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>Babylonian {d.x}★ · Yesmine {d.y}★</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.films.slice(0,4).join(', ')}{d.films.length>4?' +'+(d.films.length-4)+' more':''}</div></div>}}/>
+              <Tooltip content={function(pp){if(!pp.active||!pp.payload||!pp.payload.length)return null;var d=pp.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>Babylonian {d.x}★ · Yesmine {d.y}★</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.names.slice(0,4).join(', ')}{d.names.length>4?' +'+(d.names.length-4)+' more':''}</div></div>}}/>
               <ReferenceLine segment={[{x:0.5,y:0.5},{x:5,y:5}]} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <Scatter data={yAnalysis.cells} fill={VIZ_MARK} fillOpacity={0.72} cursor="pointer"
                 onClick={function(d){var c=(d&&d.payload)||d;if(c&&c.films)openDrill('Babylonian '+c.x+'\u2605 \u00b7 Yesmine '+c.y+'\u2605',c.films)}}/>
@@ -1463,7 +1463,10 @@ export default function Dashboard(){
           the tag comparator, Second thoughts and the map's Friends, Platforms and Theaters sets
           need a diary row whatever this says. */}
       <div className="flex items-center gap-2 flex-wrap">
-        {[{k:'rated',l:'Everything rated',n:efOnce.length+unloggedRated.length},{k:'logged',l:'Logged only',n:efOnce.length}].map(function(o){
+        {/* The labels match the captions word for word: press "Rated films" and the distribution
+            reads "937 rated films". "Everything rated" was a sentence fragment on a button and
+            shared no wording with anything it changed. */}
+        {[{k:'rated',l:'Rated films',n:efOnce.length+unloggedRated.length},{k:'logged',l:'Logged films',n:efOnce.length}].map(function(o){
           var on=pop===o.k,dead=o.k==='rated'&&!wholeDiary;
           return <button key={o.k} onClick={function(){sPop(o.k)}}
             title={dead?'A year or a date range selects by watch date, which the unlogged films do not have':''}
@@ -1668,7 +1671,7 @@ export default function Dashboard(){
               <XAxis type="number" dataKey="x" domain={[0,5.5]} ticks={[1,2,3,4,5]} tick={{fill:N.muted,fontSize:10}} label={{value:'first rating',position:'insideBottom',offset:-12,fill:N.mutedSoft,fontSize:10}}/>
               <YAxis type="number" dataKey="y" domain={[0,5.5]} ticks={[1,2,3,4,5]} width={38} tick={{fill:N.muted,fontSize:10}} label={{value:'latest',angle:-90,position:'insideLeft',offset:14,fill:N.mutedSoft,fontSize:10}}/>
               <ZAxis dataKey="n" range={[55,420]}/>
-              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>{d.x}{'★'} {'→'} {d.y}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.films.slice(0,4).join(', ')}{d.films.length>4?' +'+(d.films.length-4)+' more':''}</div></div>}}/>
+              <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11,maxWidth:240}}><div style={{color:N.ink,fontWeight:500}}>{d.x}{'★'} {'→'} {d.y}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{d.n} {d.n===1?'film':'films'}</div><div style={{color:N.inkSoft,marginTop:4}}>{d.names.slice(0,4).join(', ')}{d.names.length>4?' +'+(d.names.length-4)+' more':''}</div></div>}}/>
               <ReferenceLine segment={[{x:0.5,y:0.5},{x:5,y:5}]} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <Scatter data={revisions.pairs} fill={VIZ_MARK} fillOpacity={0.72} cursor="pointer"
                 onClick={function(d){var c=(d&&d.payload)||d;if(c&&c.films)openDrill(c.x+'\u2605 then '+c.y+'\u2605',c.films)}}/>
