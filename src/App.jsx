@@ -811,6 +811,11 @@ export default function Dashboard(){
   // opposite of the shelf panel, for the same reason. There, one side had only a current
   // rating, so both had to be current. Here both numbers are verdicts from the night, and
   // swapping one for a 2026 revision would manufacture disagreement that never happened.
+  //
+  // 'yesmine' here is the literal tag text in the Letterboxd export, so it cannot follow a
+  // rename: change this string and it matches nothing and the tab empties. Same for the
+  // 'Y's rating' pattern in parseReviews(). The nav button reads "Wifey" while the panels
+  // underneath say Yesmine -- that is the intent, not a half-finished rename.
   var yFilms=useMemo(function(){
     var seen={},out=[];
     ef.filter(function(e){return gC(e.tags,fullReg).some(function(n){return n.toLowerCase().indexOf('yesmine')!==-1})})
@@ -837,9 +842,10 @@ export default function Dashboard(){
   // marks a half-star lower throughout.
   var yAnalysis=useMemo(function(){
     var pairs=yFilms.filter(function(f){return f.signed!==null});
-    var slept=yFilms.filter(function(f){return typeof f.yRating==='string'}).length;
-    var unrated=yFilms.filter(function(f){return f.yRating===null}).length;
-    if(pairs.length<3)return{pairs:[],n:0,r:null,bias:0,within:0,yHigher:0,bHigher:0,same:0,dist:[],cells:[],genres:[],slept:slept,unrated:unrated};
+    // The films that fall out -- a "sleep"/"memory" verdict instead of a number, or no rating
+    // from her yet -- used to be counted out in a line under the tiles. "N with both ratings"
+    // under Films together already says how many are missing, so it was saying it twice.
+    if(pairs.length<3)return{pairs:[],n:0,r:null,bias:0,within:0,yHigher:0,bHigher:0,same:0,dist:[],cells:[],genres:[]};
     var b=pairs.map(function(f){return f.rating}),y=pairs.map(function(f){return f.yRating});
     var mean=function(a){return a.reduce(function(s,v){return s+v},0)/a.length};
     var mb=mean(b),my=mean(y);
@@ -864,7 +870,7 @@ export default function Dashboard(){
       yHigher:pairs.filter(function(f){return f.signed>0}).length,
       bHigher:pairs.filter(function(f){return f.signed<0}).length,
       same:pairs.filter(function(f){return f.signed===0}).length,
-      dist:dist,cells:Object.keys(cells).map(function(k){return cells[k]}),genres:genres,slept:slept,unrated:unrated};
+      dist:dist,cells:Object.keys(cells).map(function(k){return cells[k]}),genres:genres};
   },[yFilms,filmMeta]);
 
   // ============================================================
@@ -1090,8 +1096,9 @@ export default function Dashboard(){
 
   // Labels are not the ids. 'taste' cannot be renamed to 'ratings' in code without colliding
   // with the tag CATEGORY of the same name (getCat(t,reg)==='taste'), which is unrelated and
-  // would take the tag registry with it. The id is internal; only the label is read.
-  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Ratings'},{id:'rankings',l:'Top 50'},{id:'yesmine',l:'Yesmine'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
+  // would take the tag registry with it. The id is internal; only the label is read. Likewise
+  // 'yesmine' keeps its id: it doubles as the Letterboxd tag the tab is built from.
+  var TABS_ALL=[{id:'overview',l:'Overview'},{id:'taste',l:'Ratings'},{id:'rankings',l:'Top 50'},{id:'yesmine',l:'Wifey'},{id:'costs',l:'Costs'},{id:'tags',l:'Tags'}];
   // Tags is the only fully private tab — it is a raw editing surface with nothing to
   // read. Everything else is public, including Costs: that tab already splits itself,
   // showing the spend cards and graphs to everyone while keeping the subscription
@@ -1375,10 +1382,6 @@ export default function Dashboard(){
         <Stat T={N} label="Bias" value={yAnalysis.n?(yAnalysis.bias>0?'+':'')+yAnalysis.bias.toFixed(2):'—'} sub={yAnalysis.n?(yAnalysis.bias<0?'Yesmine rates lower':'Yesmine rates higher'):''} color={Math.abs(yAnalysis.bias)>=0.1?NEG:N.ink}/>
         <Stat T={N} label="Within ½★" value={yAnalysis.n?Math.round(yAnalysis.within/yAnalysis.n*100)+'%':'—'} sub={yAnalysis.within+' of '+yAnalysis.n+' films'} noBorder/>
       </div>
-      {(yAnalysis.slept>0||yAnalysis.unrated>0)&&<div className="text-xs" style={{color:N.mutedSoft}}>
-        {yAnalysis.slept>0?yAnalysis.slept+' films carry "sleep" or "memory" instead of a number and sit out of every figure here. ':''}
-        {yAnalysis.unrated>0?yAnalysis.unrated+' have no rating from Yesmine yet.':''}
-      </div>}
 
       {yAnalysis.n>=3&&<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* THE AGREEMENT PLOT — one dot per film. The diagonal is unanimity; distance from it is
