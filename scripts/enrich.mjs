@@ -10,6 +10,7 @@
 //   npm run enrich -- --dry-run # list what would be fetched, touch nothing
 //   npm run enrich -- --limit 25
 //   npm run enrich -- --force   # re-fetch films already in film_metadata
+//   npm run enrich -- --only "Beyond (2003)" --only "Another (2012)"   # repair named films only
 //
 // Reads TMDB_TOKEN, SUPABASE_URL and SUPABASE_SERVICE_KEY from .env.
 
@@ -33,6 +34,9 @@ if (missing.length) {
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
 const FORCE = args.includes('--force');
+// Repeatable: --only "Beyond (2003)" --only "Emmanuelle (2024)". Year is optional but recommended,
+// since the ambiguous titles are exactly the ones that need repairing.
+const ONLY = args.reduce((acc, a, i) => (a === '--only' && args[i + 1] ? acc.concat(args[i + 1]) : acc), []);
 const limitArg = args.indexOf('--limit');
 const LIMIT = limitArg !== -1 ? parseInt(args[limitArg + 1], 10) : Infinity;
 
@@ -80,11 +84,39 @@ async function tmdb(url, attempt = 0) {
   return res.json();
 }
 
+// TMDB ranks search results by popularity, not by how well the title matches. Taking results[0]
+// therefore attaches a popular near-miss to a film with a short or common title, silently and with
+// no error to notice: "Beyond" (2003), the Animatrix short, was stored as Beyond Borders -- Martin
+// Campbell, 127 minutes, Drama/Romance/War -- because that outranked the EXACT title match sitting
+// at results[1]. A 127-minute runtime then walked it straight past the shorts filter.
+//
+// So prefer an exact title match, English or original, before falling back to popularity. Accents
+// and punctuation are normalised away because Letterboxd and TMDB disagree about apostrophes.
+const normTitle = (s) => String(s || '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[‘’'`´]/g, '')
+  .replace(/[^a-z0-9]+/gi, ' ')
+  .trim().toLowerCase();
+
+function pickMatch(results, name, year) {
+  if (!results || !results.length) return null;
+  const want = normTitle(name);
+  const sameYear = (r) => r.release_date && Math.abs(parseInt(r.release_date.slice(0, 4), 10) - year) <= 1;
+  const exact = (r) => normTitle(r.title) === want || normTitle(r.original_title) === want;
+  // Exact title AND the right year is the only combination worth trusting outright.
+  return results.find((r) => exact(r) && sameYear(r))
+    || results.find(exact)
+    || results[0];
+}
+
 async function fetchOne({ name, year }) {
   const search = await tmdb(
     `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(name)}&year=${year}&language=en-US`,
   );
-  const hit = search.results && search.results[0];
+  const hit = pickMatch(search.results, name, year);
+  if (hit && search.results[0] && hit.id !== search.results[0].id) {
+    console.log(`  ${name} (${year}): took the exact title match "${hit.title}" over TMDB's top hit "${search.results[0].title}"`);
+  }
 
   // Record a null row for genuine no-matches so repeat runs skip them instead of
   // re-querying every time. Transient errors are handled by the caller and left
@@ -168,6 +200,32 @@ async function main() {
   let todo = [...unique.entries()]
     .filter(([k]) => FORCE || !have.has(k))
     .map(([, f]) => f);
+
+  // --only repairs named films without re-fetching the other thousand. A wrong match is invisible
+  // until someone notices the consequence -- a 127-minute runtime on a 13-minute short -- so the
+  // repair wants to be surgical and its output short enough to actually read.
+  if (ONLY.length) {
+    const want = new Set(ONLY.map((s) => s.toLowerCase()));
+    todo = [...unique.values()].filter((f) => want.has(`${f.name} (${f.year})`.toLowerCase()) || want.has(String(f.name).toLowerCase()));
+    const found = new Set(todo.map((f) => `${f.name} (${f.year})`.toLowerCase()));
+    ONLY.filter((s) => !found.has(s.toLowerCase()) && !todo.some((f) => String(f.name).toLowerCase() === s.toLowerCase()))
+      .forEach((s) => console.log(`--only "${s}": no such film in the diary, ratings or Top 50 lists`));
+    console.log(`--only: ${todo.length} film(s) to re-fetch, ignoring --force/--limit`);
+    if (!todo.length) return;
+    if (DRY) {
+      todo.forEach((f) => console.log(`  ${f.name} (${f.year})`));
+      return console.log('\n--dry-run: nothing written.');
+    }
+    let out = [];
+    for (const film of todo) {
+      const row = await fetchOne(film);
+      out.push(row);
+      console.log(`  ${film.name} (${film.year}) -> tmdb ${row.tmdb_id}, ${row.runtime}min, ${row.directors}`);
+      await sleep(120);
+    }
+    await flush(out);
+    return console.log(`\nrewrote ${out.length} row(s).`);
+  }
 
   console.log(`${unique.size} unique films, ${have.size} already enriched, ${todo.length} to fetch`);
 
