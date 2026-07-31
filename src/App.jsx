@@ -48,12 +48,14 @@ var NEUTRAL={
   dark:true
 };
 
-// Negative / regression indicator (YoY declines, "worse than last year").
-// Theme-independent on purpose: this used to be blend(T.primary,paper,0.55), which
-// darkened the accent until it was unreadable (1.9-2.7:1 on surface, well under AA)
-// and was invisible outright for themes whose primary is near-black (lighthouse,
-// lalaland). A muted terracotta reads as "down" against the green "up" and holds
-// 5.16:1 on surface / 5.74:1 on paper for every theme.
+// Fault indicator: a render that threw, a price that is missing, a wrong password. NOT a low
+// number -- every negative pole on a chart is VIZ_MARK now, and mixing the two back together is
+// what made "worse" ambiguous in the first place. See the note above VIZ_GOOD.
+//
+// Theme-independent on purpose: this used to be blend(T.primary,paper,0.55), which darkened the
+// accent until it was unreadable (1.9-2.7:1 on surface, well under AA) and was invisible
+// outright for themes whose primary is near-black (lighthouse, lalaland). A muted terracotta
+// holds 5.16:1 on surface / 5.74:1 on paper for every theme.
 var NEG='#C8806B';
 
 // ============================================================
@@ -249,7 +251,7 @@ function vivid(hex,paper,f){var a=hexToRgb(hex),b=hexToRgb(paper);var dr=a.r-b.r
 //   VIZ_HEAT       the calendar, where colour is the only encoding -> one hue ramp
 //   VIZ_YEARS      which diary year (identity)  -> fixed distinct hues, never cycled
 //   VIZ_SERIES     which category (max 3)       -> fixed order, never cycled
-//   polarity                                    -> VIZ_GOOD / NEUTRAL.muted / NEG
+//   polarity                                    -> VIZ_GOOD / NEUTRAL.muted / VIZ_MARK
 
 // Data marks are a SINGLE solid colour, not a graded scale. In a ranked table the
 // bar's length already encodes the count and the rating is printed beside it, so
@@ -279,15 +281,19 @@ var VIZ_YEARS=['#3987E5','#D95926','#199E70','#C98500','#D55181','#9085E9','#008
 // arrangement, not only side by side.
 var VIZ_SERIES=['#3DC25A','#C4832E','#4E90C4'];
 
-// Positive pole for polarity encodings. Terracotta NEG is the negative pole and
-// NEUTRAL.muted the no-change midpoint.
+// Positive pole for polarity encodings. VIZ_MARK is the negative pole and NEUTRAL.muted the
+// no-change midpoint.
 var VIZ_GOOD='#3DC25A';
 
 // Top 50 movement. Orange for a slip here is the same orange the Ratings tab uses for a rating
-// that fell -- VIZ_MARK -- which was a deliberate call: it reads as "down" across the site even
-// though that hue is also the plain data mark. Terracotta NEG is still the negative pole for the
-// year-over-year deltas and the Yesmine bias, so two colours mean "worse" depending on where you
-// are. Chosen knowingly; see the commit that made the swap.
+// that fell -- VIZ_MARK -- which reads as "down" across the site even though that hue is also
+// the plain data mark. Every negative pole is now that one orange: the tag comparator, Second
+// thoughts, the year-over-year deltas and the Yesmine bias all used to reach for terracotta NEG
+// instead, so "worse" had two colours depending on which panel you were looking at.
+//
+// NEG is therefore no longer a data colour at all. It survives only where something is WRONG
+// rather than merely low -- the error boundary, the missing-price warning, the admin modal --
+// and it should stay off charts, or the distinction collapses again.
 //
 // Up and down previously resolved to the same colour, so a rise and a fall were
 // indistinguishable at a glance — the arrow glyph was doing all the work.
@@ -322,7 +328,7 @@ function yC(year,allYears){
 
 // Polarity: a real zero point, so two poles plus a neutral midpoint. T is kept in
 // the signature for call-site compatibility but chart polarity is not themed.
-function signColor(v,T,opts){opts=opts||{};var pos=opts.positiveIsGood!==false;var good=v>0?pos:!pos;if(Math.abs(v)<0.005)return NEUTRAL.muted;return good?VIZ_GOOD:NEG}
+function signColor(v,T,opts){opts=opts||{};var pos=opts.positiveIsGood!==false;var good=v>0?pos:!pos;if(Math.abs(v)<0.005)return NEUTRAL.muted;return good?VIZ_GOOD:VIZ_MARK}
 
 // Stacked series, fixed order.
 function seriesColors(){return VIZ_SERIES.slice()}
@@ -459,7 +465,7 @@ var CostTip=function(p){var T=p.T;if(!p.active||!p.payload||!p.payload.length)re
 function SectionHead(p){var T=p.T;return <div className="flex items-baseline justify-between mb-3 pb-2" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}><div className="text-base" style={{color:NEUTRAL.ink,fontWeight:500,letterSpacing:'-0.01em'}}>{p.title}{p.count!=null&&<span className="ml-2 text-xs font-normal" style={{color:NEUTRAL.muted}}>{p.count}</span>}</div>{p.aside}</div>}
 
 // Stat — Editorial label / large number / optional sub.
-function Stat(p){var T=p.T;var yoyColor=p.yoy?(p.yoy.charAt(0)==='+'?T.primary:p.yoy.charAt(0)==='-'?NEG:NEUTRAL.muted):NEUTRAL.muted;return <div className="px-4 py-3" style={{borderRight:p.noBorder?'none':'0.5px solid '+NEUTRAL.border}}><div className="mb-1.5" style={{fontSize:9,letterSpacing:'0.15em',color:NEUTRAL.muted,textTransform:'uppercase'}}>{p.label}</div><div style={{fontSize:p.large?28:20,fontWeight:500,lineHeight:1,color:p.color||NEUTRAL.ink}}>{p.value}</div>{(p.sub||p.yoy)&&<div className="mt-1.5 flex items-baseline gap-2">{p.sub&&<span style={{fontSize:11,color:NEUTRAL.muted}}>{p.sub}</span>}{p.yoy&&<span style={{fontSize:11,color:yoyColor,fontWeight:500}}>{p.yoy}</span>}</div>}</div>}
+function Stat(p){var T=p.T;var yoyColor=p.yoy?(p.yoy.charAt(0)==='+'?T.primary:p.yoy.charAt(0)==='-'?VIZ_MARK:NEUTRAL.muted):NEUTRAL.muted;return <div className="px-4 py-3" style={{borderRight:p.noBorder?'none':'0.5px solid '+NEUTRAL.border}}><div className="mb-1.5" style={{fontSize:9,letterSpacing:'0.15em',color:NEUTRAL.muted,textTransform:'uppercase'}}>{p.label}</div><div style={{fontSize:p.large?28:20,fontWeight:500,lineHeight:1,color:p.color||NEUTRAL.ink}}>{p.value}</div>{(p.sub||p.yoy)&&<div className="mt-1.5 flex items-baseline gap-2">{p.sub&&<span style={{fontSize:11,color:NEUTRAL.muted}}>{p.sub}</span>}{p.yoy&&<span style={{fontSize:11,color:yoyColor,fontWeight:500}}>{p.yoy}</span>}</div>}</div>}
 
 
 
@@ -1379,7 +1385,7 @@ export default function Dashboard(){
             throughout. Both are needed — perfect agreement on order with a constant offset
             gives an r near 1 and a bias that is not zero. */}
         <Stat T={N} label="Correlation" value={yAnalysis.r!=null?yAnalysis.r.toFixed(2):'—'} sub={yAnalysis.r!=null?(yAnalysis.r>0.7?'strong agreement':yAnalysis.r>0.4?'moderate agreement':'weak agreement'):''}/>
-        <Stat T={N} label="Bias" value={yAnalysis.n?(yAnalysis.bias>0?'+':'')+yAnalysis.bias.toFixed(2):'—'} sub={yAnalysis.n?(yAnalysis.bias<0?'Yesmine rates lower':'Yesmine rates higher'):''} color={Math.abs(yAnalysis.bias)>=0.1?NEG:N.ink}/>
+        <Stat T={N} label="Bias" value={yAnalysis.n?(yAnalysis.bias>0?'+':'')+yAnalysis.bias.toFixed(2):'—'} sub={yAnalysis.n?(yAnalysis.bias<0?'Yesmine rates lower':'Yesmine rates higher'):''} color={Math.abs(yAnalysis.bias)>=0.1?VIZ_MARK:N.ink}/>
         <Stat T={N} label="Within ½★" value={yAnalysis.n?Math.round(yAnalysis.within/yAnalysis.n*100)+'%':'—'} sub={yAnalysis.within+' of '+yAnalysis.n+' films'} noBorder/>
       </div>
 
