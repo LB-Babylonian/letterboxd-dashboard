@@ -596,6 +596,16 @@ export default function Dashboard(){
   var doBulkTag=function(){if(!bulkCat)return;sReg(function(p){var n=Object.assign({},p);Object.keys(tagSel).forEach(function(t){if(tagSel[t])n[t]=Object.assign({},n[t]||{},{cat:bulkCat})});saveReg(n);return n});sTagSel({});sBulkCat('')};
   var doUpSubs=function(fn){sSubscriptions(function(p){var n=fn(p);saveSubs(n);return n})};
   var all=useMemo(function(){return parsePipe(pd)},[pd]);
+  // Every film with ANY diary row, shorts and series included. `all` drops those two on purpose
+  // so they stay out of the taste panels, but "was this logged at all?" is a different question:
+  // 32 rated films are logged only as a short or an episode — Over the Garden Wall, the Black
+  // Mirror instalments, the Roald Dahl shorts — and checking against `all` filed every one of
+  // them under "rated, never logged", which is the opposite of true.
+  var loggedKeys=useMemo(function(){
+    var m={};
+    (pd||'').trim().split('\n').forEach(function(l){var q=l.split('|');if(q[1])m[normName(q[1])+'|||'+parseInt(q[2])]=true});
+    return m;
+  },[pd]);
   var allTagCounts=useMemo(function(){var c={};all.forEach(function(e){e.tags.forEach(function(t){c[t]=(c[t]||0)+1})});return c},[all]);
   var fullReg=useMemo(function(){var r={};Object.keys(allTagCounts).forEach(function(t){r[t]=reg[t]||{cat:null,dn:''}});return r},[allTagCounts,reg]);
   var unclass=useMemo(function(){return Object.keys(fullReg).filter(function(t){return!fullReg[t].cat}).length},[fullReg]);
@@ -830,15 +840,13 @@ export default function Dashboard(){
     // dot by how many films sit there — otherwise the scatter reads as ten dots, not 80.
     var pairs={};drift.forEach(function(d){var pk=d.first+'|'+d.last;if(!pairs[pk])pairs[pk]={x:d.first,y:d.last,n:0,films:[],names:[]};pairs[pk].n++;pairs[pk].names.push(d.name);
       pairs[pk].films.push({name:d.name,year:d.year,rating:d.last,date:d.date})});
-    // Keyed off every diary film, not just the rated ones. diaryByFilm holds only films with a
-    // rating, so four films that were logged and left unrated were counted as never logged --
-    // which is a different claim, and it moved the average.
-    var logged={};all.forEach(function(e){logged[normName(e.name)+'|||'+e.year]=true});
-    var preDiary=Object.keys(currentRatings).filter(function(k){return!logged[k]}).map(function(k){return currentRatings[k]});
+    // Keyed off loggedKeys — every diary row there is, rated or not, feature or short. diaryByFilm
+    // holds only rated films, and `all` holds only features, so both undercount what was logged.
+    var preDiary=Object.keys(currentRatings).filter(function(k){return!loggedKeys[k]}).map(function(k){return currentRatings[k]});
     return{rows:rows,up:up,down:down,drift:drift,pairs:Object.keys(pairs).map(function(k){return pairs[k]}),preDiary:preDiary,
       net:rows.length?rows.reduce(function(s,r){return s+r.delta},0)/rows.length:0,
       riser:up[0]||null,faller:down[0]||null};
-  },[diaryByFilm,currentRatings,all]);
+  },[diaryByFilm,currentRatings,loggedKeys]);
   // Which direction the slope chart is showing. revisions.up and .down are already split and
   // sorted by size of change; 'all' keeps the by-magnitude order so the biggest movers lead
   // whichever way they went.
