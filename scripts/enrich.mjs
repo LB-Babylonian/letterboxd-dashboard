@@ -54,10 +54,11 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Mirrors parsePipe() in src/App.jsx: pipe-delimited rows, and series/shorts are excluded from
-// the dashboard's taste figures so the diary pass skips them. They can still arrive through
-// ratings.csv below, which is deliberate: their runtime is what lets the dashboard recognise a
-// short that has no tag to give it away.
+// Mirrors parsePipe() in src/App.jsx: pipe-delimited rows, and series/shorts are excluded from the
+// dashboard's taste figures so the diary pass skips them. The ratings pass in main() skips them a
+// second time, by tag -- see taggedOut(). What ratings.csv legitimately adds is films with NO diary
+// row, where there is no tag to go on and the TMDB runtime is the only thing that can tell a short
+// from a feature.
 function parsePipe(raw) {
   if (!raw || !raw.trim()) return [];
   return raw.trim().split('\n')
@@ -68,6 +69,36 @@ function parsePipe(raw) {
       return { name: p[1], year: parseInt(p[2], 10), tags };
     })
     .filter((e) => e.name && !e.tags.includes('series') && !e.tags.includes('short'));
+}
+
+// Matches checked by hand and confirmed correct, where TMDB simply files the film under another
+// name. Without this the audit reports the same eight every run, and a report whose findings are
+// all known is a report nobody reads -- the same reasoning that keeps the corrupt-key rows out of
+// its consequential list. Keyed on the stored title and the TMDB id, so if either changes the row
+// is reported again rather than silently trusted.
+const VERIFIED = new Set([
+  'Nausicaä of the Valley of the Wind|1984|81',        // TMDB files it under the dub title, Warriors of the Wind
+  'Three Colours: Blue|1993|108',                      // Colours/Colors
+  'Three Colours: White|1994|109',
+  'Three Colours: Red|1994|110',
+  'Glass Onion|2022|661374',                           // TMDB keeps the ": A Knives Out Mystery" subtitle
+  'Wake Up Dead Man|2025|812583',
+  'Mission: Impossible – Dead Reckoning|2023|575264',  // TMDB adds "Part One"
+  'Godzilla × Kong: The New Empire|2024|823464',       // multiplication sign vs the letter x
+]);
+
+// The films the diary has already ruled out, read from the RAW rows because parsePipe has dropped
+// them by the time anyone could ask. Keyed the same way film_metadata is, so it can be checked
+// against a ratings.csv row directly.
+function taggedOut(raw) {
+  const out = new Set();
+  for (const l of (raw || '').split('\n')) {
+    const p = l.split('|');
+    if (!p[1] || !p[2]) continue;
+    const tags = p[5] ? p[5].split(',').map((t) => t.trim()) : [];
+    if (tags.includes('series') || tags.includes('short')) out.add(`${p[1].trim()}|||${parseInt(p[2], 10)}`);
+  }
+  return out;
 }
 
 // TMDB rate-limits per IP; back off rather than hammering it.
@@ -197,8 +228,8 @@ async function audit() {
   console.log(`${rows.length} rows, ${withId.length} with a tmdb_id, ${noId} recorded as no-match.`);
   console.log('Checking each id against TMDB. This takes a couple of minutes.\n');
 
-  const wrong = [], spelling = [], mojibake = [];
-  let n = 0;
+  const wrong = [], mojibake = [];
+  let n = 0, verified = 0;
   for (const r of withId) {
     // A title that still carries mojibake was enriched from corrupted text, so the row's KEY is
     // corrupt and the dashboard — which repairs encoding before looking a film up — can never read
@@ -219,6 +250,7 @@ async function audit() {
     const a = normTitle(d.title), b = normTitle(d.original_title);
     const yr = d.release_date ? parseInt(d.release_date.slice(0, 4), 10) : null;
     if (want === a || want === b) continue;                       // exact, nothing to say
+    if (VERIFIED.has(`${r.title}|${r.year}|${r.tmdb_id}`)) { verified++; continue; }
     wrong.push({ ...r, tmdbTitle: d.title, tmdbYear: yr, tmdbRuntime: d.runtime,
       drift: yr == null ? 0 : Math.abs(yr - r.year),
       logged: logged.has(`${r.title}|||${r.year}`) });
@@ -242,18 +274,25 @@ async function audit() {
   const rated = wrong.filter((e) => !e.logged).sort(bySuspicion);
   const withDiary = wrong.filter((e) => e.logged).sort(bySuspicion);
 
-  console.log(`\n${wrong.length} of ${withId.length} rows matched a TMDB entry whose title is not identical.`);
-  console.log('None of this is an error the fetch could have noticed. Judge each one; a year that');
-  console.log('disagrees is the strongest hint that it is the wrong film.');
+  if (verified) console.log(`\n${verified} inexact match(es) skipped: checked by hand, see VERIFIED at the top of this file.`);
+  if (!wrong.length) {
+    console.log(`\nClean: all ${withId.length} matched ids carry the title they were fetched for.`);
+  } else {
+    console.log(`\n${wrong.length} of ${withId.length} rows matched a TMDB entry whose title is not identical.`);
+    console.log('None of this is an error the fetch could have noticed. Judge each one; a year that');
+    console.log('disagrees is the strongest hint that it is the wrong film.');
 
-  console.log(`\n>>> ${rated.length} RATED, NEVER LOGGED -- these are the ones that can distort figures.`);
-  console.log('    With no diary row there is no tag, so the TMDB runtime alone decides whether the');
-  console.log('    dashboard treats it as a feature or a short. Check these first.');
-  rated.length ? rated.forEach((e) => console.log(line(e))) : console.log('    (none)');
+    console.log(`\n>>> ${rated.length} RATED, NEVER LOGGED -- these are the ones that can distort figures.`);
+    console.log('    With no diary row there is no tag, so the TMDB runtime alone decides whether the');
+    console.log('    dashboard treats it as a feature or a short. Check these first.');
+    rated.length ? rated.forEach((e) => console.log(line(e))) : console.log('    (none)');
 
-  console.log(`\n    ${withDiary.length} logged -- wrong here is inert, because a short or a series is`);
-  console.log('    excluded by its diary tag and the runtime is never consulted:');
-  withDiary.forEach((e) => console.log(line(e)));
+    if (withDiary.length) {
+      console.log(`\n    ${withDiary.length} logged -- wrong here is inert, because a short or a series is`);
+      console.log('    excluded by its diary tag and the runtime is never consulted:');
+      withDiary.forEach((e) => console.log(line(e)));
+    }
+  }
   if (mojibake.length) {
     console.log(`\n${mojibake.length} row(s) keyed on a corrupted title. The dashboard repairs encoding`);
     console.log('before looking a film up, so it never reads these -- they are unreachable junk, not');
@@ -291,19 +330,38 @@ async function main() {
   // Every rated film too, including the ones never logged. The dashboard needs their runtime:
   // Letterboxd counts anything under 40 minutes as a short, and a short with no diary row carries
   // no tag to exclude it by, so without a runtime it cannot be told from a feature.
+  //
+  // But NOT if the diary already tags it series or short. parsePipe drops those, and then this
+  // loop used to re-admit every one of them, because ratings.csv carries no tags at all: a
+  // television series arrives here looking exactly like a feature. That is how The Penguin, Maid,
+  // Samuel and Zero Day each acquired the runtime, director and genres of an unrelated film --
+  // TMDB has no entry for any of them, so the search fell back to whatever ranked first. The tag
+  // has already answered the question those rows were fetched to answer, so do not ask TMDB.
+  const ruledOut = taggedOut(pipeRow && pipeRow.data);
   const { data: ratingsRow, error: rErr } = await sb.from('ratings_data').select('data').eq('id', 1).single();
   if (rErr) throw new Error(`Could not read ratings_data: ${rErr.message}`);
   let rated = ratingsRow && ratingsRow.data;
   if (typeof rated === 'string') { try { rated = JSON.parse(rated); } catch { rated = []; } }
+  let skipped = 0;
   for (const r of Array.isArray(rated) ? rated : []) {
     if (!r || !r.name || !r.year) continue;
     const key = `${r.name}|||${r.year}`;
+    if (ruledOut.has(key)) { skipped++; continue; }
     if (!unique.has(key)) unique.set(key, { name: r.name, year: r.year });
   }
+  if (skipped) console.log(`${skipped} rated film(s) skipped: the diary tags them series or short.`);
 
-  const { data: existing, error: metaErr } = await sb.from('film_metadata').select('title,year');
-  if (metaErr) throw new Error(`Could not read film_metadata: ${metaErr.message}`);
-  const have = new Set((existing || []).map((m) => `${m.title}|||${m.year}`));
+  // Paged, because Supabase caps a select at 1000 rows server-side and there are more rows than
+  // that now. Unpaged, this reported "1000 already enriched" for a 1010-row table and offered to
+  // re-fetch the ten it could not see -- every run, for as long as the table kept growing.
+  const have = new Set();
+  for (let from = 0; ; from += 1000) {
+    const { data, error: metaErr } = await sb.from('film_metadata').select('title,year').range(from, from + 999);
+    if (metaErr) throw new Error(`Could not read film_metadata: ${metaErr.message}`);
+    if (!data || !data.length) break;
+    data.forEach((m) => have.add(`${m.title}|||${m.year}`));
+    if (data.length < 1000) break;
+  }
 
   let todo = [...unique.entries()]
     .filter(([k]) => FORCE || !have.has(k))
