@@ -769,7 +769,15 @@ export default function Dashboard(){
   var loggedAvg=useMemo(function(){var r=efOnce.filter(function(e){return e.rating!==null});
     return r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0},[efOnce]);
   var stats=useMemo(function(){var f=ef;return{total:f.length,th:f.filter(isT).length,rw:f.filter(function(e){return e.rewatch}).length,fo:f.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,fr:f.filter(function(e){return gC(e.tags,fullReg).length>0}).length}},[ef,fullReg,isT]);
-  var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;var pp=function(cf,pf){return(cf/cN*100)-(pf/pN*100)};var pR=pv.filter(function(e){return e.rating!==null}),cR=ef.filter(function(e){return e.rating!==null});return{films:cN-pN,avg:(pR.length&&cR.length)?(cR.reduce(function(s,e){return s+e.rating},0)/cR.length)-(pR.reduce(function(s,e){return s+e.rating},0)/pR.length):null,th:pp(ef.filter(isT).length,pv.filter(isT).length),rw:iRW?pp(ef.filter(function(e){return e.rewatch}).length,pv.filter(function(e){return e.rewatch}).length):null,fo:pp(ef.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,pv.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length),fr:pp(ef.filter(function(e){return gC(e.tags,fullReg).length>0}).length,pv.filter(function(e){return gC(e.tags,fullReg).length>0}).length)}},[yr,ef,all,iRW,fullReg,isT]);
+  // Three of the six deltas this used to return -- average rating, theater share, friend share --
+  // had no tile left to sit on: every Stat that carried a yoy badge was removed when the pages
+  // were consolidated. They are gone rather than left computing for nobody. films, rw and fo are
+  // the three that are displayed.
+  //
+  // pp() is a share difference in PERCENTAGE POINTS against the same base the hero tiles print,
+  // so "21% of watches +4pp" is internally consistent -- 21 is this year, 17 was last year. It is
+  // not a percentage change, which for shares would be a different and much larger number.
+  var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;var pp=function(cf,pf){return(cf/cN*100)-(pf/pN*100)};return{films:cN-pN,rw:iRW?pp(ef.filter(function(e){return e.rewatch}).length,pv.filter(function(e){return e.rewatch}).length):null,fo:pp(ef.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,pv.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length)}},[yr,ef,all,iRW]);
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
   var busiest=useMemo(function(){var c={};ef.forEach(function(e){c[e.date]=(c[e.date]||0)+1});var en=Object.entries(c).sort(function(a,b){return b[1]-a[1]});if(!en.length)return{count:0,fmt:'N/A',films:[]};var d=en[0][0],n=en[0][1],p=d.split('-').map(Number);return{count:n,fmt:MF[p[1]-1]+' '+p[2]+', '+p[0],films:ef.filter(function(e){return e.date===d}).map(function(e){return e.name})}},[ef]);
   var hmData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return e.date.slice(0,4)}))).sort(),g={};yy.forEach(function(y){g[y]=Array(12).fill(0)});ea.forEach(function(e){var y=e.date.slice(0,4),m=parseInt(e.date.slice(5,7))-1;if(g[y])g[y][m]++});return{years:yy,grid:g,max:Math.max.apply(null,Object.values(g).map(function(a){return Math.max.apply(null,a)}).concat([1]))}},[ea]);
@@ -1325,15 +1333,24 @@ export default function Dashboard(){
             {[['Hours',dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':'\u2014',
                 dirStats.avgRun?hm(dirStats.avgRun)+' average':'',
                 dirStats.rtCount?dirStats.rtCount+' of '+dirStats.rtTotal+' watches have a runtime'+(dirStats.rtTotal>dirStats.rtCount?'; the other '+(dirStats.rtTotal-dirStats.rtCount)+' are left out':''):''],
-              ['Rewatches',stats.rw||'\u2014',stats.total?Math.round((stats.rw/stats.total)*100)+'% of watches':''],
-              ['Foreign',stats.fo||'\u2014',stats.total?Math.round((stats.fo/stats.total)*100)+'% of films':''],
+              /* row[4] is the change against the previous year, in percentage points off the very
+                 share printed in row[2]. A JS comment, not {a JSX one}: inside this array literal
+                 braces would parse as an empty object and become a seventh tile.
+
+                 Shown in the plain sub colour rather than green/orange -- the headline's own
+                 "-37 since last year" is uncoloured for the same reason, and a polarity colour here
+                 would assert that more rewatching or more subtitles is better, which is a matter of
+                 taste and not something a share can tell you. Null on "All" (nothing to compare
+                 against) and whenever the change rounds to zero. */
+              ['Rewatches',stats.rw||'\u2014',stats.total?Math.round((stats.rw/stats.total)*100)+'% of watches':'',null,yoy&&yoy.rw!=null?fY(yoy.rw,'pp'):null],
+              ['Foreign',stats.fo||'\u2014',stats.total?Math.round((stats.fo/stats.total)*100)+'% of watches':'',null,yoy&&yoy.fo!=null?fY(yoy.fo,'pp'):null],
               ['Longest binge',binge.streak+' days',binge.range],
               ['Longest streak',streaks.longest+' weeks',streaks.lwr],
               ['Most in a day',busiest.count+' films',busiest.fmt]
             ].map(function(row,i){return <div key={i} title={row[3]||undefined}>
               <div style={{fontSize:9.5,letterSpacing:'0.14em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>{row[0]}</div>
               <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums'}}>{row[1]}</div>
-              {row[2]?<div style={{fontSize:10.5,color:heroSubC,marginTop:3,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}</div>:null}
+              {row[2]?<div style={{fontSize:10.5,color:heroSubC,marginTop:3,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}{row[4]?<span style={{fontVariantNumeric:'tabular-nums'}}>{' · '+row[4]}</span>:null}</div>:null}
             </div>})}
           </div>
         </div>
