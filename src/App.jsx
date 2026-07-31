@@ -967,8 +967,12 @@ export default function Dashboard(){
       var ly=present[present.length-1];
       return Object.assign({},f,{lastYear:ly,lastRank:f.ranks[ly]});
     }).sort(function(a,b){return(b.lastYear-a.lastYear)||(a.lastRank-b.lastRank)});
-    return{years:yrs,last:last,current:current,gone:gone};
-  },[top50s]);
+    // A Top 50 can rank a film that was never logged — three of them are — so this list is a
+    // third set, neither the diary nor ratings.csv. Counted here so the tab can say so.
+    var logged={};all.forEach(function(e){logged[normName(e.name)+'|||'+e.year]=true});
+    var unlogged=films.filter(function(f){return!logged[normName(f.name)+'|||'+f.year]}).length;
+    return{years:yrs,last:last,current:current,gone:gone,total:films.length,unlogged:unlogged};
+  },[top50s,all]);
   var tagAllSorted=useMemo(function(){return Object.keys(fullReg).sort(function(a,b){return(allTagCounts[b]||0)-(allTagCounts[a]||0)})},[fullReg,allTagCounts]);
   var tagFiltered=useMemo(function(){return tagAllSorted.filter(function(t){return!tagSearch||t.indexOf(tagSearch.toLowerCase())!==-1})},[tagAllSorted,tagSearch]);
   var tagSelCount=useMemo(function(){return Object.keys(tagSel).filter(function(k){return tagSel[k]}).length},[tagSel]);
@@ -1372,6 +1376,13 @@ export default function Dashboard(){
 
     {/* ===== TASTE ===== */}
     {tab==='taste'&&<div className="space-y-6">
+      {/* Two words carry the distinction across the site, borrowed from the shelf chart's own
+          legend: LOGGED means the film has a diary entry, RATED means it carries a rating in
+          ratings.csv whether it was logged or not. 773 logged, 974 rated, 229 rated but never
+          logged. Stating the default here means only the exceptions have to say anything. */}
+      <div className="text-xs" style={{color:N.mutedSoft}}>
+        Every panel below covers the {efOnce.length} films <span style={{color:N.muted}}>logged</span> in the diary, each at the rating it holds today {'\u2014'} except <span style={{color:N.muted}}>The shelf before the diary</span>, which is the {revisions.preDiary.length} films <span style={{color:N.muted}}>rated</span> without one.
+      </div>
       {/* The four summary tiles that used to open this tab are gone. Every one of them was
           restated within a screen: the average again in the distribution caption and again as
           the tag baseline, the five-star count as the 5-star bar, the top genre as the map's
@@ -1691,6 +1702,10 @@ export default function Dashboard(){
             <div className="flex flex-wrap gap-x-5 gap-y-1 mb-4 text-xs" style={{color:N.muted}}>
               <span>In {top50Evo.last}:</span>
               {summary.map(function(x){return <span key={x.l}><span style={{color:x.c,fontWeight:500}}>{x.n}</span> {x.l}</span>})}
+            </div>
+            {/* The one place on the site whose films are not all from the diary. */}
+            <div className="text-xs mb-4" style={{color:N.mutedSoft}}>
+              {top50Evo.total} films have been on the list{top50Evo.unlogged>0?', and '+top50Evo.unlogged+' of them are not in the diary at all \u2014 a list can rank a film that was never logged':''}.
             </div>
             {highlights.length>0&&<div className="grid grid-cols-2 md:grid-cols-4 mb-5" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
               {highlights.map(function(h,hi){return <div key={h.l} className="px-4 py-3" style={{borderRight:hi===highlights.length-1?'none':'0.5px solid '+N.border}}>
