@@ -571,7 +571,7 @@ export default function Dashboard(){
   var[tab,sTab]=useState('overview');var[yr,sYr]=useState('All');var[iRW,sIRW]=useState(true);
   var[sR,sSR]=useState(null);var[sP,sSP]=useState(null);var[sVe,sSVe]=useState(null);var[sCo,sSCo]=useState(null);var[sDe,sSDe]=useState(null);var[sTg,sSTg]=useState(null);var[sDir,sSDir]=useState(null);var[ySort,sYSort]=useState("dateNew");var[sGenre,sSGenre]=useState(null);var[sCountry,sSCountry]=useState(null);var[sCast,sSCast]=useState(null);
   var[selHM,sSelHM]=useState(null);var[isoYrs,sIsoYrs]=useState([]);
-  var[quadSet,sQuadSet]=useState('genre');var[revOpen,sRevOpen]=useState(false);var[heartDir,sHeartDir]=useState('all');
+  var[quadSet,sQuadSet]=useState('genre');var[quadQ,sQuadQ]=useState('');var[revOpen,sRevOpen]=useState(false);var[heartDir,sHeartDir]=useState('all');
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
@@ -975,6 +975,18 @@ export default function Dashboard(){
     corners:['Few films \u00B7 rated higher','Many films \u00B7 rated higher','Few films \u00B7 rated lower','Many films \u00B7 rated lower']
   };
   var qw=QUAD_WORDS;
+  // A search highlights rather than filters: 71 directors on one plot, and finding one by eye is
+  // the actual difficulty. Filtering would also move the median crosshair, which would silently
+  // redefine every quadrant — so the population and the medians stay put and the matches simply
+  // come forward while the rest recede.
+  var quadHit=useMemo(function(){
+    var q=quadQ.trim().toLowerCase();
+    if(!q)return null;
+    return{
+      hit:quad.pts.filter(function(d){return d.name.toLowerCase().indexOf(q)!==-1}),
+      miss:quad.pts.filter(function(d){return d.name.toLowerCase().indexOf(q)===-1})
+    };
+  },[quadQ,quad]);
   var quadPick=function(name){cls();if(quadSet==='genre')sSGenre(name);else if(quadSet==='dir')sSDir(name);else if(quadSet==='cast')sSCast(name);else if(quadSet==='friend')sSCo(name);else if(quadSet==='plat')sSP(name);else if(quadSet==='venue')sSVe(name);else if(quadSet==='country')sSCountry(name);else if(quadSet==='decade')sSDe(name)};
   // Every decade from the earliest watched to the latest, present or not: the empty slots
   // are the point of the ribbon. Width carries the count, so the gaps are visible as gaps.
@@ -1474,7 +1486,11 @@ export default function Dashboard(){
           do: here volume is one axis, verdict is the other, and the median crosshair turns
           the four corners into four different statements. */}
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-        <SectionHead T={N} title="The taste map" count={quad.pts.length} aside={<div className="flex gap-1 flex-wrap">{QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
+        <SectionHead T={N} title="The taste map" count={quadHit?quadHit.hit.length+' of '+quad.pts.length:quad.pts.length} aside={<div className="flex gap-1 flex-wrap items-center">
+          <input value={quadQ} onChange={function(e){sQuadQ(e.target.value)}} placeholder="find\u2026" spellCheck={false}
+            style={{background:N.surface,border:'0.5px solid '+(quadQ?T.primary:N.border),borderRadius:4,color:N.ink,padding:'3px 8px',fontSize:11,width:96,outline:'none'}}/>
+          {quadQ&&<button onClick={function(){sQuadQ('')}} title="clear" style={{background:'transparent',border:'none',color:N.muted,fontSize:11,cursor:'pointer',padding:'0 2px'}}>{'\u2715'}</button>}
+          {QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
         <div className="text-xs mb-3" style={{color:N.muted}}>Logged films against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
         {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
           {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
@@ -1491,10 +1507,15 @@ export default function Dashboard(){
               <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?qw.hh:hv?qw.hl:hr?qw.lh:qw.ll;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
               <ReferenceLine x={quad.mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <ReferenceLine y={quad.my} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              <Scatter data={quad.plain} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}/>
-              <Scatter data={quad.labeled} fill={VIZ_MARK} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
-                <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
-              </Scatter>
+              {quadHit
+                ? [<Scatter key="miss" data={quadHit.miss} fill={VIZ_MARK} fillOpacity={0.12}/>,
+                   <Scatter key="hit" data={quadHit.hit} fill={VIZ_MARK} fillOpacity={0.95} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
+                     <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.ink,fontSize:10}}/>
+                   </Scatter>]
+                : [<Scatter key="plain" data={quad.plain} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}/>,
+                   <Scatter key="top" data={quad.labeled} fill={VIZ_MARK} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
+                     <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
+                   </Scatter>]}
             </ScatterChart>
           </ResponsiveContainer>
           <div className="flex justify-between" style={{paddingLeft:48,paddingRight:26,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:N.mutedSoft}}><span>{qw.corners[2]}</span><span>{qw.corners[3]}</span></div>
