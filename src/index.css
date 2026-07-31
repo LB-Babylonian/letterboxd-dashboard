@@ -12,3 +12,18 @@ html, body { background: #14181C; }
 
 /* Otherwise scrollbars and form controls render in the light default over a dark page. */
 :root { color-scheme: dark; }
+
+/* Browsers render <button> with cursor:default, so nothing in the chrome looked clickable --
+   not the tabs, the year filters, the sort toggles, the theme swatches, nor the close buttons.
+   That is 35 buttons, which is why this is a stylesheet rule and not 35 inline styles.
+
+   The one disabled button in the app (Sign in, while a login is in flight) already sets its own
+   default cursor inline; the :disabled rule below makes that the standing behaviour instead of a
+   one-off. Clickable non-buttons — chart marks, tag rows, decade blocks, modal backdrops — carry
+   cursor:pointer inline at the point of use, because only that code knows what is clickable.
+
+   Note cursor INHERITS. A pointer on a full-screen backdrop reaches the panel sitting on top of
+   it, so each of those panels turns it back off explicitly. */
+button, select, summary, [role="button"],
+input[type="checkbox"], input[type="radio"] { cursor: pointer; }
+button:disabled { cursor: default; }

@@ -483,8 +483,8 @@ function FilmList(p){
     return function(){window.removeEventListener('keydown',h)};
   },[open]);
   if(!open)return null;
-  return <div onClick={p.onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.62)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px'}}>
-    <div onClick={function(e){e.stopPropagation()}} style={{background:NEUTRAL.surface,border:'1px solid '+NEUTRAL.borderStrong,borderRadius:6,width:'100%',maxWidth:560,maxHeight:'80vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 64px rgba(0,0,0,0.5)'}}>
+  return <div onClick={p.onClose} style={{cursor:'pointer',position:'fixed',inset:0,background:'rgba(0,0,0,0.62)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px'}}>
+    <div onClick={function(e){e.stopPropagation()}} style={{cursor:'default',background:NEUTRAL.surface,border:'1px solid '+NEUTRAL.borderStrong,borderRadius:6,width:'100%',maxWidth:560,maxHeight:'80vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 64px rgba(0,0,0,0.5)'}}>
       <div className="flex justify-between items-baseline px-4 py-3" style={{borderBottom:'0.5px solid '+NEUTRAL.border,flex:'0 0 auto'}}>
         <div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{p.title} <span style={{color:NEUTRAL.muted,fontWeight:400}}>({p.films.length})</span></div>
         <button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,border:'none',borderRadius:4,cursor:'pointer'}} title="Close — or press Escape">{'\u2715'}</button>
@@ -766,15 +766,13 @@ export default function Dashboard(){
   var loggedAvg=useMemo(function(){var r=efOnce.filter(function(e){return e.rating!==null});
     return r.length?r.reduce(function(s,e){return s+e.rating},0)/r.length:0},[efOnce]);
   var stats=useMemo(function(){var f=ef;return{total:f.length,th:f.filter(isT).length,rw:f.filter(function(e){return e.rewatch}).length,fo:f.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,fr:f.filter(function(e){return gC(e.tags,fullReg).length>0}).length}},[ef,fullReg,isT]);
-  // Three of the six deltas this used to return -- average rating, theater share, friend share --
-  // had no tile left to sit on: every Stat that carried a yoy badge was removed when the pages
-  // were consolidated. They are gone rather than left computing for nobody. films, rw and fo are
-  // the three that are displayed.
+  // One delta, because one is displayed: the hero's "-37 since last year". This used to compute
+  // six -- average rating, theater share, friend share, rewatch share, foreign share -- and show
+  // none to five of them, depending on which summary tiles existed that week. Whatever is not on
+  // screen is not computed, so the two cannot drift apart again.
   //
-  // pp() is a share difference in PERCENTAGE POINTS against the same base the hero tiles print,
-  // so "21% of watches +4pp" is internally consistent -- 21 is this year, 17 was last year. It is
-  // not a percentage change, which for shares would be a different and much larger number.
-  var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;var pp=function(cf,pf){return(cf/cN*100)-(pf/pN*100)};return{films:cN-pN,rw:iRW?pp(ef.filter(function(e){return e.rewatch}).length,pv.filter(function(e){return e.rewatch}).length):null,fo:pp(ef.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length,pv.filter(function(e){return e.tags.indexOf('foreign')!==-1}).length)}},[yr,ef,all,iRW]);
+  // Null for "All" (nothing to compare against) and when the previous year has no rows at all.
+  var yoy=useMemo(function(){if(yr==='All')return null;var py=String(parseInt(yr)-1),pv=all.filter(function(e){return e.date.indexOf(py)===0});if(!pv.length)return null;if(!iRW)pv=pv.filter(function(e){return!e.rewatch});var pN=pv.length,cN=ef.length;if(!pN||!cN)return null;return{films:cN-pN}},[yr,ef,all,iRW]);
   var binge=useMemo(function(){var dt=Array.from(new Set(ef.map(function(e){return e.date}))).sort();if(dt.length<2)return{streak:1,range:dt[0]||'N/A'};var ms=1,cs=1,mi=0,ci=0;for(var i=1;i<dt.length;i++){var d=Math.round((new Date(dt[i])-new Date(dt[i-1]))/864e5);if(d===1){cs++;if(cs>ms){ms=cs;mi=ci}}else{cs=1;ci=i}}var sd=dt.slice(mi,mi+ms),s0=sd[0].split('-').map(Number),sL=sd[sd.length-1].split('-').map(Number);var r;if(ms===1)r=MF[s0[1]-1]+' '+s0[2]+', '+s0[0];else if(s0[0]===sL[0]&&s0[1]===sL[1])r=MF[s0[1]-1]+' '+s0[2]+'\u2013'+sL[2]+', '+s0[0];else r=MS[s0[1]-1]+' '+s0[2]+' \u2013 '+MS[sL[1]-1]+' '+sL[2]+', '+s0[0];return{streak:ms,range:r}},[ef]);
   var busiest=useMemo(function(){var c={};ef.forEach(function(e){c[e.date]=(c[e.date]||0)+1});var en=Object.entries(c).sort(function(a,b){return b[1]-a[1]});if(!en.length)return{count:0,fmt:'N/A',films:[]};var d=en[0][0],n=en[0][1],p=d.split('-').map(Number);return{count:n,fmt:MF[p[1]-1]+' '+p[2]+', '+p[0],films:ef.filter(function(e){return e.date===d}).map(function(e){return e.name})}},[ef]);
   var hmData=useMemo(function(){var yy=Array.from(new Set(ea.map(function(e){return e.date.slice(0,4)}))).sort(),g={};yy.forEach(function(y){g[y]=Array(12).fill(0)});ea.forEach(function(e){var y=e.date.slice(0,4),m=parseInt(e.date.slice(5,7))-1;if(g[y])g[y][m]++});return{years:yy,grid:g,max:Math.max.apply(null,Object.values(g).map(function(a){return Math.max.apply(null,a)}).concat([1]))}},[ea]);
@@ -1127,8 +1125,8 @@ export default function Dashboard(){
   };
   var openDrill=function(title,films){if(films&&films.length)sDrill({title:title,films:films})};
 
-  var themePickerModal=showPicker?<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px',overflowY:'auto'}} onClick={function(){sShowPicker(false)}}><div style={{background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,maxWidth:720,width:'100%',maxHeight:'90vh',overflowY:'auto'}} onClick={function(e){e.stopPropagation()}}><div className="flex justify-between items-baseline mb-4 pb-3" style={{borderBottom:'0.5px solid '+N.border}}><div><div style={{fontSize:9,letterSpacing:'0.22em',color:N.muted,textTransform:'uppercase'}}>Choose a theme</div><div style={{fontSize:18,fontWeight:500,color:N.ink,marginTop:4}}>{THEMES.length} cinematic palettes</div></div><button onClick={function(){sShowPicker(false)}} style={btnSecondary}>{'\u2715'}</button></div><div className="grid grid-cols-2 md:grid-cols-3 gap-2">{THEMES.map(function(theme){var isActive=theme.id===themeId;return <button key={theme.id} onClick={function(){pickTheme(theme.id)}} style={{background:theme.paper,border:isActive?'2px solid '+T.primary:'0.5px solid '+theme.border,borderRadius:4,padding:'10px 12px',cursor:'pointer',textAlign:'left',transition:'transform 0.1s'}}><div style={{fontSize:9,letterSpacing:'0.15em',color:theme.muted,textTransform:'uppercase',marginBottom:4}}>Theme</div><div style={{fontSize:14,fontWeight:500,color:theme.ink,marginBottom:6}}>{theme.name}</div><div style={{display:'flex',gap:4,alignItems:'center'}}><div style={{fontSize:24,fontWeight:600,color:theme.metricColor||theme.primary,lineHeight:1,fontFamily:'ui-monospace,monospace'}}>142</div><div style={{display:'flex',flexDirection:'column',gap:2,marginLeft:'auto'}}><div style={{width:18,height:6,background:theme.metricColor||theme.primary,borderRadius:4}}/><div style={{width:18,height:6,background:theme.secondary||blend(theme.primary,theme.paper,0.35),borderRadius:4}}/><div style={{width:18,height:6,background:theme.ink,borderRadius:4}}/></div></div></button>})}</div><div className="mt-4 pt-3 text-xs" style={{borderTop:'0.5px solid '+N.border,color:N.muted}}>The theme is locked once you pick one. Default loads first; click any other to switch.</div></div></div>:null;
-  var pwModal=showPwModal?<div style={{position:'fixed',inset:0,background:'rgba(26,26,26,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:50}} onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}}><div style={{background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,width:320}} onClick={function(e){e.stopPropagation()}}><div style={{fontSize:14,fontWeight:500,color:N.ink}}>Admin sign in</div><div className="mb-4 mt-1" style={{fontSize:11,color:N.muted,lineHeight:1.4}}>Supabase account. The server rejects writes without a session, so this is a real gate rather than a UI toggle.</div><input type="email" autoComplete="username" placeholder="Email" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwEmail} onChange={function(e){sPwEmail(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/><input type="password" autoComplete="current-password" placeholder="Password" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwInput} onChange={function(e){sPwInput(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/>{pwErr&&<div className="text-xs mb-2" style={{color:NEG}}>{pwErr}</div>}<div className="flex gap-2"><button onClick={handleLogin} disabled={pwBusy} style={Object.assign({},btnPrimary,{flex:1,opacity:pwBusy?0.5:1,cursor:pwBusy?'default':'pointer'})}>{pwBusy?'Signing in\u2026':'Sign in'}</button><button onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}} style={Object.assign({},btnSecondary,{flex:1})}>Cancel</button></div></div></div>:null;
+  var themePickerModal=showPicker?<div style={{cursor:'pointer',position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px',overflowY:'auto'}} onClick={function(){sShowPicker(false)}}><div style={{cursor:'default',background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,maxWidth:720,width:'100%',maxHeight:'90vh',overflowY:'auto'}} onClick={function(e){e.stopPropagation()}}><div className="flex justify-between items-baseline mb-4 pb-3" style={{borderBottom:'0.5px solid '+N.border}}><div><div style={{fontSize:9,letterSpacing:'0.22em',color:N.muted,textTransform:'uppercase'}}>Choose a theme</div><div style={{fontSize:18,fontWeight:500,color:N.ink,marginTop:4}}>{THEMES.length} cinematic palettes</div></div><button onClick={function(){sShowPicker(false)}} style={btnSecondary}>{'\u2715'}</button></div><div className="grid grid-cols-2 md:grid-cols-3 gap-2">{THEMES.map(function(theme){var isActive=theme.id===themeId;return <button key={theme.id} onClick={function(){pickTheme(theme.id)}} style={{background:theme.paper,border:isActive?'2px solid '+T.primary:'0.5px solid '+theme.border,borderRadius:4,padding:'10px 12px',cursor:'pointer',textAlign:'left',transition:'transform 0.1s'}}><div style={{fontSize:9,letterSpacing:'0.15em',color:theme.muted,textTransform:'uppercase',marginBottom:4}}>Theme</div><div style={{fontSize:14,fontWeight:500,color:theme.ink,marginBottom:6}}>{theme.name}</div><div style={{display:'flex',gap:4,alignItems:'center'}}><div style={{fontSize:24,fontWeight:600,color:theme.metricColor||theme.primary,lineHeight:1,fontFamily:'ui-monospace,monospace'}}>142</div><div style={{display:'flex',flexDirection:'column',gap:2,marginLeft:'auto'}}><div style={{width:18,height:6,background:theme.metricColor||theme.primary,borderRadius:4}}/><div style={{width:18,height:6,background:theme.secondary||blend(theme.primary,theme.paper,0.35),borderRadius:4}}/><div style={{width:18,height:6,background:theme.ink,borderRadius:4}}/></div></div></button>})}</div><div className="mt-4 pt-3 text-xs" style={{borderTop:'0.5px solid '+N.border,color:N.muted}}>The theme is locked once you pick one. Default loads first; click any other to switch.</div></div></div>:null;
+  var pwModal=showPwModal?<div style={{cursor:'pointer',position:'fixed',inset:0,background:'rgba(26,26,26,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:50}} onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}}><div style={{cursor:'default',background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,width:320}} onClick={function(e){e.stopPropagation()}}><div style={{fontSize:14,fontWeight:500,color:N.ink}}>Admin sign in</div><div className="mb-4 mt-1" style={{fontSize:11,color:N.muted,lineHeight:1.4}}>Supabase account. The server rejects writes without a session, so this is a real gate rather than a UI toggle.</div><input type="email" autoComplete="username" placeholder="Email" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwEmail} onChange={function(e){sPwEmail(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/><input type="password" autoComplete="current-password" placeholder="Password" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwInput} onChange={function(e){sPwInput(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/>{pwErr&&<div className="text-xs mb-2" style={{color:NEG}}>{pwErr}</div>}<div className="flex gap-2"><button onClick={handleLogin} disabled={pwBusy} style={Object.assign({},btnPrimary,{flex:1,opacity:pwBusy?0.5:1,cursor:pwBusy?'default':'pointer'})}>{pwBusy?'Signing in\u2026':'Sign in'}</button><button onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}} style={Object.assign({},btnSecondary,{flex:1})}>Cancel</button></div></div></div>:null;
 
   // Cost view
   var renderCostCards=function(d,label){return <div className="space-y-3 mb-6"><div className="flex items-baseline gap-3 pb-2" style={{borderBottom:'0.5px solid '+N.border}}><div style={{fontSize:14,fontWeight:500,color:N.ink}}>{label}</div><div style={{fontSize:11,color:N.muted}}>{d.films} films</div></div><div className="grid grid-cols-3 md:grid-cols-5">
@@ -1329,24 +1327,23 @@ export default function Dashboard(){
             {[['Hours',dirStats.totalH>0?dirStats.totalH.toLocaleString()+'h':'\u2014',
                 dirStats.avgRun?hm(dirStats.avgRun)+' average':'',
                 dirStats.rtCount?dirStats.rtCount+' of '+dirStats.rtTotal+' watches have a runtime'+(dirStats.rtTotal>dirStats.rtCount?'; the other '+(dirStats.rtTotal-dirStats.rtCount)+' are left out':''):''],
-              /* row[4] is the change against the previous year, in percentage points off the very
-                 share printed in row[2]. A JS comment, not {a JSX one}: inside this array literal
-                 braces would parse as an empty object and become a seventh tile.
+              /* These two briefly carried a "+8pp" change against the previous year. Removed on
+                 request: the headline keeps its own "-37 since last year", and that is the whole
+                 of the year-over-year story on this card now.
 
-                 Shown in the plain sub colour rather than green/orange -- the headline's own
-                 "-37 since last year" is uncoloured for the same reason, and a polarity colour here
-                 would assert that more rewatching or more subtitles is better, which is a matter of
-                 taste and not something a share can tell you. Null on "All" (nothing to compare
-                 against) and whenever the change rounds to zero. */
-              ['Rewatches',stats.rw||'\u2014',stats.total?Math.round((stats.rw/stats.total)*100)+'% of watches':'',null,yoy&&yoy.rw!=null?fY(yoy.rw,'pp'):null],
-              ['Foreign',stats.fo||'\u2014',stats.total?Math.round((stats.fo/stats.total)*100)+'% of watches':'',null,yoy&&yoy.fo!=null?fY(yoy.fo,'pp'):null],
+                 If it ever comes back, note the tile's share and the delta must divide by the same
+                 base -- stats.total, i.e. watches -- or the badge contradicts the number it sits
+                 beside. A JS comment, not {a JSX one}: inside this array literal braces would
+                 parse as an empty object and become a seventh tile. */
+              ['Rewatches',stats.rw||'\u2014',stats.total?Math.round((stats.rw/stats.total)*100)+'% of watches':''],
+              ['Foreign',stats.fo||'\u2014',stats.total?Math.round((stats.fo/stats.total)*100)+'% of watches':''],
               ['Longest binge',binge.streak+' days',binge.range],
               ['Longest streak',streaks.longest+' weeks',streaks.lwr],
               ['Most in a day',busiest.count+' films',busiest.fmt]
             ].map(function(row,i){return <div key={i} title={row[3]||undefined}>
               <div style={{fontSize:9.5,letterSpacing:'0.14em',color:heroDescriptorC,textTransform:'uppercase',marginBottom:4,fontWeight:500}}>{row[0]}</div>
               <div style={{fontSize:22,fontWeight:600,color:heroMetricC,letterSpacing:'-0.01em',lineHeight:1.1,fontFamily:fontOf(FIGURE_FONT),fontVariantNumeric:'tabular-nums'}}>{row[1]}</div>
-              {row[2]?<div style={{fontSize:10.5,color:heroSubC,marginTop:3,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}{row[4]?<span style={{fontVariantNumeric:'tabular-nums'}}>{' · '+row[4]}</span>:null}</div>:null}
+              {row[2]?<div style={{fontSize:10.5,color:heroSubC,marginTop:3,fontFamily:fontOf('sans'),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row[2]}</div>:null}
             </div>})}
           </div>
         </div>
@@ -1617,7 +1614,7 @@ export default function Dashboard(){
               <div className="w-8 text-xs text-right" style={{color:N.mutedSoft}}>{r.Films}</div>
               <div className="flex-1 relative" style={{height:24,background:N.surfaceAlt,borderRadius:4}}>
                 <div style={{position:'absolute',left:'50%',top:0,bottom:0,width:1,background:N.borderStrong}}/>
-                <div style={{position:'absolute',top:5,height:14,borderRadius:2,background:c,opacity:thin?0.55:1,
+                <div style={{position:'absolute',top:5,height:14,borderRadius:2,background:c,
                   left:(pos?50:50-w)+'%',width:Math.max(w,0.4)+'%'}}/>
               </div>
               <div className="w-12 text-xs text-right font-mono" style={{color:N.ink}}>{r.Avg.toFixed(2)}{'\u2605'}</div>
@@ -1722,6 +1719,7 @@ export default function Dashboard(){
         {inflation.data.length>10&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
           <SectionHead T={N} title="Growing more generous?" aside={<span className="text-xs" style={{color:N.muted}}>mean of every rating given, {inflation.mean.toFixed(2)}{'★'}</span>}/>
           <div className="text-xs mb-2" style={{color:N.muted}}>A rolling average of the last {inflation.w} ratings given, in the order they were logged. Click a point for the {inflation.w} behind it.</div>
+          <div style={{cursor:'pointer'}}>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={inflation.data} onClick={function(st){
               // Two ways in, because a Line reports the series rather than a point. The chart state
@@ -1752,6 +1750,7 @@ export default function Dashboard(){
                 activeDot={{r:4,fill:VIZ_MARK,cursor:'pointer',onClick:function(a,b){var d=(a&&a.payload)||(b&&b.payload);if(d)openDrillWindow(d)}}}/>
             </LineChart>
           </ResponsiveContainer>
+        </div>
         </div>}
       </div>}
     </div>}
