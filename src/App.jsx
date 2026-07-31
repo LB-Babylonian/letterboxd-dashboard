@@ -105,7 +105,7 @@ function fontOf(name){return FONT_MAP[name]||FONT_MAP.sans}
 var FIGURE_FONT='sans';
 
 var THEME_COPY={
-  neutral:{masthead:'\u2014 Issue No. {total} \u00b7 {year} \u2014',title:'A year at the movies',heroLabel:'Films watched',heroSuffix:'{n} since last year',fonts:{hero:'serif',label:'sans',title:'serif'}},
+  neutral:{masthead:'\u2014 Issue No. {total} \u00b7 {year} \u2014',title:'A year at the movies',heroLabel:'Films logged',heroSuffix:'{n} since last year',fonts:{hero:'serif',label:'sans',title:'serif'}},
   matrix:{masthead:'$ ./films --year {year}',title:'> rendering archive...',heroLabel:'red.pills.taken',heroSuffix:'[\u0394 {n} from prev cycle]',fonts:{hero:'monoX',label:'mono',title:'mono'}},
   br2049:{masthead:'— REPLICANT LOG —',title:'Memories archived',heroLabel:'Miracles witnessed',heroSuffix:'{n} since last scan',fonts:{hero:'iceberg',label:'mono',title:'iceberg'}},
   amelie:{masthead:'~ Le cinéma fabuleux de ~',title:'Babylonian Poulain',heroLabel:'Petits bonheurs',heroSuffix:'soit {n} de plus !',fonts:{hero:'handwrite',label:'handwrite',title:'handwrite'}},
@@ -1148,7 +1148,7 @@ export default function Dashboard(){
   var heroYearLabel=yr==='All'?'All time':yr;
   var copyCtx={year:yr==='All'?String(new Date().getFullYear()):yr,total:stats.total,n:yoy&&yoy.films!=null?fY(yoy.films,'abs')||'':''};
   var fontLabel=fontOf((T.fonts&&T.fonts.label)||'sans');
-  var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films watched',copyCtx);
+  var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films logged',copyCtx);
   var copyHeroSuffix=applyCopy((T.copy&&T.copy.heroSuffix)||'{n} vs '+(yr==='All'?'':String(parseInt(yr)-1)),copyCtx);
 
   return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}{drillModal}<div className="max-w-6xl mx-auto">
@@ -1376,13 +1376,6 @@ export default function Dashboard(){
 
     {/* ===== TASTE ===== */}
     {tab==='taste'&&<div className="space-y-6">
-      {/* Two words carry the distinction across the site, borrowed from the shelf chart's own
-          legend: LOGGED means the film has a diary entry, RATED means it carries a rating in
-          ratings.csv whether it was logged or not. 773 logged, 974 rated, 229 rated but never
-          logged. Stating the default here means only the exceptions have to say anything. */}
-      <div className="text-xs" style={{color:N.mutedSoft}}>
-        Every panel below covers the {efOnce.length} films <span style={{color:N.muted}}>logged</span> in the diary, each at the rating it holds today {'\u2014'} except <span style={{color:N.muted}}>The shelf before the diary</span>, which is the {revisions.preDiary.length} films <span style={{color:N.muted}}>rated</span> without one.
-      </div>
       {/* The four summary tiles that used to open this tab are gone. Every one of them was
           restated within a screen: the average again in the distribution caption and again as
           the tag baseline, the five-star count as the 5-star bar, the top genre as the map's
@@ -1390,7 +1383,7 @@ export default function Dashboard(){
           on the distribution instead. */}
       {/* RATING DISTRIBUTION — moved from Overview */}
       <div>
-        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span> {'\u00B7'} <span style={{fontStyle:'italic',color:N.mutedSoft}}>click a bar for its films</span></span>}/>
+        <SectionHead T={N} title="How the ratings fall" aside={<span className="text-xs" style={{color:N.muted}}>{statsOnce.films} logged films {'\u00B7'} average <span style={{color:T.primary,fontWeight:500}}>{statsOnce.avg.toFixed(2)}{'\u2605'}</span> {'\u00B7'} <span style={{fontStyle:'italic',color:N.mutedSoft}}>click a bar for its films</span></span>}/>
         <ResponsiveContainer width="100%" height={230}>
           <BarChart data={rDist}>
             <CartesianGrid strokeDasharray="3 3" stroke={N.border}/>
@@ -1443,7 +1436,7 @@ export default function Dashboard(){
           the four corners into four different statements. */}
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
         <SectionHead T={N} title="The taste map" count={quad.pts.length} aside={<div className="flex gap-1 flex-wrap">{QUAD_SETS.map(function(q){var a=quadSet===q.id;return <button key={q.id} onClick={function(){sQuadSet(q.id);cls()}} style={a?{padding:'3px 8px',fontSize:10,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:btnSecondary}>{q.l}</button>})}</div>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>Films seen against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
+        <div className="text-xs mb-3" style={{color:N.muted}}>Logged films against average rating{quadCfg.floor?', for '+quadCfg.floor:''}. Each film counts once, however often it was rewatched. The dashed crosshair marks the median on both axes. Click a dot for its films.</div>
         {quad.pts.length<3?<div className="text-xs py-8 text-center" style={{color:N.mutedSoft}}>Not enough rated films in this set yet.</div>:<div>
           {/* The quadrant captions sit OUTSIDE the plot, above and below it. Inside, they
               collided with any dot label near a corner — Alya, at three films and two stars,
@@ -1480,7 +1473,7 @@ export default function Dashboard(){
       <div className="lg:w-2/3 mx-auto space-y-6">
       <div>
         <SectionHead T={N} title="What a tag is worth" count={tagLift.rows.length} aside={<span className="text-xs" style={{color:N.muted}}>baseline <span style={{color:T.primary,fontWeight:500}}>{tagLift.base.toFixed(2)}{'\u2605'}</span></span>}/>
-        <div className="text-xs mb-3" style={{color:N.muted}}>How far the films carrying a tag sit from the overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
+        <div className="text-xs mb-3" style={{color:N.muted}}>How far the logged films carrying a tag sit from the overall average. Right of the line is above it, left is below. {tagLift.untagged} of {efOnce.length} films carry no tag at all, so this describes a minority of the collection. Click a tag for its films.</div>
         <div className="space-y-1">
           {tagLift.rows.map(function(r){
             var pos=r.lift>=0,c=pos?VIZ_GOOD:VIZ_MARK,w=Math.abs(r.lift)/tagLift.max*50,thin=r.Films<15,on=sTg===r.name;
@@ -1702,10 +1695,6 @@ export default function Dashboard(){
             <div className="flex flex-wrap gap-x-5 gap-y-1 mb-4 text-xs" style={{color:N.muted}}>
               <span>In {top50Evo.last}:</span>
               {summary.map(function(x){return <span key={x.l}><span style={{color:x.c,fontWeight:500}}>{x.n}</span> {x.l}</span>})}
-            </div>
-            {/* The one place on the site whose films are not all from the diary. */}
-            <div className="text-xs mb-4" style={{color:N.mutedSoft}}>
-              {top50Evo.total} films have been on the list{top50Evo.unlogged>0?', and '+top50Evo.unlogged+' of them are not in the diary at all \u2014 a list can rank a film that was never logged':''}.
             </div>
             {highlights.length>0&&<div className="grid grid-cols-2 md:grid-cols-4 mb-5" style={{borderTop:'0.5px solid '+N.border,borderBottom:'0.5px solid '+N.border}}>
               {highlights.map(function(h,hi){return <div key={h.l} className="px-4 py-3" style={{borderRight:hi===highlights.length-1?'none':'0.5px solid '+N.border}}>
