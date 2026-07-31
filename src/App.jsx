@@ -14,6 +14,23 @@ var SB_KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
 // it instead and let the component say so on screen.
 var CONFIG_ERROR=(!SB_URL||!SB_KEY)?'Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY':null;
 var sb=CONFIG_ERROR?null:createClient(SB_URL,SB_KEY);
+
+// film_metadata passed 1000 rows once every rated film was enriched, and Supabase caps a select
+// at 1000 server-side — .range() does not lift it, it only moves the window. A plain select was
+// therefore silently dropping the newest rows: three ordinary features came back with no runtime
+// and no poster, which is the shape of bug that gets blamed on the data. Pages until short.
+function fetchAllMeta(){
+  if(!sb)return Promise.resolve({data:[]});
+  var out=[];
+  var step=function(from){
+    return sb.from('film_metadata').select('*').range(from,from+999).then(function(r){
+      if(r.error)return{data:out,error:r.error};
+      out=out.concat(r.data||[]);
+      return (r.data&&r.data.length===1000)?step(from+1000):{data:out};
+    });
+  };
+  return step(0);
+}
 // No TMDB token here on purpose: enrichment runs locally via `npm run enrich`
 // (scripts/enrich.mjs) so the read token never reaches the browser bundle.
 
@@ -572,7 +589,7 @@ export default function Dashboard(){
   var N=Object.assign({},NEUTRAL,{primary:T.primary,secondary:T.primary,glow:T.glow,id:T.id,name:T.name,fonts:{},copy:{},chartTextColor:T.chartTextColor});
   var pickTheme=useCallback(function(id){try{localStorage.setItem('dashboard_theme_explicit',id)}catch(e){}sThemeId(id);sShowPicker(false)},[themeId]);
   var cls=function(){sSR(null);sSP(null);sSVe(null);sSCo(null);sSDe(null);sSTg(null);sSelHM(null);sSDir(null);sSGenre(null);sSCountry(null);sSCast(null)};
-  useEffect(function(){if(CONFIG_ERROR){sLoading(false);return}Promise.all([sb.from('pipe_data').select('data').eq('id',1).single(),sb.from('tag_registry').select('data').eq('id',1).single(),sb.from('subscriptions').select('data').eq('id',1).single(),sb.from('film_metadata').select('*'),sb.from('review_data').select('data').eq('id',1).single(),sb.from('ratings_data').select('data').eq('id',1).single(),sb.from('top50_data').select('*')]).then(function(r){if(r[0].data&&r[0].data.data)sPd(r[0].data.data);if(r[1].data&&r[1].data.data)sReg(r[1].data.data);if(r[2].data&&r[2].data.data&&Array.isArray(r[2].data.data))sSubscriptions(r[2].data.data);if(r[3].data){var fm={};r[3].data.forEach(function(m){fm[m.title+'|||'+m.year]=m});sFilmMeta(fm)}if(r[4].data&&r[4].data.data){var revd=r[4].data.data;if(Array.isArray(revd)){var yr={};revd.forEach(function(x){yr[x.name+'|||'+x.year]=x.yRating});sYRatings(yr)}}if(r[5].data&&r[5].data.data){try{var rd=typeof r[5].data.data==='string'?JSON.parse(r[5].data.data):r[5].data.data;if(Array.isArray(rd))sAllRatings(rd)}catch(e){}}if(r[6].data){sTop50s(r[6].data.map(function(x){return{year:x.list_year,films:x.data}}).sort(function(a,b){return a.year-b.year}))}sLoading(false)}).catch(function(){sLoading(false)})},[]);
+  useEffect(function(){if(CONFIG_ERROR){sLoading(false);return}Promise.all([sb.from('pipe_data').select('data').eq('id',1).single(),sb.from('tag_registry').select('data').eq('id',1).single(),sb.from('subscriptions').select('data').eq('id',1).single(),fetchAllMeta(),sb.from('review_data').select('data').eq('id',1).single(),sb.from('ratings_data').select('data').eq('id',1).single(),sb.from('top50_data').select('*')]).then(function(r){if(r[0].data&&r[0].data.data)sPd(r[0].data.data);if(r[1].data&&r[1].data.data)sReg(r[1].data.data);if(r[2].data&&r[2].data.data&&Array.isArray(r[2].data.data))sSubscriptions(r[2].data.data);if(r[3].data){var fm={};r[3].data.forEach(function(m){fm[m.title+'|||'+m.year]=m});sFilmMeta(fm)}if(r[4].data&&r[4].data.data){var revd=r[4].data.data;if(Array.isArray(revd)){var yr={};revd.forEach(function(x){yr[x.name+'|||'+x.year]=x.yRating});sYRatings(yr)}}if(r[5].data&&r[5].data.data){try{var rd=typeof r[5].data.data==='string'?JSON.parse(r[5].data.data):r[5].data.data;if(Array.isArray(rd))sAllRatings(rd)}catch(e){}}if(r[6].data){sTop50s(r[6].data.map(function(x){return{year:x.list_year,films:x.data}}).sort(function(a,b){return a.year-b.year}))}sLoading(false)}).catch(function(){sLoading(false)})},[]);
 
   // isAdmin now means "holds a real Supabase session". It used to be a client-side
   // hash compared against a publicly-readable admin_password table, which any
@@ -651,6 +668,16 @@ export default function Dashboard(){
   // ============================================================
   // Your CURRENT score for each film, from ratings.csv. The diary records what you typed on
   // the night; this records what the film is worth to you now.
+  // Runtime by normalised title, so a rated film with no diary row can still be recognised as a
+  // short. Films carry a short/series TAG only if they were logged; ratings.csv has no tags at
+  // all, so runtime is the only handle on the ones that were never logged.
+  var runtimeOf=useMemo(function(){
+    var m={};
+    Object.keys(filmMeta).forEach(function(k){var v=filmMeta[k];if(v&&v.runtime){var q=k.split('|||');m[normName(q[0])+'|||'+q[1]]=v.runtime}});
+    return m;
+  },[filmMeta]);
+  // Letterboxd's own threshold, so the dashboard agrees with the source it imports from.
+  var SHORT_MINUTES=40;
   var currentRatings=useMemo(function(){var m={};allRatings.forEach(function(r){var v=parseFloat(r.rating);if(isNaN(v))return;m[normName(r.name)+'|||'+r.year]={rating:v,date:r.date,name:r.name,year:r.year}});return m},[allRatings]);
 
   // Collapse any watch list to one row per film, carrying today's rating. A function rather
@@ -842,11 +869,15 @@ export default function Dashboard(){
       pairs[pk].films.push({name:d.name,year:d.year,rating:d.last,date:d.date})});
     // Keyed off loggedKeys — every diary row there is, rated or not, feature or short. diaryByFilm
     // holds only rated films, and `all` holds only features, so both undercount what was logged.
-    var preDiary=Object.keys(currentRatings).filter(function(k){return!loggedKeys[k]}).map(function(k){return currentRatings[k]});
+    var preDiary=Object.keys(currentRatings).filter(function(k){
+      if(loggedKeys[k])return false;                      // logged, including as a short or an episode
+      var rt=runtimeOf[k];
+      return !(rt&&rt<SHORT_MINUTES);                     // and never a short, where the runtime says so
+    }).map(function(k){return currentRatings[k]});
     return{rows:rows,up:up,down:down,drift:drift,pairs:Object.keys(pairs).map(function(k){return pairs[k]}),preDiary:preDiary,
       net:rows.length?rows.reduce(function(s,r){return s+r.delta},0)/rows.length:0,
       riser:up[0]||null,faller:down[0]||null};
-  },[diaryByFilm,currentRatings,loggedKeys]);
+  },[diaryByFilm,currentRatings,loggedKeys,runtimeOf]);
   // Which direction the slope chart is showing. revisions.up and .down are already split and
   // sorted by size of change; 'all' keeps the by-magnitude order so the biggest movers lead
   // whichever way they went.

@@ -48,8 +48,10 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Mirrors parsePipe() in src/App.jsx: pipe-delimited rows, and series/shorts are
-// excluded from the dashboard so they don't need metadata either.
+// Mirrors parsePipe() in src/App.jsx: pipe-delimited rows, and series/shorts are excluded from
+// the dashboard's taste figures so the diary pass skips them. They can still arrive through
+// ratings.csv below, which is deliberate: their runtime is what lets the dashboard recognise a
+// short that has no tag to give it away.
 function parsePipe(raw) {
   if (!raw || !raw.trim()) return [];
   return raw.trim().split('\n')
@@ -144,6 +146,19 @@ async function main() {
       const key = `${fi.name}|||${fi.year}`;
       if (!unique.has(key)) unique.set(key, { name: fi.name, year: fi.year });
     }
+  }
+
+  // Every rated film too, including the ones never logged. The dashboard needs their runtime:
+  // Letterboxd counts anything under 40 minutes as a short, and a short with no diary row carries
+  // no tag to exclude it by, so without a runtime it cannot be told from a feature.
+  const { data: ratingsRow, error: rErr } = await sb.from('ratings_data').select('data').eq('id', 1).single();
+  if (rErr) throw new Error(`Could not read ratings_data: ${rErr.message}`);
+  let rated = ratingsRow && ratingsRow.data;
+  if (typeof rated === 'string') { try { rated = JSON.parse(rated); } catch { rated = []; } }
+  for (const r of Array.isArray(rated) ? rated : []) {
+    if (!r || !r.name || !r.year) continue;
+    const key = `${r.name}|||${r.year}`;
+    if (!unique.has(key)) unique.set(key, { name: r.name, year: r.year });
   }
 
   const { data: existing, error: metaErr } = await sb.from('film_metadata').select('title,year');
