@@ -13,6 +13,9 @@
 //   npm run enrich -- --only "Beyond (2003)" --only "Another (2012)"   # repair named films only
 //   npm run enrich -- --audit   # re-check every stored match against TMDB; writes nothing
 //
+// Recent films take their TMDB id from Letterboxd's own RSS feed rather than a title search.
+// LETTERBOXD_USER overrides the account it reads; no key or auth is involved.
+//
 // Reads TMDB_TOKEN, SUPABASE_URL and SUPABASE_SERVICE_KEY from .env.
 
 import { createClient } from '@supabase/supabase-js';
@@ -87,6 +90,46 @@ const VERIFIED = new Set([
   'Godzilla × Kong: The New Empire|2024|823464',       // multiplication sign vs the letter x
 ]);
 
+// Letterboxd publishes every member's recent diary as RSS, and each entry carries <tmdb:movieId>.
+// That is the film's TMDB id stated by Letterboxd itself, which beats any title search: it is what
+// pickMatch() is trying to reconstruct, and it cannot be fooled by a common title. "Beyond" (2003)
+// would never have become Beyond Borders if this had been read first.
+//
+// The catch is reach. The feed is a rolling window of the last few months -- 98 entries covering
+// four months when this was written -- so it settles recent films only and everything older still
+// goes through the search. It also carries no tags, which is why it cannot replace the CSV export.
+//
+// Public, no key, no auth. One request per run, and a failure here is never fatal: enrichment
+// simply falls back to searching, exactly as it did before.
+const LB_USER = process.env.LETTERBOXD_USER || 'Rhobz37';
+
+const unescapeXml = (s) => String(s)
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+  .replace(/&#0?39;|&apos;/g, "'").replace(/&#x27;/gi, "'").replace(/&amp;/g, '&');
+
+let rssIds = new Map();
+
+async function loadRssIds() {
+  const url = `https://letterboxd.com/${LB_USER}/rss/`;
+  let xml;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'letterboxd-dashboard/1.0 (personal stats)' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    xml = await res.text();
+  } catch (err) {
+    console.log(`RSS unavailable (${err.message}); falling back to title search for everything.`);
+    return;
+  }
+  for (const item of xml.split('<item>').slice(1)) {
+    const t = item.match(/<letterboxd:filmTitle>([\s\S]*?)<\/letterboxd:filmTitle>/);
+    const y = item.match(/<letterboxd:filmYear>(\d{4})<\/letterboxd:filmYear>/);
+    const m = item.match(/<tmdb:movieId>(\d+)<\/tmdb:movieId>/);
+    if (!t || !y || !m) continue;                       // a list entry rather than a diary entry
+    rssIds.set(`${normTitle(unescapeXml(t[1]))}|${parseInt(y[1], 10)}`, parseInt(m[1], 10));
+  }
+  console.log(`RSS: ${rssIds.size} recent film(s) carry a TMDB id from Letterboxd itself.`);
+}
+
 // The films the diary has already ruled out, read from the RAW rows because parsePipe has dropped
 // them by the time anyone could ask. Keyed the same way film_metadata is, so it can be checked
 // against a ratings.csv row directly.
@@ -143,40 +186,62 @@ function pickMatch(results, name, year) {
 }
 
 async function fetchOne({ name, year }) {
-  const search = await tmdb(
-    `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(name)}&year=${year}&language=en-US`,
-  );
-  const hit = pickMatch(search.results, name, year);
-  if (hit && search.results[0] && hit.id !== search.results[0].id) {
-    console.log(`  ${name} (${year}): took the exact title match "${hit.title}" over TMDB's top hit "${search.results[0].title}"`);
+  // An id from the RSS feed is Letterboxd's own answer, so there is nothing to guess: no search,
+  // no ranking, no chance of a Beyond Borders. Falls through to searching when the feed does not
+  // cover the film, which is most of them -- the window is only the last few months.
+  let id = rssIds.get(`${normTitle(name)}|${year}`);
+  let via = 'rss';
+
+  if (!id) {
+    via = 'search';
+    const search = await tmdb(
+      `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(name)}&year=${year}&language=en-US`,
+    );
+    const hit = pickMatch(search.results, name, year);
+    if (hit && search.results[0] && hit.id !== search.results[0].id) {
+      console.log(`  ${name} (${year}): took the exact title match "${hit.title}" over TMDB's top hit "${search.results[0].title}"`);
+    }
+    // Record a null row for genuine no-matches so repeat runs skip them instead of
+    // re-querying every time. Transient errors are handled by the caller and left
+    // unrecorded, so they retry on the next run.
+    if (!hit) {
+      return {
+        title: name, year, tmdb_id: null, poster: null, directors: null,
+        genres: null, runtime: null, countries: null, cast_members: null,
+      };
+    }
+    id = hit.id;
   }
 
-  // Record a null row for genuine no-matches so repeat runs skip them instead of
-  // re-querying every time. Transient errors are handled by the caller and left
-  // unrecorded, so they retry on the next run.
-  if (!hit) {
-    return {
-      title: name, year, tmdb_id: null, poster: null, directors: null,
-      genres: null, runtime: null, countries: null, cast_members: null,
-    };
+  let det;
+  try {
+    det = await tmdb(`https://api.themoviedb.org/3/movie/${id}?append_to_response=credits&language=en-US`);
+  } catch (err) {
+    // A TMDB entry can be deleted or merged after Letterboxd recorded its id. Rather than fail the
+    // film, fall back to the search path -- but say so, because a dead id in the feed is unusual.
+    if (via !== 'rss') throw err;
+    console.log(`  ${name} (${year}): the feed's id ${id} no longer resolves at TMDB; searching instead`);
+    rssIds.delete(`${normTitle(name)}|${year}`);
+    return fetchOne({ name, year });
   }
 
-  const det = await tmdb(
-    `https://api.themoviedb.org/3/movie/${hit.id}?append_to_response=credits&language=en-US`,
-  );
   const crew = (det.credits && det.credits.crew) || [];
   const cast = (det.credits && det.credits.cast) || [];
   const join = (arr) => (arr.length ? arr.join(', ') : null);
+  if (via === 'rss') console.log(`  ${name} (${year}): id ${id} taken from the RSS feed, no search needed`);
 
   return {
     title: name,
     year,
-    tmdb_id: hit.id,
+    tmdb_id: id,
+    // poster_path comes off the DETAIL response, not the search hit, so it is present whichever
+    // path found the film. Taking it from the search hit meant an RSS-sourced id had no poster.
+    //
     // w342 rather than w92: the wall renders posters at ~94px, which is 188 device pixels on a
     // retina screen. src/App.jsx rewrites the size per slot anyway, so rows stored at the old
     // w92 render correctly too and nothing needs re-fetching — this just stops new rows being
     // written at a size nothing displays.
-    poster: hit.poster_path ? `https://image.tmdb.org/t/p/w342${hit.poster_path}` : null,
+    poster: det.poster_path ? `https://image.tmdb.org/t/p/w342${det.poster_path}` : null,
     directors: join(crew.filter((c) => c.job === 'Director').map((c) => c.name)),
     genres: join((det.genres || []).map((g) => g.name)),
     runtime: det.runtime || null,
@@ -200,6 +265,8 @@ async function flush(rows) {
 //
 // Writes nothing. Run it after any large enrichment, and after importing a new ratings export.
 async function audit() {
+  await loadRssIds();
+
   // Which films have a diary row at all -- read from the RAW text, before parsePipe drops anything,
   // so a film logged as a series or a short still counts as logged. This mirrors loggedKeys in
   // src/App.jsx and it is the whole reason the two groups below matter so differently: a logged
@@ -226,9 +293,22 @@ async function audit() {
   const withId = rows.filter((r) => r.tmdb_id);
   const noId = rows.length - withId.length;
   console.log(`${rows.length} rows, ${withId.length} with a tmdb_id, ${noId} recorded as no-match.`);
+
+  // A no-match row means the title search found nothing. The feed can sometimes name the film
+  // outright -- that is the case the RSS id exists for -- so check those rows too rather than
+  // skipping them, which the loop below does because it only walks rows that already have an id.
+  const resolvable = rows.filter((r) => !r.tmdb_id && rssIds.has(`${normTitle(r.title)}|${r.year}`));
+  if (resolvable.length) {
+    console.log(`\n${resolvable.length} no-match row(s) the feed CAN name:`);
+    resolvable.forEach((r) => {
+      const tagged = logged.has(`${r.title}|||${r.year}`);
+      console.log(`  ${(r.title + ' (' + r.year + ')').padEnd(44)} feed says tmdb ${rssIds.get(`${normTitle(r.title)}|${r.year}`)}`
+        + (tagged ? '  (logged, so a series/short tag may already exclude it — repairing changes nothing)' : ''));
+    });
+  }
   console.log('Checking each id against TMDB. This takes a couple of minutes.\n');
 
-  const wrong = [], mojibake = [];
+  const wrong = [], mojibake = [], contradicted = [];
   let n = 0, verified = 0;
   for (const r of withId) {
     // A title that still carries mojibake was enriched from corrupted text, so the row's KEY is
@@ -245,6 +325,15 @@ async function audit() {
     if (n % 200 === 0) console.log(`  ...${n}/${withId.length}`);
     await sleep(55);
     if (!d) continue;
+
+    // Letterboxd's own id for the same film. This is the only check here that yields certainty
+    // rather than suspicion: if the feed says 24675 and the row says 9839, the row is wrong, no
+    // judgement required. It only reaches recent films, but where it reaches it is decisive.
+    const lbId = rssIds.get(`${normTitle(r.title)}|${r.year}`);
+    if (lbId && lbId !== r.tmdb_id) {
+      contradicted.push({ ...r, lbId, tmdbTitle: d.title, tmdbRuntime: d.runtime });
+      continue;
+    }
 
     const want = normTitle(r.title);
     const a = normTitle(d.title), b = normTitle(d.original_title);
@@ -275,8 +364,17 @@ async function audit() {
   const withDiary = wrong.filter((e) => e.logged).sort(bySuspicion);
 
   if (verified) console.log(`\n${verified} inexact match(es) skipped: checked by hand, see VERIFIED at the top of this file.`);
-  if (!wrong.length) {
+  if (contradicted.length) {
+    console.log(`\n!!! ${contradicted.length} row(s) contradicted by Letterboxd's own TMDB id. These are wrong, not suspect:`);
+    contradicted.forEach((e) => console.log(`  ${(e.title + ' (' + e.year + ')').padEnd(44)} stored id=${e.tmdb_id} (${e.tmdbTitle}, ${e.tmdbRuntime}min) but the RSS feed says ${e.lbId}`));
+    console.log(`  Repair: npm run enrich -- ${contradicted.map((e) => `--only "${e.title} (${e.year})"`).join(' ')}`);
+  }
+
+  if (!wrong.length && !contradicted.length) {
     console.log(`\nClean: all ${withId.length} matched ids carry the title they were fetched for.`);
+  } else if (!wrong.length) {
+    // Contradicted rows skip the title comparison, so an empty `wrong` here does not mean clean.
+    console.log('\nNo further title mismatches beyond the contradiction(s) above.');
   } else {
     console.log(`\n${wrong.length} of ${withId.length} rows matched a TMDB entry whose title is not identical.`);
     console.log('None of this is an error the fetch could have noticed. Judge each one; a year that');
@@ -305,6 +403,8 @@ async function audit() {
 
 async function main() {
   if (AUDIT) return audit();
+
+  await loadRssIds();
 
   const { data: pipeRow, error: pipeErr } = await sb
     .from('pipe_data').select('data').eq('id', 1).single();
