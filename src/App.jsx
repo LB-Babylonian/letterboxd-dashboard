@@ -521,7 +521,9 @@ function PeriodDialog(p){
   // longer needs to warn about them.
   var bad=null;
   if(!d.fromY||!d.fromM)bad='Choose the month it started.';
-  else if(!(Number(d.price)>0))bad='Enter what it costs each month.';
+  // Zero is allowed -- a free trial is a period with no cost -- but blank is not, so that a price
+  // is a decision rather than an omission.
+  else if(String(d.price).trim()===''||isNaN(Number(d.price))||Number(d.price)<0)bad='Enter the monthly price, or 0 for a free trial.';
   else if(!d.ongoing&&(!d.toY||!d.toM))bad='Choose the month it ended, or mark it as still running.';
   else if(!d.ongoing&&(d.toY+'-'+d.toM)<(d.fromY+'-'+d.fromM))bad='The end month is before the start month.';
   var row=function(label,body){return <div className="flex gap-2 items-center mb-2"><div className="text-xs" style={{color:NEUTRAL.muted,width:64,flex:'0 0 auto'}}>{label}</div>{body}</div>};
@@ -794,8 +796,11 @@ export default function Dashboard(){
   var describePeriod=function(pr){
     var a=fmtYM(pr.from),b=fmtYM(pr.to);
     if(!a)return{text:'No start month set, so this period is ignored',bad:true};
-    if(!pr.price)return{text:'No price set, so this period is ignored',bad:true};
     if(pr.to&&!b)return{text:'End month not understood, so this period runs as if still open',bad:true};
+    // Zero is a real answer, not a missing one: a free trial costs nothing and adding nothing to
+    // the total is correct. This used to read "No price set, so this period is ignored" in orange,
+    // which called a deliberate three-month Prime trial a broken row.
+    if(!Number(pr.price))return{text:a+' \u2192 '+(b||'ongoing')+' \u00b7 free',bad:false};
     return{text:a+' \u2192 '+(b||'ongoing')+' \u00b7 \u20ac'+Number(pr.price).toFixed(2)+' a month',bad:false};
   };
   var all=useMemo(function(){return parsePipe(pd)},[pd]);
@@ -1345,13 +1350,16 @@ export default function Dashboard(){
     var mF=all.filter(function(e){return e.date.slice(0,7)===ym});
 
     subscriptions.forEach(function(sub){
-      var cost=0;
+      // Tracked separately from the cost, because a free trial covers a month at zero: keying on
+      // cost alone dropped the subscription from the breakdown entirely and its films with it, so
+      // a month spent watching on a trial showed nothing at all for that platform.
+      var cost=0,covers=false;
       sub.periods.forEach(function(pr){
-        if(!pr.from||!pr.price)return;
+        if(!pr.from)return;
         var to=pr.to||getNowYM();
-        if(ym>=pr.from&&ym<=to)cost+=pr.price;
+        if(ym>=pr.from&&ym<=to){covers=true;cost+=(Number(pr.price)||0)}
       });
-      if(!cost)return;
+      if(!covers)return;
       var films=mF.filter(function(e){
         if(sub.platforms.indexOf('_theater_sub')!==-1){
           var vn=gV(e.tags,fullReg);
@@ -1364,7 +1372,9 @@ export default function Dashboard(){
         return e.tags.some(function(t){return sub.platforms.indexOf(t)!==-1});
       });
       groups.push({kind:'Subscription',label:sub.name,amount:cost,films:withCur(films),
-        note:films.length?films.length+(films.length===1?' film, ':' films, ')+'\u20ac'+(cost/films.length).toFixed(2)+' each':'nothing watched on it this month'});
+        note:!films.length?(cost?'nothing watched on it this month':'free this month, nothing watched on it')
+          :cost?films.length+(films.length===1?' film, ':' films, ')+'\u20ac'+(cost/films.length).toFixed(2)+' each'
+          :'free this month \u00b7 '+films.length+(films.length===1?' film':' films')});
     });
 
     var byVenue={},byRental={};
