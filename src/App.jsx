@@ -641,9 +641,27 @@ export default function Dashboard(){
   // save has never shown progress and a FAILED save has never said so. The flag is gone rather
   // than left looking like a feature. Wiring an indicator to these two callbacks is the fix if
   // that silence ever becomes a problem.
-  var savePipe=useCallback(function(d){sb.from('pipe_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){/* saved; nothing on screen reflects it */}).catch(function(){/* the write failed and the page will not say so */})},[]);
-  var saveReg=useCallback(function(d){sb.from('tag_registry').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
-  var saveSubs=useCallback(function(d){sb.from('subscriptions').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
+  // Every edit here writes immediately -- there is no draft state to lose -- but until now it did
+  // so in total silence, and that is the actual reason a save button felt reassuring: nothing ever
+  // confirmed anything.
+  //
+  // Worse, a REFUSED write looked exactly like a successful one. Supabase resolves with {error}
+  // rather than rejecting, so `.then(function(){})` swallowed RLS refusals, a dropped connection
+  // and a bad column alike. You could edit a subscription, see no complaint, and have saved
+  // nothing. So the error has to be read out of the resolved value, not waited for as a rejection.
+  var[saveStatus,sSaveStatus]=useState(null);
+  var reportSave=useCallback(function(label,q){
+    sSaveStatus({state:'saving',label:label});
+    return Promise.resolve(q).then(function(res){
+      if(res&&res.error)throw new Error(res.error.message||'refused');
+      sSaveStatus({state:'saved',label:label,at:new Date()});
+    }).catch(function(err){
+      sSaveStatus({state:'error',label:label,msg:String((err&&err.message)||err)});
+    });
+  },[]);
+  var savePipe=useCallback(function(d){return reportSave('Diary',sb.from('pipe_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1))},[reportSave]);
+  var saveReg=useCallback(function(d){return reportSave('Tags',sb.from('tag_registry').update({data:d,updated_at:new Date().toISOString()}).eq('id',1))},[reportSave]);
+  var saveSubs=useCallback(function(d){return reportSave('Subscriptions',sb.from('subscriptions').update({data:d,updated_at:new Date().toISOString()}).eq('id',1))},[reportSave]);
   var saveWl=useCallback(function(d){sb.from('watchlist_data').update({data:JSON.stringify(d),updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
   var saveRevs=useCallback(function(d){sb.from('review_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
   var saveRatings=useCallback(function(d){sb.from('ratings_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
@@ -656,6 +674,24 @@ export default function Dashboard(){
   var doSetDn=function(t,dn){sReg(function(p){var n=Object.assign({},p);n[t]=Object.assign({},n[t]||{},{dn:dn||''});saveReg(n);return n})};
   var doBulkTag=function(){if(!bulkCat)return;sReg(function(p){var n=Object.assign({},p);Object.keys(tagSel).forEach(function(t){if(tagSel[t])n[t]=Object.assign({},n[t]||{},{cat:bulkCat})});saveReg(n);return n});sTagSel({});sBulkCat('')};
   var doUpSubs=function(fn){sSubscriptions(function(p){var n=fn(p);saveSubs(n);return n})};
+
+  // "2021-10" -> "Oct 2021". The month inputs show whatever format the browser's locale prefers
+  // (mm/aaaa here), which is not the format stored, so echoing each period back in words is the
+  // clearest way to say what was actually understood.
+  var fmtYM=function(ym){
+    if(!ym||!/^\d{4}-\d{2}$/.test(ym))return null;
+    return MS[parseInt(ym.slice(5),10)-1]+' '+ym.slice(0,4);
+  };
+  // Says in words what this period means, and says so when it means nothing: subCostForMonth
+  // ignores any period missing a start month or a price, which was previously invisible -- a
+  // half-filled period looked saved and contributed zero.
+  var describePeriod=function(pr){
+    var a=fmtYM(pr.from),b=fmtYM(pr.to);
+    if(!a)return{text:'No start month set, so this period is ignored',bad:true};
+    if(!pr.price)return{text:'No price set, so this period is ignored',bad:true};
+    if(pr.to&&!b)return{text:'End month not understood, so this period runs as if still open',bad:true};
+    return{text:a+' \u2192 '+(b||'ongoing')+' \u00b7 \u20ac'+Number(pr.price).toFixed(2)+' a month',bad:false};
+  };
   var all=useMemo(function(){return parsePipe(pd)},[pd]);
   // Every film with ANY diary row, shorts and series included. `all` drops those two on purpose
   // so they stay out of the taste panels, but "was this logged at all?" is a different question:
@@ -1159,6 +1195,20 @@ export default function Dashboard(){
   // One modal for every drill-down. Each panel just hands it a title and a list of films.
   var drillModal=<FilmList T={N} title={drill?drill.title:null} films={drill?drill.films:[]} onClose={function(){sDrill(null)}}/>;
   var costModal=<CostBreakdown T={N} data={costDrill} onClose={function(){sCostDrill(null)}}/>;
+
+  // Edits save as you type, so this is a confirmation rather than a control -- but a failure DOES
+  // need a control, because the write is gone and only a retry brings it back. Hence a button that
+  // appears on failure and nowhere else, rather than a Save button that would imply the unsaved
+  // state this editor deliberately does not have.
+  var saveIndicator=(function(){
+    if(!saveStatus)return <span className="text-xs" style={{color:N.mutedSoft}}>Saves as you type</span>;
+    if(saveStatus.state==='saving')return <span className="text-xs" style={{color:N.muted}}>Saving{'\u2026'}</span>;
+    if(saveStatus.state==='saved')return <span className="text-xs" style={{color:VIZ_GOOD}}>{'\u2713'} {saveStatus.label} saved {saveStatus.at.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>;
+    return <span className="flex gap-2 items-center">
+      <span className="text-xs" style={{color:NEG}}>{saveStatus.label} NOT saved: {saveStatus.msg}</span>
+      <button onClick={function(){saveSubs(subscriptions)}} style={btnSecondary}>Retry</button>
+    </span>;
+  })();
   // The 50 ratings behind a point on the rolling average, newest first.
   var openDrillWindow=function(d){
     if(!d||d.i==null)return;
@@ -1270,12 +1320,12 @@ export default function Dashboard(){
   // started halfway down.
   var subsEditorCard=<div>
       <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}>
-        <SectionHead T={N} title={<button onClick={function(){sShowSubs(function(v){return!v})}} style={{background:'transparent',border:'none',padding:0,cursor:'pointer',color:N.ink,font:'inherit'}}>{showSubs?'\u25BE':'\u25B8'} Subscription editor</button>} aside={showSubs?<button onClick={function(){doUpSubs(function(p){return p.concat([{id:'s_'+Date.now(),name:'New',platforms:[],periods:[{from:'',to:'',price:0}]}])})}} style={btnPrimary}>+ Add</button>:null}/>
+        <SectionHead T={N} title={<button onClick={function(){sShowSubs(function(v){return!v})}} style={{background:'transparent',border:'none',padding:0,cursor:'pointer',color:N.ink,font:'inherit'}}>{showSubs?'\u25BE':'\u25B8'} Subscription editor</button>} aside={showSubs?<div className="flex gap-2 items-center">{saveIndicator}<button onClick={function(){doUpSubs(function(p){return p.concat([{id:'s_'+Date.now(),name:'New',platforms:[],periods:[{from:'',to:'',price:0}]}])})}} style={btnPrimary}>+ Add</button></div>:null}/>
         {showSubs&&<div className="space-y-2">{subscriptions.map(function(sub){return <div key={sub.id} className="p-3" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><div className="flex justify-between items-center"><span style={{fontSize:13,fontWeight:500,color:N.ink}}>{sub.name}</span><div className="flex gap-1"><button onClick={function(){sCostEs(costEs===sub.id?null:sub.id)}} style={btnSecondary}>{costEs===sub.id?'Close':'Edit'}</button><button onClick={function(){doUpSubs(function(p){return p.filter(function(s){return s.id!==sub.id})});sCostEs(null)}} style={{background:N.surfaceAlt,border:'0.5px solid '+T.primary,borderRadius:4,color:T.primary,padding:'4px 10px',fontSize:11}}>{'\u00D7'}</button></div></div>
           {costEs===sub.id&&<div className="space-y-3 mt-3">
             <div className="flex gap-2 items-center"><label className="text-xs w-14" style={{color:N.muted}}>Name</label><input style={Object.assign({},inputStyle,{flex:1,fontSize:11,padding:'4px 6px'})} value={sub.name} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{name:v}):s})})}}/></div>
             <div><label className="text-xs mb-1 block" style={{color:N.muted}}>Platforms (click to toggle)</label><div className="flex flex-wrap gap-1">{paidPlatTags.map(function(t){var isIn=sub.platforms.indexOf(t)!==-1;return <button key={t} onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var np=isIn?s.platforms.filter(function(x){return x!==t}):s.platforms.concat([t]);return Object.assign({},s,{platforms:np})})})}} style={isIn?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{getDn(t,fullReg)}</button>})}<button key="_ts" onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var isIn=s.platforms.indexOf('_theater_sub')!==-1;var np=isIn?s.platforms.filter(function(x){return x!=='_theater_sub'}):s.platforms.concat(['_theater_sub']);return Object.assign({},s,{platforms:np})})})}} style={sub.platforms.indexOf('_theater_sub')!==-1?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>Theater pass</button></div></div>
-            <div><div className="flex justify-between"><label className="text-xs" style={{color:N.muted}}>Periods</label><button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.concat([{from:'',to:'',price:0}])}):s})})}} className="text-xs" style={{color:T.primary}}>+</button></div>{sub.periods.map(function(pr,pi){return <div key={pi} className="flex gap-1 items-center flex-wrap mt-1"><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} value={pr.from} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{from:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u2192'}</span><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} placeholder="ongoing" value={pr.to} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{to:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u20AC'}</span><input type="number" step="0.01" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:56})} value={pr.price} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{price:parseFloat(v)||0}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>/mo</span>{sub.periods.length>1&&<button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.filter(function(_,j){return j!==pi})}):s})})}} className="text-xs" style={{color:T.primary}}>{'\u00D7'}</button>}</div>})}</div>
+            <div><div className="flex justify-between"><label className="text-xs" style={{color:N.muted}}>Periods <span style={{color:N.mutedSoft}}>{'\u2014'} start month, end month, price. Leave the end blank while it is still running.</span></label><button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.concat([{from:'',to:'',price:0}])}):s})})}} className="text-xs" style={{color:T.primary}}>+</button></div>{sub.periods.map(function(pr,pi){return <div key={pi} className="flex gap-1 items-center flex-wrap mt-1"><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} value={pr.from} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{from:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u2192'}</span><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} placeholder="ongoing" value={pr.to} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{to:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u20AC'}</span><input type="number" step="0.01" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:56})} value={pr.price} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{price:parseFloat(v)||0}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>/mo</span>{sub.periods.length>1&&<button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.filter(function(_,j){return j!==pi})}):s})})}} className="text-xs" style={{color:T.primary}} title="Remove this period">{'\u00D7'}</button>}<div className="text-xs w-full" style={{color:describePeriod(pr).bad?VIZ_MARK:N.mutedSoft,marginTop:1}}>{describePeriod(pr).text}</div></div>})}</div>
           </div>}
         </div>})}</div>}
       </div>
