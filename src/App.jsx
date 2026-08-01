@@ -496,6 +496,57 @@ function FilmList(p){
   </div>;
 }
 
+// Adding or editing one subscription period. A dialog rather than inline fields, because the
+// inline version asked you to type into <input type="month">, which shows the browser's locale
+// format ("septembre 2023" here) while storing YYYY-MM -- so there was no way to tell what it
+// wanted. Month and year are chosen from lists instead; nothing is typed except the price.
+//
+// It is also the one place in this editor where an explicit Save is honest. Everywhere else edits
+// write as you type, so a Save button would imply drafts that do not exist. A dialog genuinely
+// holds a draft until you commit it.
+function PeriodDialog(p){
+  var d=p.draft;
+  var closeRef=useRef(p.onCancel);closeRef.current=p.onCancel;
+  useEffect(function(){
+    if(!d)return;
+    var h=function(e){if(e.key==='Escape')closeRef.current()};
+    window.addEventListener('keydown',h);
+    return function(){window.removeEventListener('keydown',h)};
+  },[d]);
+  if(!d)return null;
+  var sel={background:NEUTRAL.surfaceAlt,border:'0.5px solid '+NEUTRAL.borderStrong,borderRadius:4,color:NEUTRAL.ink,padding:'4px 6px',fontSize:12};
+  var set=function(k,v){var n=Object.assign({},d);n[k]=v;p.onChange(n)};
+  // A period with no start or no price is silently ignored by subCostForMonth, and an end before
+  // its start can never match a month. Blocking all three here is why the read-only list below no
+  // longer needs to warn about them.
+  var bad=null;
+  if(!d.fromY||!d.fromM)bad='Choose the month it started.';
+  else if(!(Number(d.price)>0))bad='Enter what it costs each month.';
+  else if(!d.ongoing&&(!d.toY||!d.toM))bad='Choose the month it ended, or mark it as still running.';
+  else if(!d.ongoing&&(d.toY+'-'+d.toM)<(d.fromY+'-'+d.fromM))bad='The end month is before the start month.';
+  var row=function(label,body){return <div className="flex gap-2 items-center mb-2"><div className="text-xs" style={{color:NEUTRAL.muted,width:64,flex:'0 0 auto'}}>{label}</div>{body}</div>};
+  var months=MF.map(function(nm,idx){return <option key={idx} value={String(idx+1).padStart(2,'0')}>{nm}</option>});
+  var years=p.years.map(function(y){return <option key={y} value={String(y)}>{y}</option>});
+  return <div onClick={p.onCancel} style={{cursor:'pointer',position:'fixed',inset:0,background:'rgba(0,0,0,0.62)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:70,padding:'40px 20px'}}>
+    <div onClick={function(e){e.stopPropagation()}} style={{cursor:'default',background:NEUTRAL.surface,border:'1px solid '+NEUTRAL.borderStrong,borderRadius:6,width:'100%',maxWidth:380,padding:16,boxShadow:'0 24px 64px rgba(0,0,0,0.5)'}}>
+      <div className="text-sm mb-3" style={{color:NEUTRAL.ink,fontWeight:500}}>{d.index===null?'Add a period':'Edit this period'}<span style={{color:NEUTRAL.muted,fontWeight:400}}> {'\u00b7'} {d.subName}</span></div>
+      {row('Started',<span className="flex gap-1"><select style={sel} value={d.fromM} onChange={function(e){set('fromM',e.target.value)}}><option value="">Month</option>{months}</select><select style={sel} value={d.fromY} onChange={function(e){set('fromY',e.target.value)}}><option value="">Year</option>{years}</select></span>)}
+      {row('Ended',<span className="flex gap-1 items-center flex-wrap">
+        <label className="flex gap-1 items-center text-xs" style={{color:NEUTRAL.inkSoft,cursor:'pointer'}}>
+          <input type="checkbox" checked={!!d.ongoing} onChange={function(e){set('ongoing',e.target.checked)}} style={{accentColor:NEUTRAL.ink}}/> still running
+        </label>
+        {!d.ongoing&&<span className="flex gap-1"><select style={sel} value={d.toM} onChange={function(e){set('toM',e.target.value)}}><option value="">Month</option>{months}</select><select style={sel} value={d.toY} onChange={function(e){set('toY',e.target.value)}}><option value="">Year</option>{years}</select></span>}
+      </span>)}
+      {row('Price',<span className="flex gap-1 items-center"><span className="text-xs" style={{color:NEUTRAL.mutedSoft}}>{'\u20ac'}</span><input type="number" step="0.01" min="0" style={Object.assign({},sel,{width:88})} value={d.price} onChange={function(e){set('price',e.target.value)}}/><span className="text-xs" style={{color:NEUTRAL.mutedSoft}}>a month</span></span>)}
+      <div className="text-xs mt-2" style={{color:bad?VIZ_MARK:NEUTRAL.mutedSoft,minHeight:16}}>{bad||'Saved as: '+p.preview(d)}</div>
+      <div className="flex gap-2 justify-end mt-3">
+        <button onClick={p.onCancel} style={{background:'transparent',border:'0.5px solid '+NEUTRAL.borderStrong,borderRadius:4,color:NEUTRAL.inkSoft,padding:'5px 12px',fontSize:12,cursor:'pointer'}}>Cancel</button>
+        <button onClick={function(){if(!bad)p.onSave(d)}} disabled={!!bad} style={{background:bad?NEUTRAL.surfaceAlt:VIZ_GOOD,border:'0.5px solid '+(bad?NEUTRAL.borderStrong:VIZ_GOOD),borderRadius:4,color:bad?NEUTRAL.mutedSoft:NEUTRAL.paper,padding:'5px 14px',fontSize:12,fontWeight:500}}>Save</button>
+      </div>
+    </div>
+  </div>;
+}
+
 // A month's spend, split by what took the money, with each platform's films under it. FilmList
 // answers "which films"; this answers "which films, and what did each platform cost" — the same
 // modal shell so both dismiss identically (backdrop, close button, Escape).
@@ -684,6 +735,51 @@ export default function Dashboard(){
   var doSetDn=function(t,dn){sReg(function(p){var n=Object.assign({},p);n[t]=Object.assign({},n[t]||{},{dn:dn||''});saveReg(n);return n})};
   var doBulkTag=function(){if(!bulkCat)return;sReg(function(p){var n=Object.assign({},p);Object.keys(tagSel).forEach(function(t){if(tagSel[t])n[t]=Object.assign({},n[t]||{},{cat:bulkCat})});saveReg(n);return n});sTagSel({});sBulkCat('')};
   var doUpSubs=function(fn){sSubscriptions(function(p){var n=fn(p);saveSubs(n);return n})};
+
+  var[perEdit,sPerEdit]=useState(null);
+  // Wide enough to cover every period already stored and a few years either side, so the year list
+  // never becomes the reason a period cannot be entered.
+  // Deliberately independent of `all`. The first version read the diary's earliest year to widen
+  // the range, and `all` is declared fifty lines further down -- so this memo ran with it
+  // undefined and took the whole page down for an admin, blank screen and all. The subscriptions'
+  // own dates plus a decade of headroom cover every real case without the coupling.
+  var subYears=useMemo(function(){
+    var now=new Date().getFullYear();
+    var ys=[now];
+    subscriptions.forEach(function(s){(s.periods||[]).forEach(function(pr){
+      if(pr.from)ys.push(parseInt(pr.from.slice(0,4),10));
+      if(pr.to)ys.push(parseInt(pr.to.slice(0,4),10));
+    })});
+    ys=ys.filter(function(y){return !isNaN(y)});
+    var lo=Math.min(now-12,Math.min.apply(null,ys)-1);
+    var hi=Math.max(now,Math.max.apply(null,ys))+1;
+    var out=[];for(var y=lo;y<=hi;y++)out.push(y);
+    return out;
+  },[subscriptions]);
+  // A stored period is YYYY-MM strings; the dialog works in separate month and year values. These
+  // two convert between the shapes so nothing else has to know about both.
+  var newDraft=function(sub,index){
+    var pr=index===null?{from:'',to:'',price:''}:sub.periods[index];
+    return {subId:sub.id,subName:sub.name,index:index,
+      fromM:pr.from?pr.from.slice(5,7):'',fromY:pr.from?pr.from.slice(0,4):'',
+      toM:pr.to?pr.to.slice(5,7):'',toY:pr.to?pr.to.slice(0,4):'',
+      ongoing:index!==null?!pr.to:true,
+      price:index===null?'':String(pr.price)};
+  };
+  var draftToPeriod=function(d){
+    return {from:d.fromY+'-'+d.fromM,to:d.ongoing?'':(d.toY+'-'+d.toM),price:parseFloat(d.price)||0};
+  };
+  var savePeriod=function(d){
+    var np=draftToPeriod(d);
+    doUpSubs(function(p){return p.map(function(s){
+      if(s.id!==d.subId)return s;
+      var periods=d.index===null?s.periods.concat([np]):s.periods.map(function(x,j){return j===d.index?np:x});
+      // Chronological, so the list reads as a history rather than as insertion order.
+      periods=periods.slice().sort(function(a,b){return String(a.from).localeCompare(String(b.from))});
+      return Object.assign({},s,{periods:periods});
+    })});
+    sPerEdit(null);
+  };
 
   // "2021-10" -> "Oct 2021". The month inputs show whatever format the browser's locale prefers
   // (mm/aaaa here), which is not the format stored, so echoing each period back in words is the
@@ -1205,6 +1301,9 @@ export default function Dashboard(){
   // One modal for every drill-down. Each panel just hands it a title and a list of films.
   var drillModal=<FilmList T={N} title={drill?drill.title:null} films={drill?drill.films:[]} onClose={function(){sDrill(null)}}/>;
   var costModal=<CostBreakdown T={N} data={costDrill} onClose={function(){sCostDrill(null)}}/>;
+  var periodDialog=<PeriodDialog draft={perEdit} years={subYears}
+    preview={function(d){return describePeriod(draftToPeriod(d)).text}}
+    onChange={function(d){sPerEdit(d)}} onSave={savePeriod} onCancel={function(){sPerEdit(null)}}/>;
 
   // Edits save as you type, so this is a confirmation rather than a control -- but a failure DOES
   // need a control, because the write is gone and only a retry brings it back. Hence a button that
@@ -1335,7 +1434,22 @@ export default function Dashboard(){
           {costEs===sub.id&&<div className="space-y-3 mt-3">
             <div className="flex gap-2 items-center"><label className="text-xs w-14" style={{color:N.muted}}>Name</label><input style={Object.assign({},inputStyle,{flex:1,fontSize:11,padding:'4px 6px'})} value={sub.name} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{name:v}):s})})}}/></div>
             <div><label className="text-xs mb-1 block" style={{color:N.muted}}>Platforms (click to toggle)</label><div className="flex flex-wrap gap-1">{paidPlatTags.map(function(t){var isIn=sub.platforms.indexOf(t)!==-1;return <button key={t} onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var np=isIn?s.platforms.filter(function(x){return x!==t}):s.platforms.concat([t]);return Object.assign({},s,{platforms:np})})})}} style={isIn?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>{getDn(t,fullReg)}</button>})}<button key="_ts" onClick={function(){doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;var isIn=s.platforms.indexOf('_theater_sub')!==-1;var np=isIn?s.platforms.filter(function(x){return x!=='_theater_sub'}):s.platforms.concat(['_theater_sub']);return Object.assign({},s,{platforms:np})})})}} style={sub.platforms.indexOf('_theater_sub')!==-1?{padding:'3px 8px',fontSize:11,fontWeight:500,color:T.chartTextColor||NEUTRAL.ink,background:T.primary,border:'0.5px solid '+T.primary,borderRadius:4}:{padding:'3px 8px',fontSize:11,color:N.muted,background:'transparent',border:'0.5px solid '+N.border,borderRadius:4}}>Theater pass</button></div></div>
-            <div><div className="flex justify-between"><label className="text-xs" style={{color:N.muted}}>Periods <span style={{color:N.mutedSoft}}>{'\u2014'} start month, end month, price. Leave the end blank while it is still running.</span></label><button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.concat([{from:'',to:'',price:0}])}):s})})}} className="text-xs" style={{color:T.primary}}>+</button></div>{sub.periods.map(function(pr,pi){return <div key={pi} className="flex gap-1 items-center flex-wrap mt-1"><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} value={pr.from} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{from:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u2192'}</span><input type="month" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:112})} placeholder="ongoing" value={pr.to} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{to:v}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>{'\u20AC'}</span><input type="number" step="0.01" style={Object.assign({},inputStyle,{fontSize:11,padding:'2px 4px',width:56})} value={pr.price} onChange={function(e){var v=e.target.value;doUpSubs(function(p){return p.map(function(s){if(s.id!==sub.id)return s;return Object.assign({},s,{periods:s.periods.map(function(x,j){return j===pi?Object.assign({},x,{price:parseFloat(v)||0}):x})})})})}}/><span className="text-xs" style={{color:N.mutedSoft}}>/mo</span>{sub.periods.length>1&&<button onClick={function(){doUpSubs(function(p){return p.map(function(s){return s.id===sub.id?Object.assign({},s,{periods:s.periods.filter(function(_,j){return j!==pi})}):s})})}} className="text-xs" style={{color:T.primary}} title="Remove this period">{'\u00D7'}</button>}<div className="text-xs w-full" style={{color:describePeriod(pr).bad?VIZ_MARK:N.mutedSoft,marginTop:1}}>{describePeriod(pr).text}</div></div>})}</div>
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs" style={{color:N.muted}}>Periods</label>
+                <button onClick={function(){sPerEdit(newDraft(sub,null))}} style={btnPrimary}>+ Add a period</button>
+              </div>
+              {/* Read-only. Editing happens in the dialog, which is the only way to reach a period
+                  now -- so a period can no longer be left half-filled and silently ignored. */}
+              {sub.periods.length===0&&<div className="text-xs py-1" style={{color:N.mutedSoft}}>No periods yet. Nothing is counted for this subscription until one is added.</div>}
+              {sub.periods.map(function(pr,pi){var dsc=describePeriod(pr);return <div key={pi} className="flex gap-2 items-center justify-between py-1" style={{borderBottom:'0.5px solid '+N.border}}>
+                <span className="text-xs truncate" style={{color:dsc.bad?VIZ_MARK:N.inkSoft}}>{dsc.text}</span>
+                <span className="flex gap-1 shrink-0">
+                  <button onClick={function(){sPerEdit(newDraft(sub,pi))}} style={btnSecondary}>Edit</button>
+                  <button onClick={function(){if(confirm('Remove this period?\n\n'+dsc.text))doUpSubs(function(p){return p.map(function(s2){return s2.id===sub.id?Object.assign({},s2,{periods:s2.periods.filter(function(_,j){return j!==pi})}):s2})})}} style={btnSecondary} title="Remove this period">{'\u00D7'}</button>
+                </span>
+              </div>})}
+            </div>
           </div>}
         </div>})}</div>}
       </div>
@@ -1435,7 +1549,7 @@ export default function Dashboard(){
   var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films logged',copyCtx);
   var copyHeroSuffix=applyCopy((T.copy&&T.copy.heroSuffix)||'{n} vs '+(yr==='All'?'':String(parseInt(yr)-1)),copyCtx);
 
-  return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}{drillModal}{costModal}<div className="max-w-6xl mx-auto">
+  return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}{drillModal}{costModal}{periodDialog}<div className="max-w-6xl mx-auto">
 
     {/* NAV — tabs and controls share one row. They were two stacked rows with their own
         borders and margins, costing ~50px before any content for what is a single band of
