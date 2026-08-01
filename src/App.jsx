@@ -650,18 +650,28 @@ export default function Dashboard(){
   // and a bad column alike. You could edit a subscription, see no complaint, and have saved
   // nothing. So the error has to be read out of the resolved value, not waited for as a rejection.
   var[saveStatus,sSaveStatus]=useState(null);
+  // Checking res.error is NOT enough, which is worth stating plainly because it is the whole reason
+  // this is more than three lines. RLS does not raise an error on a refused UPDATE; it filters the
+  // row out, and PostgREST answers 204 with error null. Measured against this project's own
+  // database: an anonymous update returns status 204, error null, and changes nothing.
+  //
+  // So the caller must ask for the affected rows back and count them. Same measurement: refused
+  // gives data [], permitted gives data [{id:1}]. Without this, a session that quietly expired
+  // would show a green tick over a write that never happened -- a confirmation that lies, which is
+  // worse than the silence it replaced.
   var reportSave=useCallback(function(label,q){
     sSaveStatus({state:'saving',label:label});
     return Promise.resolve(q).then(function(res){
       if(res&&res.error)throw new Error(res.error.message||'refused');
+      if(!res||!res.data||!res.data.length)throw new Error('the database accepted the request but changed no row \u2014 you are probably signed out');
       sSaveStatus({state:'saved',label:label,at:new Date()});
     }).catch(function(err){
       sSaveStatus({state:'error',label:label,msg:String((err&&err.message)||err)});
     });
   },[]);
-  var savePipe=useCallback(function(d){return reportSave('Diary',sb.from('pipe_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1))},[reportSave]);
-  var saveReg=useCallback(function(d){return reportSave('Tags',sb.from('tag_registry').update({data:d,updated_at:new Date().toISOString()}).eq('id',1))},[reportSave]);
-  var saveSubs=useCallback(function(d){return reportSave('Subscriptions',sb.from('subscriptions').update({data:d,updated_at:new Date().toISOString()}).eq('id',1))},[reportSave]);
+  var savePipe=useCallback(function(d){return reportSave('Diary',sb.from('pipe_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).select('id'))},[reportSave]);
+  var saveReg=useCallback(function(d){return reportSave('Tags',sb.from('tag_registry').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).select('id'))},[reportSave]);
+  var saveSubs=useCallback(function(d){return reportSave('Subscriptions',sb.from('subscriptions').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).select('id'))},[reportSave]);
   var saveWl=useCallback(function(d){sb.from('watchlist_data').update({data:JSON.stringify(d),updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
   var saveRevs=useCallback(function(d){sb.from('review_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
   var saveRatings=useCallback(function(d){sb.from('ratings_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
