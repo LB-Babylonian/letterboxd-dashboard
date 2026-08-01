@@ -61,3 +61,22 @@ jobs:
           else
             npm run enrich
           fi
+
+      # Enrichment can only vouch for what it fetched THIS run, and a typical run fetches
+      # nothing. This re-checks every stored id against TMDB, and against Letterboxd's own id
+      # where the RSS feed reaches. Without it a wrong match waits for somebody to think of
+      # looking, which is not a plan — "Beyond" sat wrong for months precisely that way.
+      #
+      # if: always() so a failed fetch above cannot hide an audit finding: the two report
+      # different problems and the job conclusion should reflect both.
+      #
+      # Red only on a contradiction, where Letterboxd's id disagrees with the stored one and
+      # there is nothing to judge. Inexact titles are warnings — plenty are legitimate
+      # (Three Colours/Colors), and a check that cries wolf gets muted.
+      - name: Audit stored TMDB matches
+        if: always()
+        env:
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: npm run enrich -- --audit

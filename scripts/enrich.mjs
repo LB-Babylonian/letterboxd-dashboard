@@ -57,6 +57,17 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// GitHub renders ::warning:: and ::error:: as annotations on the run, which is the difference
+// between a line in a 400-line log and something visible from the Actions tab. Locally they would
+// just be noise, so they only take that form in CI.
+const CI = !!process.env.GITHUB_ACTIONS;
+const warn = (msg) => console.log(CI ? `::warning::${msg}` : `WARNING: ${msg}`);
+const fail = (msg) => console.log(CI ? `::error::${msg}` : `ERROR: ${msg}`);
+
+// Films matched by popularity because no TMDB entry carried their exact title. Collected rather
+// than only logged, so the end of a run can say how many there were.
+const fallbacks = [];
+
 // Mirrors parsePipe() in src/App.jsx: pipe-delimited rows, and series/shorts are excluded from the
 // dashboard's taste figures so the diary pass skips them. The ratings pass in main() skips them a
 // second time, by tag -- see taggedOut(). What ratings.csv legitimately adds is films with NO diary
@@ -174,15 +185,20 @@ const normTitle = (s) => String(s || '')
   .replace(/[^a-z0-9]+/gi, ' ')
   .trim().toLowerCase();
 
+// Returns HOW the film was matched as well as which, because the caller cannot otherwise tell a
+// confident match from a guess -- and the guess is the one worth shouting about. Before this it
+// returned a bare result and the fallback was indistinguishable from a hit.
 function pickMatch(results, name, year) {
   if (!results || !results.length) return null;
   const want = normTitle(name);
   const sameYear = (r) => r.release_date && Math.abs(parseInt(r.release_date.slice(0, 4), 10) - year) <= 1;
   const exact = (r) => normTitle(r.title) === want || normTitle(r.original_title) === want;
   // Exact title AND the right year is the only combination worth trusting outright.
-  return results.find((r) => exact(r) && sameYear(r))
-    || results.find(exact)
-    || results[0];
+  const best = results.find((r) => exact(r) && sameYear(r));
+  if (best) return { film: best, how: 'exact' };
+  const offYear = results.find(exact);
+  if (offYear) return { film: offYear, how: 'exact title, other year' };
+  return { film: results[0], how: 'fallback' };
 }
 
 async function fetchOne({ name, year }) {
@@ -197,8 +213,19 @@ async function fetchOne({ name, year }) {
     const search = await tmdb(
       `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(name)}&year=${year}&language=en-US`,
     );
-    const hit = pickMatch(search.results, name, year);
-    if (hit && search.results[0] && hit.id !== search.results[0].id) {
+    const picked = pickMatch(search.results, name, year);
+    const hit = picked && picked.film;
+    if (picked && picked.how === 'fallback') {
+      // The Beyond case, and the one that used to pass in silence. No TMDB entry carries this
+      // title, so this is the most popular of whatever the search returned — a guess, recorded
+      // as though it were a fact. Zero Day, Maid and Samuel all arrived exactly this way.
+      fallbacks.push({ name, year, chose: hit.title, id: hit.id, outOf: search.total_results });
+      warn(`${name} (${year}): no TMDB entry has this exact title. Guessed "${hit.title}" `
+        + `(id ${hit.id}) as the most popular of ${search.total_results} results. Verify it, then `
+        + `repair with --only or record it in VERIFIED.`);
+    } else if (picked && picked.how !== 'exact') {
+      warn(`${name} (${year}): matched "${hit.title}" by title but the year differs — check it is the same film.`);
+    } else if (hit && search.results[0] && hit.id !== search.results[0].id) {
       console.log(`  ${name} (${year}): took the exact title match "${hit.title}" over TMDB's top hit "${search.results[0].title}"`);
     }
     // Record a null row for genuine no-matches so repeat runs skip them instead of
@@ -365,6 +392,9 @@ async function audit() {
 
   if (verified) console.log(`\n${verified} inexact match(es) skipped: checked by hand, see VERIFIED at the top of this file.`);
   if (contradicted.length) {
+    // The only finding here that is certain, so the only one that turns the run red.
+    process.exitCode = 1;
+    fail(`${contradicted.length} row(s) point at a different film than Letterboxd's own TMDB id.`);
     console.log(`\n!!! ${contradicted.length} row(s) contradicted by Letterboxd's own TMDB id. These are wrong, not suspect:`);
     contradicted.forEach((e) => console.log(`  ${(e.title + ' (' + e.year + ')').padEnd(44)} stored id=${e.tmdb_id} (${e.tmdbTitle}, ${e.tmdbRuntime}min) but the RSS feed says ${e.lbId}`));
     console.log(`  Repair: npm run enrich -- ${contradicted.map((e) => `--only "${e.title} (${e.year})"`).join(' ')}`);
@@ -380,6 +410,7 @@ async function audit() {
     console.log('None of this is an error the fetch could have noticed. Judge each one; a year that');
     console.log('disagrees is the strongest hint that it is the wrong film.');
 
+    if (rated.length) warn(`${rated.length} rated-but-never-logged row(s) have an inexact TMDB title; a wrong runtime there decides feature vs short.`);
     console.log(`\n>>> ${rated.length} RATED, NEVER LOGGED -- these are the ones that can distort figures.`);
     console.log('    With no diary row there is no tag, so the TMDB runtime alone decides whether the');
     console.log('    dashboard treats it as a feature or a short. Check these first.');
@@ -529,6 +560,17 @@ async function main() {
   await flush(batch);
 
   console.log(`\nmatched ${ok}, no match ${noMatch}, failed ${failed.length}`);
+
+  // Warned about individually above, repeated here because a per-film warning scrolls away in a
+  // long run and this is the list worth acting on. Deliberately NOT an error: plenty of correct
+  // films have no exact TMDB title (Glass Onion is filed with its subtitle), so failing the run
+  // on this would cry wolf. Certainty is the audit's job; this is "look at these".
+  if (fallbacks.length) {
+    console.log(`\n${fallbacks.length} film(s) matched by popularity, not by title — verify these:`);
+    fallbacks.forEach((f) => console.log(`  ${f.name} (${f.year}) -> "${f.chose}" id=${f.id}, best of ${f.outOf}`));
+    console.log(`  Repair: npm run enrich -- ${fallbacks.map((f) => `--only "${f.name} (${f.year})"`).join(' ')}`);
+    console.log('  Or, if correct, add it to VERIFIED at the top of this file.');
+  }
   if (failed.length) {
     console.log('Failed (not written — rerun to retry):');
     failed.forEach(({ film, message }) => console.log(`  ${film.name} (${film.year}): ${message}`));
