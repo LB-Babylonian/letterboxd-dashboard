@@ -730,7 +730,10 @@ export default function Dashboard(){
   var saveRatings=useCallback(function(d){sb.from('ratings_data').update({data:d,updated_at:new Date().toISOString()}).eq('id',1).then(function(){})},[]);
   var saveTop50=useCallback(function(year,d){sb.from('top50_data').upsert({list_year:year,data:d,updated_at:new Date().toISOString()},{onConflict:'list_year'}).then(function(){})},[]);
   var doImport=useCallback(function(){if(!csv.trim())return;var r=csvToPipe(csv);sIR(r);if(r.pipe&&r.count>0){sPd(r.pipe);savePipe(r.pipe);if(!r.e.length){sSI(false);sYr('All')}}},[csv,savePipe]);
-  var doClear=useCallback(function(){if(confirm('Clear all data?')){sPd('');sReg({});sSubscriptions(DSUBS);savePipe('');saveReg({});saveSubs(DSUBS);sSI(false)}},[savePipe,saveReg,saveSubs]);
+  // There is deliberately no Clear. It wiped the diary, the whole tag registry and every
+  // subscription in one click, behind a single "Clear all data?" -- and nothing in this app has an
+  // undo, because every edit writes straight to Supabase. Nothing needs it either: Import replaces
+  // the diary, and tags and subscriptions have their own editors. Please do not add it back.
   var handleLogin=useCallback(function(){if(pwBusy)return;var em=pwEmail.trim();if(!em||!pwInput){sPwErr('Email and password required');return}sPwBusy(true);sPwErr('');sb.auth.signInWithPassword({email:em,password:pwInput}).then(function(r){sPwBusy(false);if(r.error){sPwErr(r.error.message);return}sShowPwModal(false);sPwInput('');sPwEmail('');sPwErr('')}).catch(function(e){sPwBusy(false);sPwErr(String(e&&e.message||e))})},[pwEmail,pwInput,pwBusy]);
   var doSignOut=useCallback(function(){sb.auth.signOut().then(function(){sIsAdmin(false)})},[]);
   var doSetTag=function(t,cat){sReg(function(p){var n=Object.assign({},p);n[t]=Object.assign({},n[t]||{},{cat:cat||null});saveReg(n);return n})};
@@ -1586,7 +1589,6 @@ export default function Dashboard(){
         <button onClick={function(){sShowPicker(true)}} style={btnSecondary}>{'\u25BE '}{T.name}</button>
         {isAdmin?<button onClick={doSignOut} style={btnSecondary}>Sign out</button>:<button onClick={function(){sShowPwModal(true)}} style={btnSecondary}>Admin</button>}
         {isAdmin&&<button onClick={function(){sSI(true)}} style={btnSecondary}>Import</button>}
-        {isAdmin&&<button onClick={doClear} style={btnSecondary}>Clear</button>}
       </div>
     </div>
 
