@@ -496,6 +496,46 @@ function FilmList(p){
   </div>;
 }
 
+// A month's spend, split by what took the money, with each platform's films under it. FilmList
+// answers "which films"; this answers "which films, and what did each platform cost" — the same
+// modal shell so both dismiss identically (backdrop, close button, Escape).
+function CostBreakdown(p){
+  var open=!!p.data;
+  var closeRef=useRef(p.onClose);closeRef.current=p.onClose;
+  useEffect(function(){
+    if(!open)return;
+    var h=function(e){if(e.key==='Escape')closeRef.current()};
+    window.addEventListener('keydown',h);
+    return function(){window.removeEventListener('keydown',h)};
+  },[open]);
+  if(!open)return null;
+  var d=p.data;
+  return <div onClick={p.onClose} style={{cursor:'pointer',position:'fixed',inset:0,background:'rgba(0,0,0,0.62)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px'}}>
+    <div onClick={function(e){e.stopPropagation()}} style={{cursor:'default',background:NEUTRAL.surface,border:'1px solid '+NEUTRAL.borderStrong,borderRadius:6,width:'100%',maxWidth:620,maxHeight:'80vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 64px rgba(0,0,0,0.5)'}}>
+      <div className="flex justify-between items-baseline px-4 py-3" style={{borderBottom:'0.5px solid '+NEUTRAL.border,flex:'0 0 auto'}}>
+        <div className="text-sm" style={{color:NEUTRAL.ink,fontWeight:500}}>{d.label} <span style={{color:NEUTRAL.muted,fontWeight:400}}>{'\u20ac'}{d.total.toFixed(2)}</span></div>
+        <button onClick={p.onClose} className="text-xs px-2 py-0.5" style={{color:NEUTRAL.muted,background:NEUTRAL.surfaceAlt,border:'none',borderRadius:4,cursor:'pointer'}} title="Close — or press Escape">{'\u2715'}</button>
+      </div>
+      <div className="px-4 py-2" style={{overflowY:'auto'}}>
+        {d.groups.length===0&&<div className="text-xs py-3" style={{color:NEUTRAL.muted}}>Nothing was spent this month.</div>}
+        {d.groups.map(function(g,gi){return <div key={gi} className="mb-3">
+          <div className="flex justify-between items-baseline pb-1" style={{borderBottom:'0.5px solid '+NEUTRAL.borderStrong}}>
+            <div className="text-xs truncate mr-2" style={{color:NEUTRAL.ink,fontWeight:500}}>{g.label}
+              <span className="ml-1.5" style={{color:NEUTRAL.mutedSoft,fontWeight:400,fontSize:9.5,letterSpacing:'0.1em',textTransform:'uppercase'}}>{g.kind}</span>
+            </div>
+            <div className="text-xs whitespace-nowrap font-mono" style={{color:NEUTRAL.ink}}>{'\u20ac'}{g.amount.toFixed(2)}</div>
+          </div>
+          <div className="text-xs pt-0.5 pb-1" style={{color:NEUTRAL.mutedSoft}}>{g.note}</div>
+          {g.films.map(function(f,fi){return <div key={fi} className="text-xs py-1 flex justify-between" style={{borderBottom:'0.5px solid '+NEUTRAL.border}}>
+            <span className="truncate mr-2" style={{color:NEUTRAL.inkSoft}}>{f.name} <span style={{color:NEUTRAL.muted}}>({f.year})</span>{f.rating!==null&&f.rating!==undefined&&<span className="ml-1" style={{color:NEUTRAL.ink}}>{f.rating}{'\u2605'}</span>}</span>
+            <span className="whitespace-nowrap" style={{color:NEUTRAL.muted}}>{f.date}</span>
+          </div>})}
+        </div>})}
+      </div>
+    </div>
+  </div>;
+}
+
 // Profile picture. Drop the file at public/avatar.jpg and it appears; leave it out and
 // this renders nothing at all. Served from public/ rather than hotlinked from
 // Letterboxd's CDN so it cannot break when they reorganise their storage.
@@ -575,7 +615,7 @@ export default function Dashboard(){
   var[tagSearch,sTagSearch]=useState('');var[tagSel,sTagSel]=useState({});var[bulkCat,sBulkCat]=useState('');
   var[costEs,sCostEs]=useState(null);var[showNoPrice,sShowNoPrice]=useState(false);var[topAsList,sTopAsList]=useState(false);var[costYr,sCostYr]=useState('All');var[dateFrom,sDateFrom]=useState('');var[dateTo,sDateTo]=useState('');
   var[isAdmin,sIsAdmin]=useState(false);var[showPwModal,sShowPwModal]=useState(false);var[pwEmail,sPwEmail]=useState('');var[pwInput,sPwInput]=useState('');var[pwErr,sPwErr]=useState('');var[pwBusy,sPwBusy]=useState(false);
-  var[showSubs,sShowSubs]=useState(false);var[drill,sDrill]=useState(null);var[rankMode,sRankMode]=useState('sub');
+  var[showSubs,sShowSubs]=useState(false);var[drill,sDrill]=useState(null);var[costDrill,sCostDrill]=useState(null);var[rankMode,sRankMode]=useState('sub');
   var[filmMeta,sFilmMeta]=useState({});var[yRatings,sYRatings]=useState({});var[allRatings,sAllRatings]=useState([]);var[top50s,sTop50s]=useState([]);
   // Theme system: randomly pick at mount, persist in localStorage, avoid immediate repeat
   var[themeId,sThemeId]=useState(function(){try{var saved=localStorage.getItem('dashboard_theme_explicit');if(saved&&THEMES.find(function(t){return t.id===saved}))return saved;return 'neutral'}catch{/* Private mode denies localStorage; fall back to the default theme. */return 'neutral'}});
@@ -1118,12 +1158,99 @@ export default function Dashboard(){
 
   // One modal for every drill-down. Each panel just hands it a title and a list of films.
   var drillModal=<FilmList T={N} title={drill?drill.title:null} films={drill?drill.films:[]} onClose={function(){sDrill(null)}}/>;
+  var costModal=<CostBreakdown T={N} data={costDrill} onClose={function(){sCostDrill(null)}}/>;
   // The 50 ratings behind a point on the rolling average, newest first.
   var openDrillWindow=function(d){
     if(!d||d.i==null)return;
     openDrill('The '+inflation.w+' ratings up to '+d.date,inflation.rated.slice(Math.max(0,d.i-inflation.w+1),d.i+1).slice().reverse());
   };
   var openDrill=function(title,films){if(films&&films.length)sDrill({title:title,films:films})};
+
+  // WHERE A MONTH'S MONEY WENT. The bar says 43 euros; this says which platform took it and what
+  // was watched on each.
+  //
+  // The attribution deliberately mirrors monthlySpend() line for line, including one rule that
+  // looks wrong in isolation: a ticket counts whenever a film carries a venue tag and a price,
+  // even while a theatre subscription is active. platRankSub excludes those, because for a
+  // cost-per-film ranking a covered visit is already paid for. Here the totals have to add up to
+  // the bar directly above, and a breakdown that disagrees with the chart it explains is worse
+  // than no breakdown -- so this follows the chart, not the ranking.
+  //
+  // A subscription appears even with no films against it. That is not an empty row, it is the
+  // most useful thing on the panel: a month paid for and unused.
+  // One handler on all three stacked segments: whichever you hit, the month is what you meant.
+  var openMonth=function(d){var r=(d&&d.payload)||d;if(r&&r.ym)sCostDrill(monthBreakdown(r))};
+
+  var monthBreakdown=useCallback(function(row){
+    var ym=row.ym,groups=[];
+    var mF=all.filter(function(e){return e.date.slice(0,7)===ym});
+
+    subscriptions.forEach(function(sub){
+      var cost=0;
+      sub.periods.forEach(function(pr){
+        if(!pr.from||!pr.price)return;
+        var to=pr.to||getNowYM();
+        if(ym>=pr.from&&ym<=to)cost+=pr.price;
+      });
+      if(!cost)return;
+      var films=mF.filter(function(e){
+        if(sub.platforms.indexOf('_theater_sub')!==-1){
+          var vn=gV(e.tags,fullReg);
+          // Only where the pass actually paid. A visit to a pass venue that ALSO carries a price
+          // had money spent on it beyond the pass, so the ticket group owns it -- otherwise the
+          // film is listed under both and the pass's per-film figure counts a screening it did
+          // not cover. Every film in this modal belongs to exactly one group.
+          if(vn&&getCat(vn,fullReg)==='sub_venue'&&gTP(e.tags,fullReg)===null)return true;
+        }
+        return e.tags.some(function(t){return sub.platforms.indexOf(t)!==-1});
+      });
+      groups.push({kind:'Subscription',label:sub.name,amount:cost,films:withCur(films),
+        note:films.length?films.length+(films.length===1?' film, ':' films, ')+'\u20ac'+(cost/films.length).toFixed(2)+' each':'nothing watched on it this month'});
+    });
+
+    var byVenue={},byRental={};
+    mF.forEach(function(e){
+      var vn=gV(e.tags,fullReg);
+      if(vn){
+        var pr=gTP(e.tags,fullReg);
+        // A pass visit carries no price because the pass already paid. Left in, it appeared twice
+        // -- once under the subscription that covers it, once as its own "Pathe Nantes, 7 visits,
+        // 7 with no price recorded" at zero euros, which reads as missing data rather than as
+        // included. It belongs under the subscription only.
+        //
+        // Skipping it cannot change the total: monthlySpend sums gTP, and gTP is null here, so
+        // these contribute nothing either way. An unpriced visit anywhere ELSE is a genuine gap
+        // and still shows, which is the whole point of keeping the two cases apart.
+        var covered=pr===null&&getCat(vn,fullReg)==='sub_venue'&&isSubCovAt(e.date,subscriptions);
+        if(!covered){
+          var k=getDn(vn,fullReg);
+          if(!byVenue[k])byVenue[k]={amount:0,films:[],unpriced:0};
+          byVenue[k].films.push(e);
+          if(pr!==null)byVenue[k].amount+=pr; else byVenue[k].unpriced++;
+        }
+      }
+      var rt=null;
+      e.tags.forEach(function(t){if(getCat(t,fullReg)==='platform_rental')rt=t});
+      if(rt){
+        var p2=gTP(e.tags,fullReg);
+        var k2=getDn(rt,fullReg);
+        if(!byRental[k2])byRental[k2]={amount:0,films:[],unpriced:0};
+        byRental[k2].films.push(e);
+        if(p2!==null)byRental[k2].amount+=p2; else byRental[k2].unpriced++;
+      }
+    });
+    Object.keys(byVenue).sort().forEach(function(k){var g=byVenue[k];
+      groups.push({kind:'Tickets',label:k,amount:g.amount,films:withCur(g.films),
+        note:g.films.length+(g.films.length===1?' visit':' visits')+(g.unpriced?', '+g.unpriced+' with no price recorded':'')});
+    });
+    Object.keys(byRental).sort().forEach(function(k){var g=byRental[k];
+      groups.push({kind:'Rental',label:k,amount:g.amount,films:withCur(g.films),
+        note:g.films.length+(g.films.length===1?' rental':' rentals')+(g.unpriced?', '+g.unpriced+' with no price recorded':'')});
+    });
+
+    groups.sort(function(a,b){return b.amount-a.amount});
+    return {label:MF[parseInt(ym.slice(5))-1]+' '+ym.slice(0,4),total:row.total,groups:groups};
+  },[all,subscriptions,fullReg,withCur]);
 
   var themePickerModal=showPicker?<div style={{cursor:'pointer',position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:'40px 20px',overflowY:'auto'}} onClick={function(){sShowPicker(false)}}><div style={{cursor:'default',background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,maxWidth:720,width:'100%',maxHeight:'90vh',overflowY:'auto'}} onClick={function(e){e.stopPropagation()}}><div className="flex justify-between items-baseline mb-4 pb-3" style={{borderBottom:'0.5px solid '+N.border}}><div><div style={{fontSize:9,letterSpacing:'0.22em',color:N.muted,textTransform:'uppercase'}}>Choose a theme</div><div style={{fontSize:18,fontWeight:500,color:N.ink,marginTop:4}}>{THEMES.length} cinematic palettes</div></div><button onClick={function(){sShowPicker(false)}} style={btnSecondary}>{'\u2715'}</button></div><div className="grid grid-cols-2 md:grid-cols-3 gap-2">{THEMES.map(function(theme){var isActive=theme.id===themeId;return <button key={theme.id} onClick={function(){pickTheme(theme.id)}} style={{background:theme.paper,border:isActive?'2px solid '+T.primary:'0.5px solid '+theme.border,borderRadius:4,padding:'10px 12px',cursor:'pointer',textAlign:'left',transition:'transform 0.1s'}}><div style={{fontSize:9,letterSpacing:'0.15em',color:theme.muted,textTransform:'uppercase',marginBottom:4}}>Theme</div><div style={{fontSize:14,fontWeight:500,color:theme.ink,marginBottom:6}}>{theme.name}</div><div style={{display:'flex',gap:4,alignItems:'center'}}><div style={{fontSize:24,fontWeight:600,color:theme.metricColor||theme.primary,lineHeight:1,fontFamily:'ui-monospace,monospace'}}>142</div><div style={{display:'flex',flexDirection:'column',gap:2,marginLeft:'auto'}}><div style={{width:18,height:6,background:theme.metricColor||theme.primary,borderRadius:4}}/><div style={{width:18,height:6,background:theme.secondary||blend(theme.primary,theme.paper,0.35),borderRadius:4}}/><div style={{width:18,height:6,background:theme.ink,borderRadius:4}}/></div></div></button>})}</div><div className="mt-4 pt-3 text-xs" style={{borderTop:'0.5px solid '+N.border,color:N.muted}}>The theme is locked once you pick one. Default loads first; click any other to switch.</div></div></div>:null;
   var pwModal=showPwModal?<div style={{cursor:'pointer',position:'fixed',inset:0,background:'rgba(26,26,26,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:50}} onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}}><div style={{cursor:'default',background:N.surface,border:'1px solid '+N.borderStrong,borderRadius:4,padding:24,width:320}} onClick={function(e){e.stopPropagation()}}><div style={{fontSize:14,fontWeight:500,color:N.ink}}>Admin sign in</div><div className="mb-4 mt-1" style={{fontSize:11,color:N.muted,lineHeight:1.4}}>Supabase account. The server rejects writes without a session, so this is a real gate rather than a UI toggle.</div><input type="email" autoComplete="username" placeholder="Email" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwEmail} onChange={function(e){sPwEmail(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/><input type="password" autoComplete="current-password" placeholder="Password" style={Object.assign({},inputStyle,{width:'100%',marginBottom:8})} value={pwInput} onChange={function(e){sPwInput(e.target.value);sPwErr('')}} onKeyDown={function(e){if(e.key==='Enter')handleLogin()}}/>{pwErr&&<div className="text-xs mb-2" style={{color:NEG}}>{pwErr}</div>}<div className="flex gap-2"><button onClick={handleLogin} disabled={pwBusy} style={Object.assign({},btnPrimary,{flex:1,opacity:pwBusy?0.5:1,cursor:pwBusy?'default':'pointer'})}>{pwBusy?'Signing in\u2026':'Sign in'}</button><button onClick={function(){sShowPwModal(false);sPwInput('');sPwErr('')}} style={Object.assign({},btnSecondary,{flex:1})}>Cancel</button></div></div></div>:null;
@@ -1217,7 +1344,7 @@ export default function Dashboard(){
       </div>;
     })()}
     {cpfData.length>1&&<div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="The price of a film, over time"/><ResponsiveContainer width="100%" height={220}><LineChart data={cpfData}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="q" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.period}</div><div style={{color:T.primary}}>{'\u20AC'}{d.cpf.toFixed(2)}/film</div><div style={{color:N.muted}}>{d.films} films {'\u00B7'} {'\u20AC'}{d.cost.toFixed(0)} spent</div></div>}}/><Line type="monotone" dataKey="cpf" stroke={T.primary} strokeWidth={2} dot={{fill:T.primary,r:2}}/></LineChart></ResponsiveContainer></div>}
-    {monthlyFilt.length>3&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Monthly spend"/><ResponsiveContainer width="100%" height={250}><BarChart data={monthlyFilt}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="m" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){return <CostTip {...p} T={N}/>}}/><Bar dataKey="subs" name="Subscriptions" stackId="a" fill={sc[0]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="tickets" name="Tickets" stackId="a" fill={sc[1]} stroke={NEUTRAL.surface} strokeWidth={2}/><Bar dataKey="rentals" name="Rentals" stackId="a" fill={sc[2]} stroke={NEUTRAL.surface} strokeWidth={2}/></BarChart></ResponsiveContainer><div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[0],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Subscriptions</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Tickets</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rentals</span></div></div></div>})()}
+    {monthlyFilt.length>3&&(function(){var sc=seriesColors();return <div className="p-4" style={{background:N.surface,border:'0.5px solid '+N.border,borderRadius:4}}><SectionHead T={N} title="Monthly spend" aside={<span className="text-xs" style={{color:N.muted}}>click a month for its platforms</span>}/><ResponsiveContainer width="100%" height={250}><BarChart data={monthlyFilt}><CartesianGrid strokeDasharray="3 3" stroke={N.border}/><XAxis dataKey="m" tick={{fill:N.muted,fontSize:9}} angle={-45} textAnchor="end" height={50}/><YAxis tick={{fill:N.muted,fontSize:10}}/><Tooltip content={function(p){return <CostTip {...p} T={N}/>}}/><Bar dataKey="subs" name="Subscriptions" stackId="a" fill={sc[0]} stroke={NEUTRAL.surface} strokeWidth={2} cursor="pointer" onClick={openMonth}/><Bar dataKey="tickets" name="Tickets" stackId="a" fill={sc[1]} stroke={NEUTRAL.surface} strokeWidth={2} cursor="pointer" onClick={openMonth}/><Bar dataKey="rentals" name="Rentals" stackId="a" fill={sc[2]} stroke={NEUTRAL.surface} strokeWidth={2} cursor="pointer" onClick={openMonth}/></BarChart></ResponsiveContainer><div className="flex gap-4 mt-2 justify-center"><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[0],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Subscriptions</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[1],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Tickets</span></div><div className="flex items-center gap-1.5"><div style={{width:10,height:10,background:sc[2],borderRadius:4}}/><span className="text-xs" style={{color:N.muted}}>Rentals</span></div></div></div>})()}
   </div>};
 
   if(CONFIG_ERROR)return(<div style={{background:NEUTRAL.paper,color:NEUTRAL.ink,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:fontOf('sans')}}>
@@ -1248,7 +1375,7 @@ export default function Dashboard(){
   var copyHeroLabel=applyCopy((T.copy&&T.copy.heroLabel)||'Films logged',copyCtx);
   var copyHeroSuffix=applyCopy((T.copy&&T.copy.heroSuffix)||'{n} vs '+(yr==='All'?'':String(parseInt(yr)-1)),copyCtx);
 
-  return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}{drillModal}<div className="max-w-6xl mx-auto">
+  return(<div style={{background:N.paper,color:N.ink,minHeight:'100vh',fontFeatureSettings:'"ss01","cv01"',fontFamily:fontOf('sans')}} className="px-4 md:px-10 py-6 md:py-10"><style>{ANIM_CSS}</style>{pwModal}{themePickerModal}{drillModal}{costModal}<div className="max-w-6xl mx-auto">
 
     {/* NAV — tabs and controls share one row. They were two stacked rows with their own
         borders and margins, costing ~50px before any content for what is a single band of
