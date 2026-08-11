@@ -1898,13 +1898,20 @@ export default function Dashboard(){
               <Tooltip content={function(p){if(!p.active||!p.payload||!p.payload.length)return null;var d=p.payload[0].payload;var hv=d.Films>=quad.mx,hr=d.Avg>=quad.my;var verdict=hv&&hr?qw.hh:hv?qw.hl:hr?qw.lh:qw.ll;return <div style={{background:N.paper,border:'0.5px solid '+N.borderStrong,borderRadius:4,padding:'8px 12px',fontSize:11}}><div style={{color:N.ink,fontWeight:500}}>{d.name}</div><div style={{color:N.inkSoft,marginTop:2}}>{d.Films} films {'·'} {d.Avg.toFixed(2)}{'★'}</div><div style={{color:N.muted,marginTop:2}}>{verdict}</div></div>}}/>
               <ReferenceLine x={quad.mx} stroke={N.borderStrong} strokeDasharray="4 4"/>
               <ReferenceLine y={quad.my} stroke={N.borderStrong} strokeDasharray="4 4"/>
-              {quadHit
+              {/* Every dot is drawn at 0.7 and nothing on this chart is brighter than that. The labelled
+                batch used to omit fillOpacity entirely, so the five named dots rendered fully opaque --
+                saying "this one is notable" a second time when its printed name had already said it, and
+                leaving no way to tell that emphasis apart from two ordinary dots overlapping, which
+                compounds to about 0.91 and means nothing. One baseline, so the only thing brightness can
+                mean now is proximity: overlap reads as density, which is true. The search still dims
+                everything it did not match, and that is the single deliberate exception. */}
+            {quadHit
                 ? [<Scatter key="miss" data={quadHit.miss} fill={VIZ_MARK} fillOpacity={0.12}/>,
-                   <Scatter key="hit" data={quadHit.hit} fill={VIZ_MARK} fillOpacity={0.95} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
+                   <Scatter key="hit" data={quadHit.hit} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
                      <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.ink,fontSize:10}}/>
                    </Scatter>]
                 : [<Scatter key="plain" data={quad.plain} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}/>,
-                   <Scatter key="top" data={quad.labeled} fill={VIZ_MARK} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
+                   <Scatter key="top" data={quad.labeled} fill={VIZ_MARK} fillOpacity={0.7} cursor="pointer" onClick={function(d){quadPick(d&&d.payload?d.payload.name:d&&d.name)}}>
                      <LabelList dataKey="name" position="top" offset={9} style={{fill:NEUTRAL.inkSoft,fontSize:10}}/>
                    </Scatter>]}
             </ScatterChart>
