@@ -1,7 +1,7 @@
 name: Supabase Keepalive
 
 # Supabase pauses a free-tier project after roughly 7 days without activity, so this reads
-# one row every 5 days to keep it warm.
+# one row daily to keep it warm.
 #
 # History worth knowing, because it explains why this looks over-built for one curl: the
 # workflow existed for months without executing once — it was committed twice, both times
@@ -21,7 +21,11 @@ name: Supabase Keepalive
 
 on:
   schedule:
-    - cron: '0 9 */5 * *'   # every 5 days, 09:00 UTC — inside Supabase's ~7 day window
+    # Daily, at 09:37 (not :00). GitHub runs scheduled workflows best-effort and drops them
+    # under load — runs at the top of the hour most of all — so a 5-day cadence with only a
+    # 2-day margin under Supabase's ~7-day pause window let a single dropped run pause the
+    # project. Daily means GitHub would have to miss 7 in a row for that to happen.
+    - cron: '37 9 * * *'
   workflow_dispatch:        # "Run workflow" on the Actions tab
 
 permissions:
